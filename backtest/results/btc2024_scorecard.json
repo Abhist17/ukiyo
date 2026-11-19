@@ -1,0 +1,202 @@
+{
+ "symmetric_3pct_5bps": [
+  {
+   "curator": "Passive wide (+-25%)",
+   "fee_bps": 2818.478834401016,
+   "vs_hodl_bps": -864.6718921259302,
+   "edge_old_bps": 1644.3571352102608,
+   "edge_new_bps": 171.5820508428486,
+   "true_hedged_bps": 226.43843962006744
+  },
+  {
+   "curator": "Passive mid (+-8%)",
+   "fee_bps": 8218.72229630757,
+   "vs_hodl_bps": -1375.1935070074587,
+   "edge_old_bps": 4872.0600202357045,
+   "edge_new_bps": 590.22519136532,
+   "true_hedged_bps": 746.0009063171065
+  },
+  {
+   "curator": "Tight chaser (+-1.5%)",
+   "fee_bps": 41463.25319582914,
+   "vs_hodl_bps": -7409.12397674925,
+   "edge_old_bps": 22541.671937950214,
+   "edge_new_bps": 869.862155057561,
+   "true_hedged_bps": 1328.4070675312262
+  },
+  {
+   "curator": "Vol-adaptive (3 sigma)",
+   "fee_bps": 10112.732329997965,
+   "vs_hodl_bps": -1294.8520095206236,
+   "edge_old_bps": 6299.36379330086,
+   "edge_new_bps": 1228.3589042112683,
+   "true_hedged_bps": 1440.7198992424958
+  },
+  {
+   "curator": "Vol-adaptive (1.5 sigma)",
+   "fee_bps": 18826.019682499315,
+   "vs_hodl_bps": 1424.2774057872396,
+   "edge_old_bps": 11838.0863376287,
+   "edge_new_bps": 2428.1127814390256,
+   "true_hedged_bps": 2805.764285745543
+  },
+  {
+   "curator": "Momentum (+-10%)",
+   "fee_bps": 5856.923405495636,
+   "vs_hodl_bps": -448.4809220710549,
+   "edge_old_bps": 2694.016248031915,
+   "edge_new_bps": -314.94951273576777,
+   "true_hedged_bps": -204.64979735263452
+  }
+ ],
+ "symmetric_3pct_30bps": [
+  {
+   "curator": "Passive wide (+-25%)",
+   "fee_bps": 2962.393312957668,
+   "vs_hodl_bps": -715.7938407229157,
+   "edge_old_bps": 2539.255977627033,
+   "edge_new_bps": 90.76332533774774,
+   "true_hedged_bps": 29.34327258407057
+  },
+  {
+   "curator": "Passive mid (+-8%)",
+   "fee_bps": 8633.156008288715,
+   "vs_hodl_bps": -834.9326549195034,
+   "edge_old_bps": 7378.083167748395,
+   "edge_new_bps": 251.74969921070493,
+   "true_hedged_bps": 71.62301798571451
+  },
+  {
+   "curator": "Tight chaser (+-1.5%)",
+   "fee_bps": 43125.01476007112,
+   "vs_hodl_bps": -3521.825175212282,
+   "edge_old_bps": 35787.67656059685,
+   "edge_new_bps": 224.6179732734666,
+   "true_hedged_bps": -922.2457009107003
+  },
+  {
+   "curator": "Vol-adaptive (3 sigma)",
+   "fee_bps": 10078.387969676573,
+   "vs_hodl_bps": -1519.7869010668953,
+   "edge_old_bps": 8664.589585647183,
+   "edge_new_bps": 488.17920938619955,
+   "true_hedged_bps": 287.6385444928928
+  },
+  {
+   "curator": "Vol-adaptive (1.5 sigma)",
+   "fee_bps": 18674.418542652533,
+   "vs_hodl_bps": 853.6328579069586,
+   "edge_old_bps": 16092.443480874259,
+   "edge_new_bps": 985.7687574226005,
+   "true_hedged_bps": 608.4263041747481
+  },
+  {
+   "curator": "Momentum (+-10%)",
+   "fee_bps": 6002.763272091613,
+   "vs_hodl_bps": -326.4273878563522,
+   "edge_old_bps": 4309.350646677794,
+   "edge_new_bps": -608.1150575192701,
+   "true_hedged_bps": -735.5294809057697
+  }
+ ],
+ "conservative_5bps": [
+  {
+   "curator": "Passive wide (+-25%)",
+   "fee_bps": 2818.478834401016,
+   "vs_hodl_bps": -864.6718921259302,
+   "edge_old_bps": 1644.3571352102608,
+   "edge_new_bps": 37.80964120794989,
+   "true_hedged_bps": 226.43843962006744
+  },
+  {
+   "curator": "Passive mid (+-8%)",
+   "fee_bps": 8218.72229630757,
+   "vs_hodl_bps": -1375.1935070074587,
+   "edge_old_bps": 4872.0600202357045,
+   "edge_new_bps": 199.35607211209765,
+   "true_hedged_bps": 746.0009063171065
+  },
+  {
+   "curator": "Tight chaser (+-1.5%)",
+   "fee_bps": 41463.25319582914,
+   "vs_hodl_bps": -7409.12397674925,
+   "edge_old_bps": 22541.671937950214,
+   "edge_new_bps": -1097.7556946054328,
+   "true_hedged_bps": 1328.4070675312262
+  },
+  {
+   "curator": "Vol-adaptive (3 sigma)",
+   "fee_bps": 10112.732329997965,
+   "vs_hodl_bps": -1294.8520095206236,
+   "edge_old_bps": 6299.36379330086,
+   "edge_new_bps": 738.2226156704036,
+   "true_hedged_bps": 1440.7198992424958
+  },
+  {
+   "curator": "Vol-adaptive (1.5 sigma)",
+   "fee_bps": 18826.019682499315,
+   "vs_hodl_bps": 1424.2774057872396,
+   "edge_old_bps": 11838.0863376287,
+   "edge_new_bps": 1515.235321199319,
+   "true_hedged_bps": 2805.764285745543
+  },
+  {
+   "curator": "Momentum (+-10%)",
+   "fee_bps": 5856.923405495636,
+   "vs_hodl_bps": -448.4809220710549,
+   "edge_old_bps": 2694.016248031915,
+   "edge_new_bps": -595.0723237305534,
+   "true_hedged_bps": -204.64979735263452
+  }
+ ],
+ "conservative_30bps": [
+  {
+   "curator": "Passive wide (+-25%)",
+   "fee_bps": 2962.393312957668,
+   "vs_hodl_bps": -715.7938407229157,
+   "edge_old_bps": 2539.255977627033,
+   "edge_new_bps": -13.651065959799569,
+   "true_hedged_bps": 29.34327258407057
+  },
+  {
+   "curator": "Passive mid (+-8%)",
+   "fee_bps": 8633.156008288715,
+   "vs_hodl_bps": -834.9326549195034,
+   "edge_old_bps": 7378.083167748395,
+   "edge_new_bps": -51.24929470247923,
+   "true_hedged_bps": 71.62301798571451
+  },
+  {
+   "curator": "Tight chaser (+-1.5%)",
+   "fee_bps": 43125.01476007112,
+   "vs_hodl_bps": -3521.825175212282,
+   "edge_old_bps": 35787.67656059685,
+   "edge_new_bps": -1299.434375908582,
+   "true_hedged_bps": -922.2457009107003
+  },
+  {
+   "curator": "Vol-adaptive (3 sigma)",
+   "fee_bps": 10078.387969676573,
+   "vs_hodl_bps": -1519.7869010668953,
+   "edge_old_bps": 8664.589585647183,
+   "edge_new_bps": 126.52584341393924,
+   "true_hedged_bps": 287.6385444928928
+  },
+  {
+   "curator": "Vol-adaptive (1.5 sigma)",
+   "fee_bps": 18674.418542652533,
+   "vs_hodl_bps": 853.6328579069586,
+   "edge_old_bps": 16092.443480874259,
+   "edge_new_bps": 316.8898096709155,
+   "true_hedged_bps": 608.4263041747481
+  },
+  {
+   "curator": "Momentum (+-10%)",
+   "fee_bps": 6002.763272091613,
+   "vs_hodl_bps": -326.4273878563522,
+   "edge_old_bps": 4309.350646677794,
+   "edge_new_bps": -820.9011626168206,
+   "true_hedged_bps": -735.5294809057697
+  }
+ ]
+}

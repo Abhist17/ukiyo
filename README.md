@@ -109,6 +109,26 @@ bps pool), so **the tip classifier on its own is not yet trustworthy on mainnet 
 arbitrageur bids priority by construction, so the demo shows the mechanism working, not this question answered. Raw rows (with tx hashes),
 contract labels and the summary are in [`backtest/results/`](backtest/results/).
 
+**Could the hook classify after the fact instead?** We tested that too
+([`backtest/markout_classifier.py`](backtest/markout_classifier.py)). Each swap waits for the next block's
+post-arbitrage mark and is classified then. The results are fee-weighted, on 3 × 26 synthetic weeks of a 5 bps pool:
+
+| Classifier | Arbitrage fees booked as user | User fees booked as arbitrage | Curator pairs ordered right, same week | Weeks overstated |
+| --- | --- | --- | --- | --- |
+| Priority fee, arbitrage bids for priority (no error) | 0% | 0% | 99.4% | 1% |
+| Priority fee, error rates measured on Unichain (T = 1) | 7% | 94% | 51.5% | 0% |
+| Ex post: trader in profit at the next mark | 63% | 4% | 75.1% | 100% |
+| Ex post: same, mark pushed one fee-width (band) | 26% | 43% | 97.0% | 45% |
+| Ex post: next mark reverts past the swap's start | 0.9% | 71% | 66.2% | 0% |
+
+No ex-post rule beats a working priority-fee classifier. Profit at the pool's next mark misses most arbitrage,
+because an arbitrage stops one fee-width short of the external price. The band version overstates Edge in 45% of
+weeks, which breaks Ukiyo's rule that Edge is never overstated, and it collapses on 30 bps pools (correlation 0.12).
+The "reverted" rule never overstates but drops most user fees. So the hook keeps the priority-fee classifier: it is the
+right rule wherever arbitrage competes on priority, With the error rates measured on today's Unichain flow,
+Edge on a 5 bps pool is understated (never overstated in the backtest) but orders curators poorly; on 30 bps pools it
+overstates in 25% of weeks.
+
 ## Run it
 
 ```bash
@@ -127,6 +147,7 @@ Backtest:
 cd backtest && pip install -r requirements.txt
 python fetch_data.py && python experiments.py && python scorecard.py
 python priority_fees.py --head 64432466   # Unichain tip measurement (stdlib only, ~3 min, public RPC)
+python markout_classifier.py               # priority-fee vs ex-post classifiers (~2 min)
 ```
 
 ### Tests

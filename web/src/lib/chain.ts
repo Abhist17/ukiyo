@@ -1,0 +1,86 @@
+import { foundry, unichainSepolia } from "viem/chains";
+import { formatEther, type Address } from "viem";
+import { DEPLOYMENTS } from "@/deployments";
+
+/** A deployment written by script/DeployUkiyo.s.sol. */
+export interface Deployment {
+  chainId: number;
+  deployBlock: number;
+  poolManager: Address;
+  hook: Address;
+  router: Address;
+  token0: Address;
+  token1: Address;
+  btc: Address;
+  usd: Address;
+  fee: number;
+  tickSpacing: number;
+  threshold: string;
+  epochLength: number;
+  startPrice: number;
+  curator: Address;
+  vaults: { address: Address; sleeveId: number; name: string; symbol: string; style: string }[];
+}
+
+const all = DEPLOYMENTS as unknown as Record<number, Deployment>;
+const wanted = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 0);
+
+/** The deployment the app talks to: NEXT_PUBLIC_CHAIN_ID if set, else Unichain Sepolia if deployed, else anvil. */
+export const DEP: Deployment | undefined = all[wanted] ?? all[unichainSepolia.id] ?? all[foundry.id];
+export const CHAIN = DEP?.chainId === unichainSepolia.id ? unichainSepolia : foundry;
+/** Human name of the chain, for the header. */
+export const CHAIN_LABEL = CHAIN.id === foundry.id ? "Local anvil" : CHAIN.name;
+export const RPC = process.env.NEXT_PUBLIC_RPC_URL || CHAIN.rpcUrls.default.http[0];
+export const EXPLORER = CHAIN.id === unichainSepolia.id ? "https://sepolia.uniscan.xyz" : undefined;
+
+export const BTC_IS_0 = !!DEP && DEP.btc.toLowerCase() === DEP.token0.toLowerCase();
+
+/** Pool key of the hook-exclusive pool. */
+export const POOL_KEY = DEP && {
+  currency0: DEP.token0,
+  currency1: DEP.token1,
+  fee: DEP.fee,
+  tickSpacing: DEP.tickSpacing,
+  hooks: DEP.hook,
+};
+
+export const MIN_SQRT = 4295128740n;
+export const MAX_SQRT = 1461446703485210103287273052203988822378723970341n;
+
+/** tUSD per tBTC from the pool's sqrt price. */
+export function priceOf(sqrtPriceX96: bigint): number {
+  const p = (Number(sqrtPriceX96) / 2 ** 96) ** 2;
+  return BTC_IS_0 ? p : 1 / p;
+}
+
+/** Tick of a tUSD-per-tBTC price, in the pool's orientation. */
+export function priceToTick(usdPerBtc: number): number {
+  return Math.floor(Math.log(BTC_IS_0 ? usdPerBtc : 1 / usdPerBtc) / Math.log(1.0001));
+}
+
+/** tUSD per tBTC at a tick. */
+export function tickToPrice(tick: number): number {
+  const p = 1.0001 ** tick;
+  return BTC_IS_0 ? p : 1 / p;
+}
+
+/** Split a (token0, token1) pair into (btc, usd). */
+export const split = (a0: bigint, a1: bigint): [bigint, bigint] => (BTC_IS_0 ? [a0, a1] : [a1, a0]);
+/** Join (btc, usd) into (token0, token1). */
+export const join = (btc: bigint, usd: bigint): [bigint, bigint] => (BTC_IS_0 ? [btc, usd] : [usd, btc]);
+
+/** 18-decimal amount to a JS number. */
+export const num = (v: bigint) => Number(formatEther(v));
+
+export function usd(v: number, digits = 0): string {
+  const s = Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return (v < 0 ? "−$" : "$") + s;
+}
+
+export function compactUsd(v: number): string {
+  const a = Math.abs(v);
+  const s = a >= 1e6 ? `${(a / 1e6).toFixed(2)}M` : a >= 1e3 ? `${(a / 1e3).toFixed(1)}K` : a.toFixed(0);
+  return (v < 0 ? "−$" : "$") + s;
+}
+
+export const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;

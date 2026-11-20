@@ -31,7 +31,19 @@ EST_NAMES = [
     "flag_noise_fee",  # 13 fees from swaps the hook classifies as uninformed (priority-fee test, with error)
     "flag_noise_impact",  # 14 price impact of swaps classified as uninformed: l (ds)^2 / s per swap
     "block_disp",   # 15 net displacement after the arb slot, per block: l (s_close - s_post)^2 / s_post
+    "cls_arb_fee_as_user",    # 16 fees from true arbitrage swaps the classifier booked as user (overstates Edge)
+    "cls_noise_fee_as_arb",   # 17 fees from true noise swaps the classifier booked as arbitrage (understates Edge)
 ]
+# Classifier modes for run(..., cls_mode=):
+#   0  at swap time, with injected error rates miss_arb / false_arb (stands in for the priority-fee test)
+#   1  ex post, pool markout: arbitrage iff the trader is in profit, fee included, at the next block's post-arb mark
+#   2  ex post, band markout: as 1, with that mark pushed one fee-width in its first swap's direction (the band_mark
+#      reconstruction of the external price; an arbitrage stops one fee-width short of it)
+#   3  ex post, reverted: user iff the next post-arb mark is back beyond the swap's starting price
+#   4  ex post, reverted per bucket (what the hook stores): one bucket for a block's up-swaps and one for its
+#      down-swaps; a bucket is user iff the next post-arb mark is back beyond every start price in it
+CLS_NAMES = ["swap-time (injected error)", "pool markout", "band markout", "reverted", "reverted, bucketed"]
+MAXPEND = 64
 NE = len(EST_NAMES)
 K1 = 10
 K2 = 60
@@ -83,6 +95,52 @@ def apply_move(s_old, s_new, P, gamma, L, SA, SB, fees, fee_src, src, flag_noise
             c0 = clip(s_old, SA[i], SB[i])
             c1 = clip(s_new, SA[i], SB[i])
             impbuf[i] += L[i] * (c1 - c0) * (c1 - c0) / c0
+
+
+@njit(cache=True)
+def book_resolved(est_e, fee, imp, user, src):
+    """Book one classified swap's per-sleeve fee and impact; track errors against the simulator's truth."""
+    for i in range(fee.shape[0]):
+        if user:
+            est_e[i, 13] += fee[i]
+            est_e[i, 14] += imp[i]
+            if src == 0:
+                est_e[i, 16] += fee[i]
+        elif src == 1:
+            est_e[i, 17] += fee[i]
+
+
+@njit(cache=True)
+def record_move(s_old, s_new, P, gamma, L, SA, SB, fees, fee_src, src, flag_noise, flagbuf, impbuf, cls_mode, t,
+                pend_n, pend_fee, pend_imp, pend_dir, pend_s0, pend_px, pend_src, pend_blk, scratch_f, scratch_i,
+                est_e):
+    """Apply a swap. Mode 0 classifies now (flag_noise); ex-post modes queue it for the next block's mark."""
+    scratch_f[:] = 0.0
+    scratch_i[:] = 0.0
+    apply_move(s_old, s_new, P, gamma, L, SA, SB, fees, fee_src, src, True, scratch_f, scratch_i)
+    if cls_mode == 0:
+        for i in range(L.shape[0]):
+            if flag_noise:
+                flagbuf[i] += scratch_f[i]
+                impbuf[i] += scratch_i[i]
+                if src == 0:
+                    est_e[i, 16] += scratch_f[i]
+            elif src == 1:
+                est_e[i, 17] += scratch_f[i]
+        return pend_n
+    if pend_n >= pend_fee.shape[0]:
+        book_resolved(est_e, scratch_f, scratch_i, False, src)  # no room: call it arbitrage
+        return pend_n
+    d = 1.0 if s_new > s_old else -1.0
+    pend_fee[pend_n, :] = scratch_f
+    pend_imp[pend_n, :] = scratch_i
+    pend_dir[pend_n] = d
+    pend_s0[pend_n] = s_old
+    # execution price per token0, LP fee included: buyers pay s0 s1 / (1 - fee), sellers get s0 s1 (1 - fee)
+    pend_px[pend_n] = s_old * s_new / (1.0 - gamma) if d > 0 else s_old * s_new * (1.0 - gamma)
+    pend_src[pend_n] = src
+    pend_blk[pend_n] = t
+    return pend_n + 1
 
 
 @njit(cache=True)
@@ -175,7 +233,7 @@ def set_range(i, center_price, w, s, P, value, cost_rate, L, SA, SB, x_cur):
 
 @njit(cache=True)
 def run(P, seed, gamma, lam, size_mu, size_sig, typ, width, kvol, cost_rate,
-        epoch_len, n_sleeves, capital, miss_arb=0.03, false_arb=0.03):
+        epoch_len, n_sleeves, capital, miss_arb=0.03, false_arb=0.03, cls_mode=0):
     """
     P: CEX price per block (normalised)
     typ: 0 passive, 1 chaser, 2 vol-adaptive, 3 momentum
@@ -191,6 +249,17 @@ def run(P, seed, gamma, lam, size_mu, size_sig, typ, width, kvol, cost_rate,
     fee_src = np.zeros((N, 2))
     flagbuf = np.zeros(N)
     impbuf = np.zeros(N)
+    # ex-post classifier: swaps of the last block with a swap, waiting for the next block's post-arb mark
+    pend_n = 0
+    pend_fee = np.zeros((MAXPEND, N))
+    pend_imp = np.zeros((MAXPEND, N))
+    pend_dir = np.zeros(MAXPEND)
+    pend_s0 = np.zeros(MAXPEND)
+    pend_px = np.zeros(MAXPEND)
+    pend_src = np.zeros(MAXPEND, dtype=np.int64)
+    pend_blk = np.zeros(MAXPEND, dtype=np.int64)
+    scratch_f = np.zeros(N)
+    scratch_i = np.zeros(N)
 
     L = np.zeros(N)
     SA = np.zeros(N)
@@ -264,14 +333,18 @@ def run(P, seed, gamma, lam, size_mu, size_sig, typ, width, kvol, cost_rate,
         ld = np.log(Pt) - 2.0 * np.log(s)
         if ld > gamma:
             s_new = np.sqrt(Pt * np.exp(-gamma))
-            apply_move(s, s_new, Pt, gamma, L, SA, SB, fees, fee_src, 0, np.random.rand() < miss_arb, flagbuf, impbuf)
+            pend_n = record_move(s, s_new, Pt, gamma, L, SA, SB, fees, fee_src, 0, np.random.rand() < miss_arb,
+                                     flagbuf, impbuf, cls_mode, t, pend_n, pend_fee, pend_imp, pend_dir, pend_s0,
+                                     pend_px, pend_src, pend_blk, scratch_f, scratch_i, est[e])
             s = s_new
             first = True
             s_post = s
             fdir = 1.0
         elif ld < -gamma:
             s_new = np.sqrt(Pt * np.exp(gamma))
-            apply_move(s, s_new, Pt, gamma, L, SA, SB, fees, fee_src, 0, np.random.rand() < miss_arb, flagbuf, impbuf)
+            pend_n = record_move(s, s_new, Pt, gamma, L, SA, SB, fees, fee_src, 0, np.random.rand() < miss_arb,
+                                     flagbuf, impbuf, cls_mode, t, pend_n, pend_fee, pend_imp, pend_dir, pend_s0,
+                                     pend_px, pend_src, pend_blk, scratch_f, scratch_i, est[e])
             s = s_new
             first = True
             s_post = s
@@ -290,7 +363,9 @@ def run(P, seed, gamma, lam, size_mu, size_sig, typ, width, kvol, cost_rate,
                 s_new = solve_down(s, usd * (1.0 - gamma) / Pt, L, SA, SB)
             s_before = s
             if s_new != s:
-                apply_move(s, s_new, Pt, gamma, L, SA, SB, fees, fee_src, 1, np.random.rand() >= false_arb, flagbuf, impbuf)
+                pend_n = record_move(s, s_new, Pt, gamma, L, SA, SB, fees, fee_src, 1, np.random.rand() >= false_arb,
+                                     flagbuf, impbuf, cls_mode, t, pend_n, pend_fee, pend_imp, pend_dir, pend_s0,
+                                     pend_px, pend_src, pend_blk, scratch_f, scratch_i, est[e])
                 s = s_new
             if not first:
                 first = True
@@ -304,6 +379,42 @@ def run(P, seed, gamma, lam, size_mu, size_sig, typ, width, kvol, cost_rate,
             phat = s_post * s_post * np.exp(gamma * fdir)
         else:
             phat = phat_prev
+
+        # ex-post classification of the previous swap block, at this block's post-arb mark
+        if cls_mode != 0 and fdir != 0.0:
+            if cls_mode == 2:
+                F = phat
+            else:
+                F = s_post * s_post
+            lo_up = 1e300
+            hi_dn = -1e300
+            for k in range(pend_n):
+                if pend_blk[k] != t:
+                    if pend_dir[k] > 0 and pend_s0[k] < lo_up:
+                        lo_up = pend_s0[k]
+                    if pend_dir[k] < 0 and pend_s0[k] > hi_dn:
+                        hi_dn = pend_s0[k]
+            keep = 0
+            for k in range(pend_n):
+                if pend_blk[k] == t:
+                    # this block's own swaps wait for the next mark; compact them to the front
+                    pend_fee[keep, :] = pend_fee[k, :]
+                    pend_imp[keep, :] = pend_imp[k, :]
+                    pend_dir[keep] = pend_dir[k]
+                    pend_s0[keep] = pend_s0[k]
+                    pend_px[keep] = pend_px[k]
+                    pend_src[keep] = pend_src[k]
+                    pend_blk[keep] = pend_blk[k]
+                    keep += 1
+                    continue
+                if cls_mode == 3:
+                    user = pend_dir[k] * (s_post - pend_s0[k]) < 0.0
+                elif cls_mode == 4:
+                    user = s_post < lo_up if pend_dir[k] > 0 else s_post > hi_dn
+                else:
+                    user = pend_dir[k] * (F - pend_px[k]) <= 0.0
+                book_resolved(est[e], pend_fee[k], pend_imp[k], user, pend_src[k])
+            pend_n = keep
 
         # ---- 3. truth + 4. estimators ----
         for i in range(N):

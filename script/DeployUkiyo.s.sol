@@ -29,6 +29,8 @@ import {UkiyoVault} from "../src/UkiyoVault.sol";
 ///        THRESHOLD  priority fee per gas (wei) at or above which a swap is arbitrage   default 0.1 gwei
 ///        EPOCH      vault epoch length in seconds                                      default 600
 ///        CURATOR    curator of every vault (the replay bot)                            default the broadcaster
+///        PERF_FEE_BPS  performance fee on Edge above the high-water mark               default 1000 (10%)
+///        LVR_BUDGET_BPS  each demo curator's LVR budget per epoch                      default 25
 ///        START_PRICE  tUSD per tBTC                                                    default 42,268 (1 Jan 2024)
 contract DeployUkiyo is Script {
     /// @dev forge's CREATE2 deployer proxy, the `deployer` HookMiner must mine against.
@@ -48,6 +50,7 @@ contract DeployUkiyo is Script {
         string symbol;
         string style;
         int24 halfWidth;
+        uint256 bondUsd;
     }
 
     /// @notice Everything the deployment created, kept in memory to write the JSON at the end.
@@ -66,6 +69,8 @@ contract DeployUkiyo is Script {
         uint256 threshold;
         uint256 epochLength;
         uint256 startPrice;
+        uint256 performanceFeeBps;
+        uint256 lvrBudgetBps;
         address curator;
         address deployer;
     }
@@ -76,6 +81,8 @@ contract DeployUkiyo is Script {
             threshold: vm.envOr("THRESHOLD", uint256(0.1 gwei)),
             epochLength: vm.envOr("EPOCH", uint256(600)),
             startPrice: vm.envOr("START_PRICE", uint256(42_268)),
+            performanceFeeBps: vm.envOr("PERF_FEE_BPS", uint256(1000)),
+            lvrBudgetBps: vm.envOr("LVR_BUDGET_BPS", uint256(25)),
             curator: vm.envOr("CURATOR", msg.sender),
             deployer: msg.sender
         });
@@ -134,12 +141,18 @@ contract DeployUkiyo is Script {
         d.btc.mint(c.deployer, seedBtc);
         d.usd.mint(c.deployer, seedUsd);
         uint256 id = d.hook.openSleeve(c.curator, _floor(tick - s.halfWidth), _ceil(tick + s.halfWidth));
-        v = new UkiyoVault(d.hook, id, c.curator, c.epochLength, s.name, s.symbol);
+        v = new UkiyoVault(d.hook, id, c.curator, c.epochLength, c.performanceFeeBps, s.name, s.symbol);
         d.hook.setSleeveManager(id, address(v));
         d.btc.approve(address(v), type(uint256).max);
         d.usd.approve(address(v), type(uint256).max);
         (uint256 a0, uint256 a1) = btcIs0 ? (seedBtc, seedUsd) : (seedUsd, seedBtc);
         v.requestDeposit(a0, a1);
+        // When the broadcaster is also the curator (the demo), post the bond and promise a budget.
+        if (c.curator == c.deployer && s.bondUsd != 0) {
+            d.usd.mint(c.deployer, s.bondUsd);
+            v.postBond(s.bondUsd);
+            v.setLvrBudget(c.lvrBudgetBps);
+        }
     }
 
     /// @notice First CREATE2 salt that puts tUSD at a higher address than tBTC.
@@ -155,10 +168,13 @@ contract DeployUkiyo is Script {
     /// @notice The demo's curators. Widths follow the backtest's strategies (±25%, ±8%, ±1.5%, ±4%).
     function _strategies() internal pure returns (Strategy[] memory s) {
         s = new Strategy[](4);
-        s[0] = Strategy("Ukiyo Passive Wide", "ukWIDE", "Passive wide: 25% each side, never moves", 2230);
-        s[1] = Strategy("Ukiyo Passive Mid", "ukMID", "Passive mid: 8% each side, never moves", 770);
-        s[2] = Strategy("Ukiyo Tight Chaser", "ukTIGHT", "Tight chaser: 1.5% each side, recentres on exit", 150);
-        s[3] = Strategy("Ukiyo Vol Adaptive", "ukVOL", "Vol-adaptive: width follows recent volatility", 390);
+        s[0] = Strategy("Ukiyo Passive Wide", "ukWIDE", "Passive wide: 25% each side, never moves", 2230, 25_000 ether);
+        s[1] = Strategy("Ukiyo Passive Mid", "ukMID", "Passive mid: 8% each side, never moves", 770, 50_000 ether);
+        s[2] = Strategy(
+            "Ukiyo Tight Chaser", "ukTIGHT", "Tight chaser: 1.5% each side, recentres on exit", 150, 10_000 ether
+        );
+        s[3] =
+            Strategy("Ukiyo Vol Adaptive", "ukVOL", "Vol-adaptive: width follows recent volatility", 390, 40_000 ether);
     }
 
     /// @notice sqrt(price) in Q64.96, where price is token1 per token0.
@@ -209,6 +225,7 @@ contract DeployUkiyo is Script {
         vm.serializeUint(o, "epochLength", c.epochLength);
         vm.serializeUint(o, "startPrice", c.startPrice);
         vm.serializeAddress(o, "curator", c.curator);
+        vm.serializeUint(o, "performanceFeeBps", c.performanceFeeBps);
         string memory json = vm.serializeString(o, "vaults", vaults);
 
         string memory path = string.concat("web/src/deployments/", vm.toString(block.chainid), ".json");

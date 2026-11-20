@@ -65,6 +65,7 @@ down, so rounding can only understate Edge.
 | File | Role |
 | --- | --- |
 | [`src/UkiyoHook.sol`](src/UkiyoHook.sol) | The meter: hook-exclusive pool, sleeves (≤ 8), per-block marks, priority-fee classifier, per-sleeve ledgers, `edge(sleeveId)` |
+| [`src/UkiyoVault.sol`](src/UkiyoVault.sol) | One curator vault per sleeve: two-token deposits, ERC-20 shares, entries and exits settled at epoch boundaries, curator rebalancing |
 | [`src/libraries/EdgeMath.sol`](src/libraries/EdgeMath.sol) | Closed forms: rebalancing loss, impact credit, per-sleeve swap fee, clipping |
 
 ### Key lines
@@ -73,6 +74,30 @@ down, so rounding can only understate Edge.
 - Arbitrage loss: `_chargeArbitrageLoss`; impact credit: `_creditImpact`; fees: `_attributeFees`
 - The identity the meter relies on is proven against Uniswap's `SqrtPriceMath` in
   [`test/EdgeMath.t.sol`](test/EdgeMath.t.sol) (`testFuzz_rebalancingLoss_matchesInventoryIdentity`)
+
+## Curator vaults
+
+Each sleeve is run by a [`UkiyoVault`](src/UkiyoVault.sol). The hook owner hands the sleeve to its vault once
+(`setSleeveManager`); from then on only the vault can move the sleeve's liquidity or range, and the owner has no way
+back in. Removals pay the caller, so an owner who could re-point the manager could drain the vault.
+
+| Step | Who | What |
+| --- | --- | --- |
+| `requestDeposit(amount0, amount1)` | depositor | Escrows both tokens for the end of the epoch; `cancelDeposit` takes them back until then |
+| `requestRedeem(shares)` | holder | Hands shares to the vault for the end of the epoch |
+| `settleEpoch()` | anyone, after `epochLength` | Collects the sleeve's fees, pays redemptions, mints deposits, deploys idle tokens, and records the Edge the sleeve earned that epoch |
+| `claimRedemption(epoch)`, `claimRefund()` | user | Withdraws redemption payouts and the parts of deposits that did not fit |
+| `rebalance(tickLower, tickUpper)` | curator only | Moves the range and redeploys; the hook anchors the new range at the current price |
+
+- **Epochs.** Entries and exits settle in batches at the boundary, so the share price is fixed within an epoch. The
+  Edge recorded for an epoch belongs to exactly the shares that held it, and no one can enter just before fees are
+  collected and leave right after.
+- **No oracle.** A deposit buys the same fraction of every token the vault holds, like a Uniswap v2 mint, and the rest
+  is refunded. A redemption takes its fraction of the position's liquidity and of the idle tokens. Moving the pool
+  price to game a deposit means trading against the sleeve, which leaves it worth more at the true price.
+- **Rounding favours the vault.** 1,000 dead shares are minted on the first mint, and a deposit that would mint zero
+  shares is refunded, so the share price cannot be inflated.
+- **The curator cannot take funds.** Liquidity removed through the hook is always paid to the vault.
 
 ## Does the priority fee identify arbitrage on Unichain? (measured, not assumed)
 
@@ -134,7 +159,7 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
-forge test                          # 32 tests: unit, fuzz, integration, differential
+forge test                          # 51 tests: unit, fuzz, integration, differential
 forge test --match-test test_gas -vv
 ```
 
@@ -155,7 +180,8 @@ python markout_classifier.py               # priority-fee vs ex-post classifiers
 | Suite | What it proves |
 | --- | --- |
 | `EdgeMath.t.sol` | The closed-form loss equals the exact holding-vs-position gap from Uniswap's amount math (1,024 fuzz runs); fee attribution matches `SqrtPriceMath`; credits never exceed losses |
-| `UkiyoHook.t.sol` | Against the canonical PoolManager bytecode: pool binding, hook-only liquidity, access control, classification, fee attribution matching the PoolManager's own fee growth, marks, loss, impact, round-trip immunity, anchors on range change, and a differential fuzz test where every ledger field equals an independent replay of random blocks of swaps |
+| `UkiyoHook.t.sol` | Against the canonical PoolManager bytecode: pool binding, hook-only liquidity, access control, classification, fee attribution matching the PoolManager's own fee growth, marks, loss, impact, round-trip immunity, anchors on range change, `sleeveAmounts` equal to a full withdrawal to the wei, and a differential fuzz test where every ledger field equals an independent replay of random blocks of swaps |
+| `UkiyoVault.t.sol` | On a 5 bps pool: one-time hand-over that locks the owner out, epoch gating, first-mint shares and dead shares, proportional deposits with refunds, pro-rata redemptions, fees reaching shareholders, per-epoch Edge snapshots, curator-only rebalancing, the depositor cap, and fuzz tests that a deposit-redeem round trip never pays out more than went in and that the vault always holds what it owes |
 
 ### Gas (two sleeves, measured inside one test transaction)
 
@@ -171,7 +197,7 @@ python markout_classifier.py               # priority-fee vs ex-post classifiers
 | Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees` and a curator benchmark built on it; no other hook measures curator skill against LVR |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Any curator vault can adopt the meter as its scoring and performance-fee standard |
-| Functionality (15%) | 32 passing tests including a differential fuzz test; backtest on real prices |
+| Functionality (15%) | 51 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults; backtest on real prices; classifier measured on real Unichain swaps |
 | Presentation (10%) | Demo video (≤ 5 min) |
 
 ## Partner integrations
@@ -182,7 +208,9 @@ No partner integrations.
 
 - [x] Backtest: equation derived and validated (synthetic + BTC/USD 2024)
 - [x] Phase 1: LVR meter hook, EdgeMath, tests
-- [ ] Phase 2: curator vaults, Edge-based performance fee, LVR bond
+- [x] Priority fees measured on real Unichain swaps; ex-post classifiers backtested
+- [x] Phase 2a: curator vaults (two-token deposits, ERC-20 shares, epoch settlement)
+- [ ] Phase 2b: Edge-based performance fee, LVR bond
 - [ ] Phase 3: leaderboard frontend, replay demo on Unichain Sepolia
 
 ### Known limitations
@@ -192,6 +220,10 @@ No partner integrations.
 - Fee attribution assumes no protocol fee.
 - On real Unichain flow the priority fee does not separate informed from uninformed swaps: even at 1 wei, ~7% of
   informed swaps are called user flow (see the measurement above). The threshold is owner-set.
+- Vaults support ERC-20 pairs only: no native ETH, no fee-on-transfer or rebasing tokens.
+- A vault never swaps. When a new range needs a different token mix, what does not fit stays idle; it still counts
+  toward every share but earns no fees until the price or the range lets it in.
+- At most 32 new depositors per epoch, to bound the settlement loop; the rest wait for the next epoch.
 - Unaudited hackathon code.
 
 ## Credits

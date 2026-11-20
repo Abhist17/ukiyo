@@ -1,0 +1,616 @@
+{
+ "chain": "Unichain mainnet (130)",
+ "head_block": 64432466,
+ "days": 7,
+ "windows": 14,
+ "window_blocks": 600,
+ "min_pool_swaps": 50,
+ "swaps": 6714,
+ "base_fee_values": [
+  500000,
+  500049,
+  500056,
+  500075,
+  500086,
+  500171,
+  500202,
+  500341,
+  500367,
+  500374
+ ],
+ "tips_by_class": {
+  "router": {
+   "swaps": 1943,
+   "p5": 326639,
+   "p25": 1450000,
+   "p50": 1450000,
+   "p75": 1488183,
+   "p95": 9534391,
+   "share_zero": 0.0051,
+   "share_below_1e5": 0.0057,
+   "share_1e6_to_2e6": 0.7741
+  },
+  "bot": {
+   "swaps": 4771,
+   "p5": 0,
+   "p25": 869,
+   "p50": 368193,
+   "p75": 4068153,
+   "p95": 16938531,
+   "share_zero": 0.0832,
+   "share_below_1e5": 0.3676,
+   "share_1e6_to_2e6": 0.1375
+  },
+  "bot_atomic": {
+   "swaps": 2430,
+   "p5": 19,
+   "p25": 105,
+   "p50": 51702,
+   "p75": 1000001,
+   "p95": 9808506,
+   "share_zero": 0.0008,
+   "share_below_1e5": 0.5115,
+   "share_1e6_to_2e6": 0.2193
+  },
+  "bot_single_pool": {
+   "swaps": 2341,
+   "p5": 0,
+   "p25": 145151,
+   "p50": 1275057,
+   "p75": 6102359,
+   "p95": 22301716,
+   "share_zero": 0.1687,
+   "share_below_1e5": 0.2183,
+   "share_1e6_to_2e6": 0.0525
+  },
+  "other": {
+   "swaps": 0,
+   "p5": null,
+   "p25": null,
+   "p50": null,
+   "p75": null,
+   "p95": null,
+   "share_zero": null,
+   "share_below_1e5": null,
+   "share_1e6_to_2e6": null
+  },
+  "informed_12s": {
+   "swaps": 1840,
+   "p5": 0,
+   "p25": 375517,
+   "p50": 1450000,
+   "p75": 4329496,
+   "p95": 36537297,
+   "share_zero": 0.0832,
+   "share_below_1e5": 0.1522,
+   "share_1e6_to_2e6": 0.4038
+  },
+  "informed_60s": {
+   "swaps": 2010,
+   "p5": 0,
+   "p25": 275625,
+   "p50": 1450000,
+   "p75": 3551586,
+   "p95": 22513905,
+   "share_zero": 0.0746,
+   "share_below_1e5": 0.1786,
+   "share_1e6_to_2e6": 0.3945
+  },
+  "uninformed_12s": {
+   "swaps": 3789,
+   "p5": 0,
+   "p25": 47504,
+   "p50": 1150000,
+   "p75": 2458269,
+   "p95": 11310218,
+   "share_zero": 0.0583,
+   "share_below_1e5": 0.2639,
+   "share_1e6_to_2e6": 0.3149
+  },
+  "uninformed_60s": {
+   "swaps": 3026,
+   "p5": 0,
+   "p25": 33920,
+   "p50": 1000001,
+   "p75": 2360534,
+   "p95": 13197336,
+   "share_zero": 0.0611,
+   "share_below_1e5": 0.2667,
+   "share_1e6_to_2e6": 0.3133
+  },
+  "first_in_pool_block": {
+   "swaps": 5221,
+   "p5": 0,
+   "p25": 96569,
+   "p50": 1450000,
+   "p75": 2018665,
+   "p95": 11287043,
+   "share_zero": 0.0724,
+   "share_below_1e5": 0.2507,
+   "share_1e6_to_2e6": 0.3517
+  },
+  "later_in_pool_block": {
+   "swaps": 1493,
+   "p5": 18,
+   "p25": 9318,
+   "p50": 1000000,
+   "p75": 4628873,
+   "p95": 50515797,
+   "share_zero": 0.0194,
+   "share_below_1e5": 0.3054,
+   "share_1e6_to_2e6": 0.217
+  }
+ },
+ "first_swap_class_mix": {
+  "router": 0.3413,
+  "bot": 0.6587,
+  "other": 0.0
+ },
+ "threshold_sweep": [
+  {
+   "threshold": 1,
+   "bot_called_arb": 0.9168,
+   "router_called_arb": 0.9949
+  },
+  {
+   "threshold": 10,
+   "bot_called_arb": 0.9048,
+   "router_called_arb": 0.9949
+  },
+  {
+   "threshold": 100,
+   "bot_called_arb": 0.7847,
+   "router_called_arb": 0.9943
+  },
+  {
+   "threshold": 1000,
+   "bot_called_arb": 0.7497,
+   "router_called_arb": 0.9943
+  },
+  {
+   "threshold": 10000,
+   "bot_called_arb": 0.7036,
+   "router_called_arb": 0.9943
+  },
+  {
+   "threshold": 100000,
+   "bot_called_arb": 0.6324,
+   "router_called_arb": 0.9943
+  },
+  {
+   "threshold": 500000,
+   "bot_called_arb": 0.484,
+   "router_called_arb": 0.9449
+  },
+  {
+   "threshold": 1000000,
+   "bot_called_arb": 0.4513,
+   "router_called_arb": 0.9398
+  },
+  {
+   "threshold": 1500000,
+   "bot_called_arb": 0.3349,
+   "router_called_arb": 0.2342
+  },
+  {
+   "threshold": 2000000,
+   "bot_called_arb": 0.3138,
+   "router_called_arb": 0.176
+  },
+  {
+   "threshold": 5000000,
+   "bot_called_arb": 0.2171,
+   "router_called_arb": 0.0834
+  },
+  {
+   "threshold": 10000000,
+   "bot_called_arb": 0.0815,
+   "router_called_arb": 0.0473
+  },
+  {
+   "threshold": 50000000,
+   "bot_called_arb": 0.0235,
+   "router_called_arb": 0.0098
+  },
+  {
+   "threshold": 100000000,
+   "bot_called_arb": 0.0115,
+   "router_called_arb": 0.0067
+  }
+ ],
+ "markout_sweep": {
+  "12s": {
+   "informed": 1840,
+   "uninformed": 3789,
+   "sweep": [
+    {
+     "threshold": 1,
+     "missed_informed": 0.0832,
+     "lost_uninformed": 0.9417
+    },
+    {
+     "threshold": 10,
+     "missed_informed": 0.0913,
+     "lost_uninformed": 0.9332
+    },
+    {
+     "threshold": 100,
+     "missed_informed": 0.1109,
+     "lost_uninformed": 0.8477
+    },
+    {
+     "threshold": 1000,
+     "missed_informed": 0.1141,
+     "lost_uninformed": 0.8208
+    },
+    {
+     "threshold": 10000,
+     "missed_informed": 0.1272,
+     "lost_uninformed": 0.7889
+    },
+    {
+     "threshold": 100000,
+     "missed_informed": 0.1522,
+     "lost_uninformed": 0.7361
+    },
+    {
+     "threshold": 500000,
+     "missed_informed": 0.262,
+     "lost_uninformed": 0.607
+    },
+    {
+     "threshold": 1000000,
+     "missed_informed": 0.2832,
+     "lost_uninformed": 0.5814
+    },
+    {
+     "threshold": 1500000,
+     "missed_informed": 0.6255,
+     "lost_uninformed": 0.2911
+    },
+    {
+     "threshold": 2000000,
+     "missed_informed": 0.6837,
+     "lost_uninformed": 0.2703
+    },
+    {
+     "threshold": 5000000,
+     "missed_informed": 0.7668,
+     "lost_uninformed": 0.1715
+    },
+    {
+     "threshold": 10000000,
+     "missed_informed": 0.8777,
+     "lost_uninformed": 0.056
+    },
+    {
+     "threshold": 50000000,
+     "missed_informed": 0.9592,
+     "lost_uninformed": 0.0116
+    },
+    {
+     "threshold": 100000000,
+     "missed_informed": 0.9761,
+     "lost_uninformed": 0.005
+    }
+   ]
+  },
+  "60s": {
+   "informed": 2010,
+   "uninformed": 3026,
+   "sweep": [
+    {
+     "threshold": 1,
+     "missed_informed": 0.0746,
+     "lost_uninformed": 0.9389
+    },
+    {
+     "threshold": 10,
+     "missed_informed": 0.0821,
+     "lost_uninformed": 0.9309
+    },
+    {
+     "threshold": 100,
+     "missed_informed": 0.1149,
+     "lost_uninformed": 0.844
+    },
+    {
+     "threshold": 1000,
+     "missed_informed": 0.1239,
+     "lost_uninformed": 0.8173
+    },
+    {
+     "threshold": 10000,
+     "missed_informed": 0.1443,
+     "lost_uninformed": 0.7852
+    },
+    {
+     "threshold": 100000,
+     "missed_informed": 0.1786,
+     "lost_uninformed": 0.7333
+    },
+    {
+     "threshold": 500000,
+     "missed_informed": 0.2876,
+     "lost_uninformed": 0.6018
+    },
+    {
+     "threshold": 1000000,
+     "missed_informed": 0.3129,
+     "lost_uninformed": 0.5767
+    },
+    {
+     "threshold": 1500000,
+     "missed_informed": 0.6453,
+     "lost_uninformed": 0.2859
+    },
+    {
+     "threshold": 2000000,
+     "missed_informed": 0.7025,
+     "lost_uninformed": 0.2664
+    },
+    {
+     "threshold": 5000000,
+     "missed_informed": 0.79,
+     "lost_uninformed": 0.1705
+    },
+    {
+     "threshold": 10000000,
+     "missed_informed": 0.9095,
+     "lost_uninformed": 0.0644
+    },
+    {
+     "threshold": 50000000,
+     "missed_informed": 0.9701,
+     "lost_uninformed": 0.0152
+    },
+    {
+     "threshold": 100000000,
+     "missed_informed": 0.9816,
+     "lost_uninformed": 0.0059
+    }
+   ]
+  }
+ },
+ "informed_share_by_class": {
+  "12s": {
+   "router": {
+    "measured": 1797,
+    "informed": 0.4496
+   },
+   "bot": {
+    "measured": 3832,
+    "informed": 0.2693
+   }
+  },
+  "60s": {
+   "router": {
+    "measured": 1589,
+    "informed": 0.5173
+   },
+   "bot": {
+    "measured": 3447,
+    "informed": 0.3446
+   }
+  }
+ },
+ "informed_share_first_vs_later": {
+  "12s": {
+   "first": {
+    "measured": 4316,
+    "informed": 0.3309
+   },
+   "later": {
+    "measured": 1313,
+    "informed": 0.3138
+   }
+  },
+  "60s": {
+   "first": {
+    "measured": 3847,
+    "informed": 0.4076
+   },
+   "later": {
+    "measured": 1189,
+    "informed": 0.3717
+   }
+  }
+ },
+ "top_targets": [
+  {
+   "to": "0xef740bf23acae26f6492b10de645d6b98dc8eaf3",
+   "label": "UniversalRouter",
+   "swaps": 1515,
+   "p5": 1224999,
+   "p25": 1450000,
+   "p50": 1450000,
+   "p75": 1450000,
+   "p95": 1516732,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.0,
+   "share_1e6_to_2e6": 0.9399
+  },
+  {
+   "to": "0x27c52abeea146737c72e699d0dacdc1cb9e29cec",
+   "label": "unverified",
+   "swaps": 901,
+   "p5": 15,
+   "p25": 25,
+   "p50": 56,
+   "p75": 186,
+   "p95": 30793,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.9578,
+   "share_1e6_to_2e6": 0.0
+  },
+  {
+   "to": "0x099b1a87ded758e99d5a33a7df5ba9cf3a0907c9",
+   "label": "unverified",
+   "swaps": 662,
+   "p5": 1,
+   "p25": 1021206,
+   "p50": 3029856,
+   "p75": 5013355,
+   "p95": 8455264,
+   "share_zero": 0.0302,
+   "share_below_1e5": 0.1269,
+   "share_1e6_to_2e6": 0.1314
+  },
+  {
+   "to": "0x9c1a49609aec38c0ccd9e07be3ec9e11823bc855",
+   "label": "unverified",
+   "swaps": 396,
+   "p5": 6821830,
+   "p25": 7809406,
+   "p50": 10563927,
+   "p75": 18532377,
+   "p95": 168500878,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.0,
+   "share_1e6_to_2e6": 0.0
+  },
+  {
+   "to": "0x389ea62455975d38ee210be146a9262b768ddebf",
+   "label": "unverified",
+   "swaps": 375,
+   "p5": 0,
+   "p25": 0,
+   "p50": 0,
+   "p75": 0,
+   "p95": 0,
+   "share_zero": 1.0,
+   "share_below_1e5": 1.0,
+   "share_1e6_to_2e6": 0.0
+  },
+  {
+   "to": "0x4c000bd9ce7d3102bae0dec0b408aeb5b3453fd6",
+   "label": "unverified",
+   "swaps": 339,
+   "p5": 73437,
+   "p25": 119849,
+   "p50": 244367,
+   "p75": 534728,
+   "p95": 19773654,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.1504,
+   "share_1e6_to_2e6": 0.0501
+  },
+  {
+   "to": "0x5ba5d50744459386cff9a0b951c6ad78b32e9f29",
+   "label": "unverified",
+   "swaps": 304,
+   "p5": 250000,
+   "p25": 250000,
+   "p50": 250000,
+   "p75": 250000,
+   "p95": 349836,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.0,
+   "share_1e6_to_2e6": 0.0
+  },
+  {
+   "to": "0x9c6eedf1e4148c54d3d8a82802f330113c380a39",
+   "label": "ERC1967Proxy",
+   "swaps": 301,
+   "p5": 2071452,
+   "p25": 3138881,
+   "p50": 4566219,
+   "p75": 9728930,
+   "p95": 42713781,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.0,
+   "share_1e6_to_2e6": 0.0365
+  },
+  {
+   "to": "0x2002a9c67baf28d5a4209d0edb0893d41bad57d6",
+   "label": "unverified",
+   "swaps": 292,
+   "p5": 956526,
+   "p25": 1767433,
+   "p50": 2595894,
+   "p75": 4394242,
+   "p95": 7745638,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.0,
+   "share_1e6_to_2e6": 0.2637
+  },
+  {
+   "to": "0xe7597cb2ee4b0d90129f474cbe38080d6ba24950",
+   "label": "unverified",
+   "swaps": 258,
+   "p5": 1123,
+   "p25": 13254,
+   "p50": 29202,
+   "p75": 175982,
+   "p95": 462353,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.686,
+   "share_1e6_to_2e6": 0.0
+  },
+  {
+   "to": "0x64e20394990fcf85e4361aabb4cdc0cebfa4de06",
+   "label": "unverified",
+   "swaps": 250,
+   "p5": 7145,
+   "p25": 7145,
+   "p50": 7612,
+   "p75": 216581,
+   "p95": 1357397,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.716,
+   "share_1e6_to_2e6": 0.036
+  },
+  {
+   "to": "0x72901a86a8470cb55c97b450d76ca07da2179768",
+   "label": "unverified",
+   "swaps": 171,
+   "p5": 67107,
+   "p25": 450293,
+   "p50": 982151,
+   "p75": 3000249,
+   "p95": 16938531,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.0819,
+   "share_1e6_to_2e6": 0.1988
+  },
+  {
+   "to": "0x6f16381f6b385eb91b882279bb710802dc810a83",
+   "label": "unverified",
+   "swaps": 160,
+   "p5": 6000000,
+   "p25": 6000000,
+   "p50": 6000000,
+   "p75": 6000000,
+   "p95": 6000000,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.0,
+   "share_1e6_to_2e6": 0.0
+  },
+  {
+   "to": "0xa04317e22faaff101eefe4d39786ace9a11e7535",
+   "label": "unverified",
+   "swaps": 59,
+   "p5": 1000000,
+   "p25": 1000000,
+   "p50": 1000000,
+   "p75": 1000000,
+   "p95": 1000000,
+   "share_zero": 0.0,
+   "share_below_1e5": 0.0,
+   "share_1e6_to_2e6": 1.0
+  },
+  {
+   "to": "0xd1b797d92d87b688193a2b976efc8d577d204343",
+   "label": "UniversalRouter",
+   "swaps": 50,
+   "p5": 0,
+   "p25": 1000000,
+   "p50": 1000000,
+   "p75": 1000000,
+   "p95": 2906899,
+   "share_zero": 0.2,
+   "share_below_1e5": 0.22,
+   "share_1e6_to_2e6": 0.66
+  }
+ ]
+}

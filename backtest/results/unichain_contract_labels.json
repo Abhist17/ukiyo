@@ -1,0 +1,512 @@
+{
+ "0x0000000000001ff3684f28c67538d4d072c22734": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "AllowanceHolder",
+  "proxy_impl": null
+ },
+ "0x0648d38876b0f34920705e4f325419bb05f05ce9": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x099b1a87ded758e99d5a33a7df5ba9cf3a0907c9": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x0a32e66cfd9589edd8b7a97a71c3cd35e90ed8d3": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x0bdead7aefb96458b132dc597ed5ad2ee405f261": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x0cb958797a1715c5755d2f32f2ab1f80bc911b28": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "CaliburEntry",
+  "proxy_impl": "CaliburEntry"
+ },
+ "0x111111125421ca6dc452d289314280a0f8842a65": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "AggregationRouterV6",
+  "proxy_impl": null
+ },
+ "0x160a2f6a31702427715a1a32e057c66d771e070e": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x17030a2acab1bd5a4c814cadd142b4b59092122f": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x1e71cb5c8089d997cc4b8fc4ed472b541e249765": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x2002a9c67baf28d5a4209d0edb0893d41bad57d6": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x23f1b271bebaa591cd44ab546db84fe289682405": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x27c52abeea146737c72e699d0dacdc1cb9e29cec": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x2858c65b0abdcf0cebbea4f4e4c2b26d1a2c2c16": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x2a1176964f5d7cae5406b627bf6166664fe83c60": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "EthereumVaultConnector",
+  "proxy_impl": null
+ },
+ "0x36cda8261b0bddf1cd8d975200028be66af8eef9": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x389ea62455975d38ee210be146a9262b768ddebf": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x39bfec11321f57fd600b510d31620bb17b7e12f6": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x39ffda341c1723f915127a4bdefd77185962a845": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x3a43889bba11a8e8abea24e0bf52b666f57ce681": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x415669455d93b755efe7f20ef6f1dbdce7f68f7d": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x4238e12dbbd467f50d04de240a29325ef629e0e4": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x4529a01c7a0410167c5740c487a8de60232617bf": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "Uniswap v4 Positions NFT",
+  "proxy_impl": null
+ },
+ "0x47244f67ac1690252b3eb257dafcc8ea56f1ef1e": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x4c000bd9ce7d3102bae0dec0b408aeb5b3453fd6": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x50c4e75a512f2a14a7b304787adf79c4531a5909": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "AllowanceHolder",
+  "proxy_impl": null
+ },
+ "0x52c3ac72c48a1ef7f5b7c8edef14b3483697f626": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x5567954cd026cebfe486062cb75848e0f1c12e58": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "RelayApprovalProxy",
+  "proxy_impl": null
+ },
+ "0x5ac9bc14376bf2727c6211960cf3cec1e2f295bd": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x5ba5d50744459386cff9a0b951c6ad78b32e9f29": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x5dfb37dfb1e097de43f1eebe96e265761e14a3a8": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x604620042a065c0a00b1c6549c0a6e7ed641c345": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x6131b5fae19ea4f9d964eac0408e4408b66337b5": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "MetaAggregationRouterV2",
+  "proxy_impl": null
+ },
+ "0x64e20394990fcf85e4361aabb4cdc0cebfa4de06": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x67741cde5633582942db1295ac87d2a753d87d93": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x67d06422914a71f3cbf168d80ce5a4b4c930b108": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x698281b8789b9df1b0c91e189a04860bfcfa2bd3": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x6a000f20005980200259b80c5102003040001068": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "AugustusV6",
+  "proxy_impl": "DiamondCutFacet"
+ },
+ "0x6cd6a4ee94b89f664d609fd334f6b209b01690a6": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x6f16381f6b385eb91b882279bb710802dc810a83": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x7073b26f527321a9ea046065dc524173c2a4c86e": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x72901a86a8470cb55c97b450d76ca07da2179768": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x7ac7a917e25b333a32567661ad6d05b2db164b90": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x80f5e2c17b3a12fd994964566a3d1b345a67bcbb": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x8604ea5e711645f207cd53bd5df400000008362c": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x864b314d4c5a0399368609581d3e8933a63b9232": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "LiFiDiamond",
+  "proxy_impl": "DiamondCutFacet"
+ },
+ "0x86e6056a2dececb6d4235bcd23f603b1ede6d083": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x89ffb33adb9edbdd950c0803590ca6c68f7ef8c8": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x8c2532d90d93aaf0e49f0633025431519dd6b539": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x8d4b3150b8671dd3057e0e68cfd18731df36c612": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x92364e70e0fcf7e8d03ba170d75489da1b9020a8": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x9314abf564e8a5f649e07b2a30814d7a0a963449": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x9522d498243af2abb8244ebd785d6be39d2aa6b0": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x9b5ab606e36b62b25bcf23e197cae2df6dbc7737": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x9c1a49609aec38c0ccd9e07be3ec9e11823bc855": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0x9c6eedf1e4148c54d3d8a82802f330113c380a39": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "ERC1967Proxy",
+  "proxy_impl": null
+ },
+ "0xa04317e22faaff101eefe4d39786ace9a11e7535": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xa61670b0b088f3c8d8ff15ef3d4153c26e1de932": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xac4db0cefdc6085cdd02451f5b6efafeab7a4b59": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xae8999da4d81cb81b42288b12176fe20d7ead578": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "V4Utils",
+  "proxy_impl": null
+ },
+ "0xaf39813d05cb1667c91a830e634bd7c7274199cf": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "Permit2Proxy",
+  "proxy_impl": null
+ },
+ "0xb4dcaa0dea7d174426baa8c0511abd75975abd01": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xb62e762af637b49eb4870bce8fe21bfff189e495": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "EIP7702StatelessDeleGator",
+  "proxy_impl": "EIP7702StatelessDeleGator"
+ },
+ "0xb63bf13a943b030c64f3f568b4b17f72354fc61a": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xb965657a93fdbad3a11c9437998c7fb0fad75176": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xbaed7a1cf154e526401a25e0e3bd578eb4983168": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xbc728c146149d22b662ede1e4e458859c2a54789": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xc64a775ec5419947cd3880174aac938eb9434d3d": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "CaliburEntry",
+  "proxy_impl": "CaliburEntry"
+ },
+ "0xc9af8264ac26285873a61028c447dea94e42490d": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xcba5574597ad00ea250fd106dab4fc7461949635": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "TychoRouterV3",
+  "proxy_impl": null
+ },
+ "0xce8cf0f316df9944e59140fd760d5ab5f7b0ea90": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xd1b797d92d87b688193a2b976efc8d577d204343": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "UniversalRouter",
+  "proxy_impl": null
+ },
+ "0xd9411cd75e22fc0379da6a4b591c18cde9f1c111": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xda6cf523b182a5075980d98f8805310a0892207d": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xe3dab8bf5187f9b4e8e89ff5414d7cf71e2c82e1": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "DexRouter",
+  "proxy_impl": null
+ },
+ "0xe69ad08963782fe994985668150dd90b73ab08ec": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xe7597cb2ee4b0d90129f474cbe38080d6ba24950": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xe8d33eb544abe90c116526a9979214723ab9b848": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xeab3cce450fc6d37b820c1298da02fed720c45cd": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xec421352f4fa05c7c9b5db86f827acd0c86ab091": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xef740bf23acae26f6492b10de645d6b98dc8eaf3": {
+  "is_contract": true,
+  "is_verified": true,
+  "name": "UniversalRouter",
+  "proxy_impl": null
+ },
+ "0xf24cffe56d7e98c4534d5f55eaa13451a4598a6a": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xf3c5c92f662899c9f15122bd4434689bc27cc2b8": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xf53a356b4511ae1e8242180d2ff8f27f3953b69f": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ },
+ "0xf613e798ae1cef938e9fecad006f8c13e5e0fe67": {
+  "is_contract": true,
+  "is_verified": false,
+  "name": null,
+  "proxy_impl": null
+ }
+}

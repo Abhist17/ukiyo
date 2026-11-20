@@ -152,8 +152,9 @@ export function VaultPanel({ v, live }: { v: VaultLive; live: Live }) {
             <input inputMode="decimal" placeholder="0.0" value={usdIn} onChange={(e) => setUsdIn(e.target.value)} />
           </label>
           <p className="fine">
-            Filled at the vault&apos;s own mix ({usd(ratio)} per tBTC). A deposit buys the same share of every token
-            the vault holds, so no oracle is needed; whatever does not fit is refunded at settlement.
+            The tUSD side fills to the vault&apos;s own mix ({ratio.toLocaleString("en-US", { maximumFractionDigits: 0 })} tUSD
+            held per tBTC). A deposit buys the same share of every token the vault holds, so no oracle is needed;
+            whatever does not fit is refunded at settlement.
           </p>
           <button className="btn wide" disabled={!canDeposit || tx.state.status === "pending"} onClick={deposit}>
             {!isConnected ? "Connect a wallet to deposit" : "Request deposit"}

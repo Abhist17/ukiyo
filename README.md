@@ -101,25 +101,47 @@ back in. Removals pay the caller, so an owner who could re-point the manager cou
   shares is refunded, so the share price cannot be inflated.
 - **The curator cannot take funds.** Liquidity removed through the hook is always paid to the vault.
 
-## Scoreboard site
+## App and demo
 
-[`web/`](web/) is the scoreboard frontend: Next.js, built as a static site. It shows the BTC/USD 2024 replay from the
-backtest. [`backtest/export_web.py`](backtest/export_web.py) copies the backtest's weekly numbers into
-`web/src/data/btc2024.json` without recomputing anything, so the site and the backtest always agree.
+![The Ukiyo app: curator vaults ranked live by Edge, with deposit and redeem](assets/app.png)
 
-![Same curators, five rankings: only Ukiyo Edge puts them in the order of their true hedged P&L](assets/rankings.png)
+[`web/`](web/) is the frontend (Next.js, exported as a static site; wallet via wagmi and viem):
 
-- **Leaderboard:** curators ranked by Edge, next to true hedged P&L, fee income, beat-HODL and the naive formula, each
-  with the rank it would give.
-- **Rank shift:** the same six curators under five yardsticks. Only Edge and the truth run flat.
-- **Year chart:** running Edge per curator with the true P&L dashed beneath it and the BTC price below, with a hover
-  readout and a table view.
-- **Method:** the four hook steps and the `LVR_true ≈ LVR_pool + arbitrage fees` decomposition, measured.
+| Page | What it does |
+| --- | --- |
+| `/` | Landing page with a live product card: the vault ranking read straight from the hook (falls back to the backtest when no chain answers) |
+| `/app` **Vaults** | Curators ranked live by Edge, with user fees, impact credit, arbitrage loss, TVL and each sleeve's range against the price. Deposit, redeem, cancel, claim and settle epochs |
+| `/app` **Trade** | Swap tBTC/tUSD through the hook-exclusive pool, choosing whether to bid a priority fee, so you can watch the hook classify your swap. Live tape of every swap tagged `ARB` or `USER` |
+| `/app` **Analytics** | Edge over time per vault (from `EpochSettled` events), what each Edge is made of, arbitrage-vs-user flow split, contract addresses |
+| `/app` **Faucet** | Mint the demo's test tokens |
+| `/research` | The BTC/USD 2024 backtest: leaderboard, rank shift, the year week by week, the method |
+
+**The on-chain demo.** [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) deploys two faucet test tokens (tBTC,
+tUSD), mines the hook address, opens a 5 bps pool at the 1 Jan 2024 BTC price, opens four sleeves (passive wide,
+passive mid, tight chaser, vol-adaptive) each run by its own `UkiyoVault` with a seed deposit, and a swap router. It
+writes every address to `web/src/deployments/<chainId>.json`. The replay bot ([`web/scripts/bot.mts`](web/scripts/bot.mts))
+then walks Bitstamp BTC/USD 2024 one hour per step: each step an arbitrageur moves the pool to within one fee-width of
+the hour's close and bids a priority fee, users swap with no tip in the same block, the tight and vol-adaptive curators
+rebalance, and finished epochs are settled. On the BTC prices it replays, the ranking you see in the app is computed by
+the hook, live.
 
 ```bash
-cd web && npm ci && npm run dev     # http://localhost:3000
-npm run build                       # static site in web/out
+# local: anvil + deploy + bot + site
+anvil --block-time 2
+EPOCH=120 forge script script/DeployUkiyo.s.sol --rpc-url http://127.0.0.1:8545 --broadcast \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80   # anvil's public dev key
+cd web && npm ci && npm run abi && npm run bot      # leave running
+npm run dev                                         # http://localhost:3000/app
+
+# Unichain Sepolia (chain 1301, canonical v4 PoolManager)
+forge script script/DeployUkiyo.s.sol --rpc-url https://sepolia.unichain.org --broadcast --private-key $PRIVATE_KEY
+cd web && npm run abi && RPC_URL=https://sepolia.unichain.org PRIVATE_KEY=$PRIVATE_KEY STEP_MS=6000 npm run bot
 ```
+
+[`backtest/export_web.py`](backtest/export_web.py) copies the backtest's numbers into `web/src/data/` without
+recomputing anything, so the site and the backtest always agree.
+
+![Same curators, five rankings: only Ukiyo Edge puts them in the order of their true hedged P&L](assets/rankings.png)
 
 ## Does the priority fee identify arbitrage on Unichain? (measured, not assumed)
 
@@ -221,7 +243,7 @@ python export_web.py                       # refresh the site's data after exper
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Any curator vault can adopt the meter as its scoring and performance-fee standard |
 | Functionality (15%) | 51 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults; backtest on real prices; classifier measured on real Unichain swaps |
-| Presentation (10%) | Scoreboard site ([`web/`](web/)), seal logo, demo video (≤ 5 min) |
+| Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 
 ## Partner integrations
 
@@ -233,9 +255,10 @@ No partner integrations.
 - [x] Phase 1: LVR meter hook, EdgeMath, tests
 - [x] Priority fees measured on real Unichain swaps; ex-post classifiers backtested
 - [x] Phase 2a: curator vaults (two-token deposits, ERC-20 shares, epoch settlement)
-- [ ] Phase 2b: Edge-based performance fee, LVR bond
 - [x] Scoreboard site on backtest data, logo
-- [ ] Phase 3: live on-chain leaderboard, replay demo on Unichain Sepolia
+- [x] App: live vault ranking, deposits and redemptions, swaps, analytics, faucet; deploy script and replay bot (local)
+- [ ] Unichain Sepolia deployment
+- [ ] Phase 2b: Edge-based performance fee, LVR bond
 
 ### Known limitations
 
@@ -257,7 +280,8 @@ No partner integrations.
   test routers
 - [hookmate](https://github.com/akshatmittal/hookmate): canonical PoolManager bytecode for tests
 - Project layout follows [Uniswap/v4-template](https://github.com/Uniswap/v4-template)
-- Site: [Next.js](https://nextjs.org) and React; fonts Shippori Mincho, Inter and JetBrains Mono from Google Fonts
+- Site: [Next.js](https://nextjs.org), React, [wagmi](https://wagmi.sh) and [viem](https://viem.sh); fonts Geist and Geist Mono from Google Fonts
+- Demo: v4-core's `PoolSwapTest` as the swap router, v4-periphery's `HookMiner` for the hook address, solmate's `MockERC20` for the faucet test tokens
 - Price data: [ff137/bitstamp-btcusd-minute-data](https://github.com/ff137/bitstamp-btcusd-minute-data)
 - Unichain swap data: the public RPC `mainnet.unichain.org`; contract verification labels from the
   [Blockscout](https://unichain.blockscout.com) API

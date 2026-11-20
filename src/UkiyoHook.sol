@@ -266,9 +266,12 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @param liquidityDelta Positive to add, negative to remove.
     function modifySleeveLiquidity(uint256 sleeveId, int256 liquidityDelta) external onlyOwner {
         _sleeve(sleeveId);
+        // unlockCallback returns no data, so the bytes unlock passes back carry nothing to check
+        // forge-lint: disable-start(unused-return)
         poolManager.unlock(
             abi.encode(LiquidityCall({sleeveId: sleeveId, liquidityDelta: liquidityDelta, counterparty: msg.sender}))
         );
+        // forge-lint: disable-end(unused-return)
     }
 
     /// @inheritdoc IUnlockCallback
@@ -276,6 +279,8 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         LiquidityCall memory call = abi.decode(data, (LiquidityCall));
         Sleeve storage s = _sleeves[call.sleeveId];
 
+        // feesAccrued is already included in callerDelta, which is what gets settled
+        // forge-lint: disable-start(unused-return)
         (BalanceDelta callerDelta,) = poolManager.modifyLiquidity(
             poolKey,
             ModifyLiquidityParams({
@@ -286,14 +291,17 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
             }),
             ""
         );
+        // forge-lint: disable-end(unused-return)
 
         _settleOrTake(poolKey.currency0, callerDelta.amount0(), call.counterparty);
         _settleOrTake(poolKey.currency1, callerDelta.amount1(), call.counterparty);
 
         uint128 after_ = call.liquidityDelta >= 0
-            ? s.liquidity + SafeCast.toUint128(uint256(call.liquidityDelta))
-            : s.liquidity - SafeCast.toUint128(uint256(-call.liquidityDelta));
+            ? s.liquidity + SafeCast.toUint128(SafeCast.toUint256(call.liquidityDelta))
+            : s.liquidity - SafeCast.toUint128(SafeCast.toUint256(-call.liquidityDelta));
         s.liquidity = after_;
+        // the only external callee is the PoolManager, which is trusted and holds its own lock
+        // forge-lint: disable-next-line(reentrancy-events)
         emit SleeveLiquidityModified(call.sleeveId, call.liquidityDelta, after_);
         return "";
     }
@@ -385,6 +393,8 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         _sqrtPriceBeforeSwap = sqrtPrice;
         _swapIsArbitrage = arb;
         _swapIsFirstInBlock = first;
+        // the only external call before this is the PoolManager's read-only getSlot0
+        // forge-lint: disable-next-line(reentrancy-events)
         emit SwapClassified(block.number, arb, priorityFee);
 
         return (this.beforeSwap.selector, BeforeSwapDeltaLibrary.ZERO_DELTA, 0);
@@ -405,6 +415,8 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
             lastPostMark = sqrtAfter;
             lastMarkedBlock = block.number;
             impactPending = true;
+            // the only external calls before this are the PoolManager's read-only getSlot0
+            // forge-lint: disable-next-line(reentrancy-events)
             emit BlockMarked(block.number, sqrtAfter);
         }
         return (this.afterSwap.selector, 0);

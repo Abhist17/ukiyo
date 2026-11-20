@@ -113,7 +113,7 @@ contract UkiyoHookTest is Test {
     }
 
     function _nextBlock() internal {
-        vm.roll(block.number + 1);
+        vm.roll(vm.getBlockNumber() + 1);
     }
 
     /// @dev Exact-input swap that stops exactly at `target`, paying `tip` wei of priority fee per gas.

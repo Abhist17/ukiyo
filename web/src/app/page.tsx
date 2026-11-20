@@ -1,127 +1,253 @@
+import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { HeroArt } from "@/components/HeroArt";
-import { Scoreboard } from "@/components/Scoreboard";
-import { Method } from "@/components/Method";
+import { HeroBoard } from "@/components/landing/HeroBoard";
+import { RankShift } from "@/components/RankShift";
 import { error, pairAgreement, total } from "@/lib/data";
+import { CHAIN } from "@/lib/chain";
+import "@/components/landing/landing.css";
 
 const REPO = "https://github.com/Abhist17/ukiyo";
 
-const VAULT = [
-  ["Epochs", "Entries and exits settle in batches, so the Edge recorded for an epoch belongs to exactly the shares that held it."],
-  ["No oracle", "A deposit buys the same fraction of every token the vault holds, like a Uniswap v2 mint. The rest is refunded."],
-  ["Curator can't take funds", "Only the vault can move its sleeve, and liquidity removed through the hook always goes back to the vault."],
-  ["One-way hand-over", "The hook owner hands a sleeve to its vault once and has no way back in."],
+const STEPS = [
+  {
+    k: "01 · Classify",
+    title: "Every swap is tagged at the door",
+    body: "Under priority ordering, arbitrageurs bid for the top of the block. A swap that pays a priority fee at or above the threshold is arbitrage; when in doubt, the hook calls it arbitrage.",
+    rows: [
+      ["Tip ≥ threshold", "ARB", "arb"],
+      ["No tip", "USER", "user"],
+    ],
+  },
+  {
+    k: "02 · Charge",
+    title: "Arbitrage pays for what it takes",
+    body: "Right after each block's first swap the hook marks the price. Each sleeve is charged the loss to rebalancing between consecutive marks, rounded against the curator.",
+    rows: [
+      ["Arbitrage loss", "− l·Δs*²/s*", "neg"],
+      ["Arbitrage fees", "not counted", "muted"],
+    ],
+  },
+  {
+    k: "03 · Credit",
+    title: "Users pay the curator",
+    body: "Fees from user swaps count, and so does the user price impact that the next arbitrage reverts in the LPs' favour. A same-block round trip earns nothing.",
+    rows: [
+      ["User fees", "+ exact, per sleeve", "pos"],
+      ["User impact", "+ l·(close − s*)²/s*", "pos"],
+    ],
+  },
+];
+
+const FAQ = [
+  {
+    q: "What is Edge?",
+    a: "Edge = user fees + user price impact − arbitrage loss. It is the part of a liquidity position's P&L that the curator controls: what ordinary traders paid, minus what arbitrageurs took. The market's direction is left out, so a bull run does not make a curator look skilled.",
+  },
+  {
+    q: "Why not rank by fee APR or by beating HODL?",
+    a: "Fee APR rewards volume, including the arbitrage volume that is costing LPs money: the tightest range always earns the most fees. Beat-HODL rewards being on the right side of the price, so in a trending week every curator loses and in a round-trip week every curator wins.",
+  },
+  {
+    q: "Why are arbitrage fees not counted?",
+    a: "LVR measured at pool prices is already net of the fees arbitrageurs pay: LVR_true ≈ LVR_pool + arbitrage fees. Counting those fees as income as well counts them twice. On the BTC 2024 replay that mistake overstates every curator by 140–330 bps a week.",
+  },
+  {
+    q: "How does the hook know which swaps are arbitrage?",
+    a: "By the priority fee. On Unichain, priority ordering makes arbitrageurs bid for the top of the block. We measured this on 6,714 real Unichain swaps: today tips cluster around wallet defaults rather than separating informed flow, so on mainnet we recommend a 1 wei threshold and the README reports the remaining error.",
+  },
+  {
+    q: "Is there an oracle?",
+    a: "No. The hook reads only the pool's own prices: the close of each block and the mark right after its first swap. Vault deposits are proportional, like a Uniswap v2 mint, so they need no price either.",
+  },
+  {
+    q: "Is it live, and is it audited?",
+    a:
+      CHAIN.id === 1301
+        ? "The demo runs on Unichain Sepolia with free test tokens and a bot that replays BTC/USD 2024 through the pool. It is unaudited hackathon code: do not use it with real funds."
+        : "The demo runs on a local chain today (one deploy script and a bot that replays BTC/USD 2024 through the pool); the Unichain Sepolia deployment is next. It is unaudited hackathon code: do not use it with real funds.",
+  },
 ];
 
 export default function Home() {
   const e = error("5bps");
   const order = pairAgreement(total("5bps", "edge"), total("5bps", "truth"));
+  const fees = pairAgreement(total("5bps", "fees"), total("5bps", "truth"));
 
   return (
-    <>
-      <header className="site-header">
-        <div className="wrap">
-          <a className="brand" href="#top">
-            <Logo size={30} />
-            Ukiyo <small>浮世</small>
-          </a>
-          <nav className="nav">
-            <a href="#scoreboard">Scoreboard</a>
-            <a href="#rankings" className="hide-sm">Rankings</a>
-            <a href="#method" className="hide-sm">Method</a>
-            <a href={REPO} className="hide-sm">GitHub</a>
+    <div className="landing">
+      <header className="l-nav">
+        <div className="wrap l-nav-in">
+          <Link className="brand" href="/">
+            <Logo size={28} />
+            Ukiyo
+          </Link>
+          <nav>
+            <a href="#how" className="hide-sm">How it works</a>
+            <a href="#proof" className="hide-sm">Proof</a>
+            <a href="#faq" className="hide-sm">FAQ</a>
+            <a href={REPO} className="hide-sm" target="_blank" rel="noreferrer">GitHub ↗</a>
             <ThemeToggle />
+            <Link className="btn sm" href="/app/">Launch app</Link>
           </nav>
         </div>
       </header>
 
-      <main className="wrap" id="top">
-        <section className="hero">
-          <div className="hero-grid">
-            <div>
-              <span className="eyebrow">Uniswap v4 hook · curated liquidity</span>
-              <h1>
-                Fee APR rewards volume. <span style={{ whiteSpace: "nowrap" }}>Beat-HODL</span> rewards luck. <em>Edge rewards skill.</em>
-              </h1>
-              <p className="lede">
-                Ukiyo is an honest scoreboard for liquidity curators. Every curator runs a sleeve in a hook-exclusive
-                pool, and the hook measures, block by block and with no oracle, what each one actually earned against
-                arbitrage.
-              </p>
-              <div className="formula" aria-label="Edge equals user fees plus user price impact minus arbitrage loss">
-                <b>Edge</b> = user fees + user price impact − arbitrage loss
-              </div>
-              <div className="cta">
-                <a className="btn" href="#scoreboard">See the scoreboard</a>
-                <a className="btn ghost" href={REPO}>Read the code</a>
-              </div>
-            </div>
-            <div className="hero-art">
-              <HeroArt />
-            </div>
+      <section className="l-hero">
+        <div className="wrap">
+          <span className="pill">
+            <span className="dot live" /> Uniswap v4 hook · Unichain
+          </span>
+          <h1>
+            Rank liquidity curators
+            <br />
+            by <em>skill</em>, not by luck
+          </h1>
+          <p className="l-lede">
+            Ukiyo&apos;s hook splits every curator&apos;s P&amp;L into what users paid and what arbitrage took, on-chain
+            and with no oracle. What&apos;s left is Edge.
+          </p>
+          <div className="l-cta">
+            <Link className="btn primary" href="/app/">Launch app</Link>
+            <Link className="btn ghost" href="/research/">Read the research</Link>
           </div>
-        </section>
+          <div className="l-formula">
+            <b>Edge</b> = user fees + user price impact − arbitrage loss
+          </div>
 
-        <div className="stats">
-          <div className="stat">
-            <div>
-              <span className="big num">{e.edge.rmse.toFixed(0)}</span>
-              <span className="vs">bps/week · naive <s>{e.naive.rmse.toFixed(0)}</s></span>
+          <div className="l-stage">
+            <div className="float left">
+              <span>Arbitrage fees counted</span>
+              <b>$0</b>
+              <small>they come back as loss</small>
             </div>
-            <p>Weekly error against each curator&apos;s true hedged P&amp;L (RMSE, 5 bps pool).</p>
-          </div>
-          <div className="stat">
-            <div>
-              <span className="big num">{e.edge.corr.toFixed(3)}</span>
-              <span className="vs">naive <s>{e.naive.corr.toFixed(2)}</s></span>
+            <HeroBoard />
+            <div className="float right">
+              <span>Ranked like true P&amp;L</span>
+              <b className="pos">{Math.round(order * 100)}% of pairs</b>
+              <small>fee APR: {Math.round(fees * 100)}%</small>
             </div>
-            <p>Correlation of weekly Edge with the truth over 52 weeks of real BTC prices.</p>
-          </div>
-          <div className="stat">
-            <div>
-              <span className="big num">{Math.round(order * 100)}%</span>
-              <span className="vs">of curator pairs</span>
-            </div>
-            <p>Full-year ranking of six curators, ordered exactly as their real P&amp;L.</p>
           </div>
         </div>
+      </section>
 
-        <div className="waves" aria-hidden />
-        <Scoreboard />
-        <div className="waves" aria-hidden />
-        <Method />
-
-        <section className="block" id="vaults">
-          <div className="section-head">
-            <div>
-              <span className="eyebrow">Curator vaults</span>
-              <h2>A vault per sleeve, scored by the hook</h2>
-              <p>
-                Depositors buy into a curator through a <code>UkiyoVault</code>. At every epoch boundary the vault
-                collects fees, settles entries and exits, and records the Edge its sleeve earned.
-              </p>
-            </div>
+      <section className="l-numbers">
+        <div className="wrap">
+          <p className="l-kicker">Backtested on a full year of real BTC/USD prices</p>
+          <div className="big-num">
+            {e.edge.rmse.toFixed(0)} <span>bps</span>
           </div>
-          <div className="steps">
-            {VAULT.map(([t, b]) => (
-              <div className="step" key={t}>
-                <h3 style={{ marginTop: 0 }}>{t}</h3>
-                <p>{b}</p>
+          <p className="big-cap">
+            weekly error against each curator&apos;s true hedged P&amp;L. The obvious on-chain formula is off by{" "}
+            <b>{e.naive.rmse.toFixed(0)} bps</b>.
+          </p>
+          <div className="num-row">
+            <div><b>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>
+            <div><b>6 / 6</b><span>curators in the true order</span></div>
+            <div><b>0</b><span>oracles or keepers</span></div>
+            <div><b>51</b><span>tests, 10,000 fuzz runs each</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="l-section" id="how">
+        <div className="wrap">
+          <h2>One hook, three entries per swap</h2>
+          <p className="l-sub">
+            Every curator runs a sleeve in the same hook-exclusive pool. The hook keeps a ledger per sleeve, block by
+            block.
+          </p>
+          <div className="l-steps">
+            {STEPS.map((s) => (
+              <div className="l-step" key={s.k}>
+                <span className="k">{s.k}</span>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+                <div className="l-step-rows">
+                  {s.rows.map(([a, b, c]) => (
+                    <div key={a}>
+                      <span>{a}</span>
+                      <b className={c === "arb" || c === "user" ? `badge ${c}` : c}>{b}</b>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
+
+      <section className="l-dark" id="proof">
+        <div className="wrap">
+          <h2>Every yardstick tells a different story</h2>
+          <p className="l-sub">
+            The same six curators over 2024, ranked five ways. Fee income crowns the curator that trades most against
+            arbitrageurs. Only Edge puts them in the order of their true hedged P&amp;L.
+          </p>
+          <div className="dark-card">
+            <RankShift tier="5bps" />
+          </div>
+          <div className="l-cta center">
+            <Link className="btn light" href="/research/">See the full backtest</Link>
+            <a className="btn ghost-light" href={`${REPO}/tree/main/backtest`} target="_blank" rel="noreferrer">Run it yourself ↗</a>
+          </div>
+        </div>
+      </section>
+
+      <section className="l-section">
+        <div className="wrap l-split">
+          <div>
+            <h2>A vault per curator, scored by the hook</h2>
+            <p className="l-sub">
+              Depositors back a curator through a <code>UkiyoVault</code>. Entries and exits settle at epoch boundaries,
+              so the Edge recorded for an epoch belongs to exactly the shares that held it.
+            </p>
+            <Link className="btn primary" href="/app/">Open the vaults</Link>
+          </div>
+          <ul className="l-list">
+            <li><b>No oracle.</b> A deposit buys the same share of every token the vault holds; the rest is refunded.</li>
+            <li><b>Curators can&apos;t take funds.</b> Only the vault can move its sleeve, and removed liquidity always returns to it.</li>
+            <li><b>One-way hand-over.</b> The hook owner gives each sleeve to its vault once, with no way back in.</li>
+            <li><b>Rounding favours LPs.</b> Losses round up, credits round down: Edge is never overstated.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="l-section" id="faq">
+        <div className="wrap l-faq">
+          <div>
+            <h2>Questions</h2>
+            <p className="l-sub">The rest is in the README, with every number traced to the script that produced it.</p>
+          </div>
+          <div>
+            {FAQ.map((f) => (
+              <details key={f.q}>
+                <summary>{f.q}</summary>
+                <p>{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="l-final">
+        <div className="wrap">
+          <Logo size={56} />
+          <h2>See which curator actually has Edge</h2>
+          <div className="l-cta center">
+            <Link className="btn primary" href="/app/">Launch app</Link>
+            <a className="btn ghost" href={REPO} target="_blank" rel="noreferrer">GitHub ↗</a>
+          </div>
+        </div>
+      </section>
 
       <footer className="site-footer">
         <div className="wrap">
-          <Logo size={22} />
-          <span>Ukiyo · Uniswap Hook Incubator, cohort 11</span>
-          <a href={REPO}>GitHub</a>
-          <span style={{ marginLeft: "auto" }}>Unaudited hackathon code. Backtest figures, not live results.</span>
+          <Logo size={20} />
+          <span>Ukiyo 浮世 · Uniswap Hook Incubator, cohort 11</span>
+          <span style={{ marginLeft: "auto" }}>Unaudited hackathon code. Test tokens only.</span>
         </div>
       </footer>
-    </>
+    </div>
   );
 }

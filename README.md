@@ -101,6 +101,26 @@ back in. Removals pay the caller, so an owner who could re-point the manager cou
   shares is refunded, so the share price cannot be inflated.
 - **The curator cannot take funds.** Liquidity removed through the hook is always paid to the vault.
 
+## Scoreboard site
+
+[`web/`](web/) is the scoreboard frontend: Next.js, built as a static site. It shows the BTC/USD 2024 replay from the
+backtest. [`backtest/export_web.py`](backtest/export_web.py) copies the backtest's weekly numbers into
+`web/src/data/btc2024.json` without recomputing anything, so the site and the backtest always agree.
+
+![Same curators, five rankings: only Ukiyo Edge puts them in the order of their true hedged P&L](assets/rankings.png)
+
+- **Leaderboard:** curators ranked by Edge, next to true hedged P&L, fee income, beat-HODL and the naive formula, each
+  with the rank it would give.
+- **Rank shift:** the same six curators under five yardsticks. Only Edge and the truth run flat.
+- **Year chart:** running Edge per curator with the true P&L dashed beneath it and the BTC price below, with a hover
+  readout and a table view.
+- **Method:** the four hook steps and the `LVR_true ≈ LVR_pool + arbitrage fees` decomposition, measured.
+
+```bash
+cd web && npm ci && npm run dev     # http://localhost:3000
+npm run build                       # static site in web/out
+```
+
 ## Does the priority fee identify arbitrage on Unichain? (measured, not assumed)
 
 The classifier assumes arbitrageurs bid higher priority fees than users. We checked that on real flow:
@@ -175,6 +195,7 @@ cd backtest && pip install -r requirements.txt
 python fetch_data.py && python experiments.py && python scorecard.py
 python priority_fees.py --head 64432466   # Unichain tip measurement (stdlib only, ~3 min, public RPC)
 python markout_classifier.py               # priority-fee vs ex-post classifiers (~2 min)
+python export_web.py                       # refresh the site's data after experiments.py
 ```
 
 ### Tests
@@ -200,7 +221,7 @@ python markout_classifier.py               # priority-fee vs ex-post classifiers
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Any curator vault can adopt the meter as its scoring and performance-fee standard |
 | Functionality (15%) | 51 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults; backtest on real prices; classifier measured on real Unichain swaps |
-| Presentation (10%) | Demo video (≤ 5 min) |
+| Presentation (10%) | Scoreboard site ([`web/`](web/)), seal logo, demo video (≤ 5 min) |
 
 ## Partner integrations
 
@@ -213,7 +234,8 @@ No partner integrations.
 - [x] Priority fees measured on real Unichain swaps; ex-post classifiers backtested
 - [x] Phase 2a: curator vaults (two-token deposits, ERC-20 shares, epoch settlement)
 - [ ] Phase 2b: Edge-based performance fee, LVR bond
-- [ ] Phase 3: leaderboard frontend, replay demo on Unichain Sepolia
+- [x] Scoreboard site on backtest data, logo
+- [ ] Phase 3: live on-chain leaderboard, replay demo on Unichain Sepolia
 
 ### Known limitations
 
@@ -235,6 +257,7 @@ No partner integrations.
   test routers
 - [hookmate](https://github.com/akshatmittal/hookmate): canonical PoolManager bytecode for tests
 - Project layout follows [Uniswap/v4-template](https://github.com/Uniswap/v4-template)
+- Site: [Next.js](https://nextjs.org) and React; fonts Shippori Mincho, Inter and JetBrains Mono from Google Fonts
 - Price data: [ff137/bitstamp-btcusd-minute-data](https://github.com/ff137/bitstamp-btcusd-minute-data)
 - Unichain swap data: the public RPC `mainnet.unichain.org`; contract verification labels from the
   [Blockscout](https://unichain.blockscout.com) API

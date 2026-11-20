@@ -507,6 +507,38 @@ contract UkiyoVaultTest is Test {
     }
 
     // ------------------------------------------------------------------------------------------------------------
+    // Gas
+    // ------------------------------------------------------------------------------------------------------------
+
+    /// @dev Gas of the vault's main paths, measured inside one test transaction (see README on --gas-report).
+    function test_gas_vaultPaths() public {
+        _deposit(alice, 10e18, 10e18);
+        uint256 g = gasleft();
+        _deposit(bob, 10e18, 10e18);
+        uint256 request = g - gasleft();
+        _settle();
+        _postBond(1000e18);
+        _winningEpoch();
+        uint256 half = vault.balanceOf(alice) / 2;
+        vm.prank(alice);
+        vault.requestRedeem(half);
+        _deposit(alice, 1e18, 1e18);
+        vm.warp(vault.epochEndsAt());
+        vm.roll(vm.getBlockNumber() + 1);
+        g = gasleft();
+        vault.settleEpoch();
+        uint256 settle = g - gasleft();
+        assertGt(vault.balanceOf(curator), 0, "the measured settlement charged a fee");
+        vm.prank(curator);
+        g = gasleft();
+        vault.rebalance(-500, 500);
+        uint256 rebalance = g - gasleft();
+        emit log_named_uint("gas: requestDeposit", request);
+        emit log_named_uint("gas: settleEpoch (fee, 1 redemption, 1 deposit)", settle);
+        emit log_named_uint("gas: rebalance", rebalance);
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
     // Fuzz
     // ------------------------------------------------------------------------------------------------------------
 

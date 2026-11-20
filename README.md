@@ -239,12 +239,19 @@ python export_web.py                       # refresh the site's data after exper
 | `UkiyoHook.t.sol` | Against the canonical PoolManager bytecode: pool binding, hook-only liquidity, access control, classification, fee attribution matching the PoolManager's own fee growth, marks, loss, impact, round-trip immunity, anchors on range change, `sleeveAmounts` equal to a full withdrawal to the wei, and a differential fuzz test where every ledger field equals an independent replay of random blocks of swaps |
 | `UkiyoVault.t.sol` | On a 5 bps pool: one-time hand-over that locks the owner out, epoch gating, first-mint shares and dead shares, proportional deposits with refunds, pro-rata redemptions, fees reaching shareholders, per-epoch Edge snapshots, curator-only rebalancing, the depositor cap, the performance fee (a share of positive Edge, nothing on losses, losses earned back before any fee), the LVR bond (overshoot paid to depositors, capped at the bond, budgets deferred one epoch, withdrawals only after the penalty), and fuzz tests that a deposit-redeem round trip never pays out more than went in and that the vault always holds what it owes plus the bond |
 
-### Gas (two sleeves, measured inside one test transaction)
+### Gas (measured inside one test transaction, `forge test --match-test test_gas -vv`)
 
-| Path | Gas, including the PoolManager swap |
+| Path | Gas |
 | --- | --- |
-| First swap of a block | ~143k |
-| Later swap in the same block | ~75k |
+| First swap of a block, two sleeves (mark, impact credit, loss charge, fee attribution), including the router and PoolManager | ~277k |
+| Later swap in the same block, two sleeves | ~175k |
+| `requestDeposit` | ~176k |
+| `settleEpoch` with a performance fee, one redemption and one deposit | ~567k |
+| `rebalance` (remove, move range, redeploy) | ~384k |
+
+The hook's per-swap work loops over the sleeves (at most 8), so a swap's cost grows with the sleeve count. Earlier
+versions of this table under-reported the first swap of a block: the test did not actually advance the block, so it
+measured a later swap twice.
 
 ## Judging criteria map
 
@@ -254,6 +261,7 @@ python export_web.py                       # refresh the site's data after exper
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Any curator vault can adopt the meter as its scoring and performance-fee standard |
 | Functionality (15%) | 59 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults; backtest on real prices; classifier measured on real Unichain swaps |
+| Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 
 ## Partner integrations
@@ -285,6 +293,8 @@ No partner integrations.
 - The LVR bond is judged on the epoch's Edge, which includes market volatility the curator does not control; the budget
   is how a curator prices that in. The post-arbitrage mark used for valuation is set by the first swap of a block, so
   a curator who outbids arbitrageurs for that slot can still nudge it, at the cost of trading against every sleeve.
+- The hook owner sets the classifier threshold, and with it every curator's Edge and fee: use a timelock or make it
+  immutable before real funds. 32 dust deposits can fill an epoch's queue. See [`THREAT_MODEL.md`](THREAT_MODEL.md).
 - Unaudited hackathon code.
 
 ## Credits

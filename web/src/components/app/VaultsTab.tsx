@@ -30,6 +30,7 @@ export function VaultsTab({ live }: { live: Live }) {
   const arbLoss = live.vaults.reduce((s, v) => s + v.arbLoss, 0);
   const arbFees = live.vaults.reduce((s, v) => s + v.arbFees, 0);
   const vault = live.vaults[sel];
+  const bonds = live.vaults.reduce((s, v) => s + v.bond, 0);
 
   return (
     <>
@@ -42,7 +43,7 @@ export function VaultsTab({ live }: { live: Live }) {
         <div className="kpi">
           <span>Total value locked</span>
           <b>{compactUsd(live.tvl)}</b>
-          <small>{live.vaults.length} curator vaults</small>
+          <small>{live.vaults.length} vaults · {compactUsd(bonds)} in curator bonds</small>
         </div>
         <div className="kpi">
           <span>User fees</span>
@@ -74,6 +75,7 @@ export function VaultsTab({ live }: { live: Live }) {
                   <th>Impact</th>
                   <th>Arb loss</th>
                   <th>TVL</th>
+                  <th>Terms</th>
                   <th className="l">Range</th>
                 </tr>
               </thead>
@@ -99,6 +101,12 @@ export function VaultsTab({ live }: { live: Live }) {
                     <td className="num">{usd(v.userImpact)}</td>
                     <td className="num neg">{usd(-v.arbLoss)}</td>
                     <td className="num">{compactUsd(v.tvl)}</td>
+                    <td className="terms">
+                      <span title="Performance fee on Edge above the high-water mark">{v.feeBps / 100}% fee</span>
+                      <span title="LVR bond and the per-epoch loss budget it covers beyond">
+                        {v.bond > 0 ? `${compactUsd(v.bond)} bond` : "no bond"}
+                      </span>
+                    </td>
                     <td className="l">
                       <RangeBar v={v} price={live.price} />
                     </td>

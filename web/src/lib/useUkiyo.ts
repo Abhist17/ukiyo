@@ -28,6 +28,16 @@ export interface VaultLive {
   epoch: number;
   epochEndsAt: number;
   epochEdge: number;
+  /** Performance fee, bps of Edge above the high-water mark. */
+  feeBps: number;
+  /** LVR bond posted by the curator, tUSD. */
+  bond: number;
+  /** Negative Edge per epoch the bond covers beyond, bps of value. */
+  budgetBps: number;
+  /** Edge per share is at or above its high-water mark (a fee is due on the next gain). */
+  atHighWater: boolean;
+  /** Value of the curator's fee shares. */
+  curatorValue: number;
 }
 
 export interface Live {
@@ -89,7 +99,7 @@ export function useLive() {
       const vaults = await Promise.all(
         d.vaults.map(async (v, i): Promise<VaultLive> => {
           const id = BigInt(v.sleeveId);
-          const [s, l, e, h, supply, epoch, ends, startEdge] = await Promise.all([
+          const [s, l, e, h, supply, epoch, ends, startEdge, fee, bond, budget, eps, hwm, curShares] = await Promise.all([
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "sleeve", args: [id] }),
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "ledger", args: [id] }),
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "edge", args: [id] }),
@@ -98,9 +108,16 @@ export function useLive() {
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "epoch" }),
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "epochEndsAt" }),
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "epochStartEdge" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "performanceFeeBps" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "bond" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "lvrBudgetBps" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgePerShare" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "highWaterMark" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "balanceOf", args: [d.curator] }),
           ]);
           const [btc, usdAmt] = split(h[0], h[1]);
           const edge = num(e);
+          const tvl = num(btc) * price + num(usdAmt);
           return {
             i,
             address: v.address,
@@ -117,11 +134,16 @@ export function useLive() {
             edge,
             btc: num(btc),
             usd: num(usdAmt),
-            tvl: num(btc) * price + num(usdAmt),
+            tvl,
             supply,
             epoch: Number(epoch),
             epochEndsAt: Number(ends),
             epochEdge: edge - num(startEdge),
+            feeBps: Number(fee),
+            bond: num(bond),
+            budgetBps: Number(budget),
+            atHighWater: eps >= hwm,
+            curatorValue: supply > 0n ? (Number(curShares) / Number(supply)) * tvl : 0,
           };
         }),
       );
@@ -194,6 +216,37 @@ export function useEdgeHistory() {
           ls.map((l) => ({ block: l.blockNumber, edge: (run += num(l.args.edgeDelta!)) })),
         );
       });
+    },
+  });
+}
+
+const FEE_EVENT = parseAbiItem("event PerformanceFee(uint256 indexed epoch, uint256 shares, uint256 value)");
+const PENALTY_EVENT = parseAbiItem("event BondPenalty(uint256 indexed epoch, uint256 overshoot, uint256 penalty)");
+
+/** What each curator has been paid in performance fees and has paid back in bond penalties, from vault events. */
+export function useAccountability() {
+  const pc = usePublicClient({ chainId: CHAIN.id });
+  return useQuery({
+    queryKey: ["accountability", CHAIN.id],
+    enabled: !!pc && !!DEP,
+    refetchInterval: POLL_MS * 4,
+    queryFn: async () => {
+      const d = DEP!;
+      const from = BigInt(d.deployBlock);
+      return Promise.all(
+        d.vaults.map(async (v) => {
+          const [fees, pens] = await Promise.all([
+            pc!.getLogs({ address: v.address, event: FEE_EVENT, fromBlock: from, toBlock: "latest" }),
+            pc!.getLogs({ address: v.address, event: PENALTY_EVENT, fromBlock: from, toBlock: "latest" }),
+          ]);
+          return {
+            feesPaid: fees.reduce((a, l) => a + num(l.args.value!), 0),
+            feeEpochs: fees.length,
+            penalties: pens.reduce((a, l) => a + num(l.args.penalty!), 0),
+            penaltyEpochs: pens.length,
+          };
+        }),
+      );
     },
   });
 }

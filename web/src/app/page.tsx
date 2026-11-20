@@ -145,7 +145,7 @@ export default function Home() {
             <div><b>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>
             <div><b>6 / 6</b><span>curators in the true order</span></div>
             <div><b>0</b><span>oracles or keepers</span></div>
-            <div><b>51</b><span>tests, 10,000 fuzz runs each</span></div>
+            <div><b>59</b><span>tests, 10,000 fuzz runs each</span></div>
           </div>
         </div>
       </section>
@@ -205,10 +205,11 @@ export default function Home() {
             <Link className="btn primary" href="/app/">Open the vaults</Link>
           </div>
           <ul className="l-list">
+            <li><b>Paid only for Edge.</b> The curator&apos;s fee is a share of Edge above a high-water mark: nothing for fee volume or a rising market, nothing until losses are earned back.</li>
+            <li><b>Bonded against LVR.</b> Curators post a bond and a loss budget; an epoch that loses more pays the overshoot to depositors.</li>
             <li><b>No oracle.</b> A deposit buys the same share of every token the vault holds; the rest is refunded.</li>
             <li><b>Curators can&apos;t take funds.</b> Only the vault can move its sleeve, and removed liquidity always returns to it.</li>
             <li><b>One-way hand-over.</b> The hook owner gives each sleeve to its vault once, with no way back in.</li>
-            <li><b>Rounding favours LPs.</b> Losses round up, credits round down: Edge is never overstated.</li>
           </ul>
         </div>
       </section>

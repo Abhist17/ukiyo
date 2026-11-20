@@ -122,6 +122,19 @@ export function VaultPanel({ v, live }: { v: VaultLive; live: Live }) {
         <div><span>Your position</span><b>{ready ? usd(myValue) : "—"}</b></div>
       </div>
 
+      <div className="terms-box">
+        <div>
+          <span>Performance fee</span>
+          <b>{v.feeBps / 100}% of Edge</b>
+          <small>{v.atHighWater ? "at the high-water mark: due on new gains" : "under water: losses must be earned back first"}</small>
+        </div>
+        <div>
+          <span>LVR bond</span>
+          <b>{v.bond > 0 ? usd(v.bond) : "none"}</b>
+          <small>{v.bond > 0 ? `pays you any epoch loss beyond ${v.budgetBps} bps of value` : "the curator has not posted a bond"}</small>
+        </div>
+      </div>
+
       <div className="seg full" role="tablist">
         <button aria-pressed={mode === "deposit"} onClick={() => setMode("deposit")}>Deposit</button>
         <button aria-pressed={mode === "redeem"} onClick={() => setMode("redeem")}>Redeem</button>

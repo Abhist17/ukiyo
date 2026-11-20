@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Live } from "@/lib/useUkiyo";
-import { useEdgeHistory, useTape } from "@/lib/useUkiyo";
+import { useAccountability, useEdgeHistory, useTape } from "@/lib/useUkiyo";
 import { DEP, EXPLORER, compactUsd, short, usd } from "@/lib/chain";
 
 function useWidth(): [React.RefObject<HTMLDivElement | null>, number] {
@@ -86,6 +86,7 @@ function EdgeChart({ live }: { live: Live }) {
 /** Pool-level analytics: Edge over time, how each Edge is built, and how flow splits between arbitrage and users. */
 export function AnalyticsTab({ live }: { live: Live }) {
   const tape = useTape();
+  const acct = useAccountability();
   const rows = tape.data ?? [];
   const arb = rows.filter((r) => r.arb);
   const user = rows.filter((r) => !r.arb);
@@ -153,6 +154,32 @@ export function AnalyticsTab({ live }: { live: Live }) {
               A swap is arbitrage when its priority fee is at least {(Number(live.threshold) / 1e9).toFixed(2)} gwei. Under
               priority ordering arbitrageurs bid for the top of the block; when in doubt the hook calls a swap arbitrage,
               so Edge is never overstated.
+            </p>
+          </div>
+          <div className="panel">
+            <div className="panel-head">
+              <h2>Curator accountability</h2>
+              <span className="muted sm">paid in Edge, held to it</span>
+            </div>
+            <table className="acct">
+              <thead>
+                <tr><th className="l">Vault</th><th>Fees earned</th><th>Bond paid out</th><th>Bond left</th></tr>
+              </thead>
+              <tbody>
+                {live.vaults.map((v, i) => (
+                  <tr key={v.address}>
+                    <td className="l"><span className="chip" style={{ background: `var(--s${i + 1})` }} /> {v.name}</td>
+                    <td className="num">{usd(acct.data?.[i].feesPaid ?? 0)}</td>
+                    <td className="num neg">{usd(acct.data?.[i].penalties ?? 0)}</td>
+                    <td className="num">{usd(v.bond)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="fine">
+              Curators earn {live.vaults[0]?.feeBps / 100}% of Edge above each vault&apos;s high-water mark, paid in
+              shares. A curator whose epoch loses more than its LVR budget pays the difference to depositors from its
+              bond.
             </p>
           </div>
           <div className="panel">

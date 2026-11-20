@@ -1,13 +1,20 @@
-/** The Ukiyo seal: a breaking wave (a price path) under a rising sun, carved into a vermilion hanko. */
+import { useId } from "react";
+
+/** The Ukiyo coin: the vermilion sun of the floating world over a navy sea whose wave is a price path. */
 export function Logo({ size = 32, title = "Ukiyo" }: { size?: number; title?: string }) {
-  const wave = "M7 50 C19 50 27 44 33 33 C37 25 44 19 51 22 C57 25 56 33 50 34 C46 35 44 31 47 29";
+  const clip = useId();
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={title}>
-      <rect x="2" y="2" width="60" height="60" rx="12" fill="#C8381E" />
-      <circle cx="21" cy="21" r="9.5" fill="#F4EBDC" />
-      <path d={wave} fill="none" stroke="#C8381E" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
-      <path d={wave} fill="none" stroke="#F4EBDC" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M30 56 C38 56 46 52 56 44" fill="none" stroke="#F4EBDC" strokeWidth="3" strokeLinecap="round" opacity="0.8" />
+      <defs>
+        <clipPath id={clip}>
+          <circle cx="32" cy="32" r="30" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${clip})`}>
+        <rect width="64" height="64" fill="#E8452C" />
+        <path d="M0 36 C10 27 18 27 26 33 S42 42 50 34 S60 27 64 29 V64 H0Z" fill="#141A2E" />
+        <path d="M0 47 C10 40 18 40 26 45 S42 52 50 45 S60 40 64 42" fill="none" stroke="#E8452C" strokeWidth="3.2" />
+      </g>
     </svg>
   );
 }

@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/logo.svg" width="96" alt="Ukiyo logo: a breaking wave under a rising sun on a vermilion seal"></p>
+<p align="center"><img src="assets/logo.svg" width="96" alt="Ukiyo logo: a vermilion sun over a navy sea, drawn as a coin"></p>
 
 <h1 align="center">Ukiyo 浮世</h1>
 

@@ -26,6 +26,7 @@ contract UkiyoVaultTest is Test {
     uint256 internal constant THRESHOLD = 1 gwei;
     uint256 internal constant USER_TIP = 0.01 gwei;
     uint256 internal constant EPOCH = 1 days;
+    uint256 internal constant FEE_BPS = 1000; // 10% of Edge above the high-water mark
 
     uint160 internal constant HOOK_FLAGS = uint160(
         Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG
@@ -70,7 +71,7 @@ contract UkiyoVaultTest is Test {
         manager.initialize(key, SQRT_PRICE_1_1);
 
         hook.openSleeve(curator, -1000, 1000); // about +-10%
-        vault = new UkiyoVault(hook, 0, curator, EPOCH, "Ukiyo curator vault", "uCV");
+        vault = new UkiyoVault(hook, 0, curator, EPOCH, FEE_BPS, "Ukiyo curator vault", "uCV");
         hook.setSleeveManager(0, address(vault));
 
         _fund(alice);
@@ -117,6 +118,54 @@ contract UkiyoVaultTest is Test {
         );
     }
 
+    /// @dev Exact-input arbitrage swap: pays a priority fee at the threshold, so the hook books it as arbitrage.
+    function _arb(bool zeroForOne, uint256 amount) internal {
+        vm.txGasPrice(BASE_FEE + THRESHOLD);
+        swapRouter.swap(
+            key,
+            SwapParams({
+                zeroForOne: zeroForOne,
+                amountSpecified: -int256(amount),
+                sqrtPriceLimitX96: zeroForOne ? TickMath.MIN_SQRT_PRICE + 1 : TickMath.MAX_SQRT_PRICE - 1
+            }),
+            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
+            ""
+        );
+    }
+
+    /// @dev Blocks of arbitrage pushing the price down and back up: pure arbitrage loss, so the epoch's Edge is negative.
+    function _losingEpoch() internal {
+        for (uint256 i; i < 3; ++i) {
+            vm.roll(vm.getBlockNumber() + 1);
+            _arb(true, 2e18);
+            vm.roll(vm.getBlockNumber() + 1);
+            _arb(false, 2e18);
+        }
+    }
+
+    /// @dev Blocks of user round trips: fees and no lasting move, so the epoch's Edge is positive.
+    function _winningEpoch() internal {
+        for (uint256 i; i < 5; ++i) {
+            vm.roll(vm.getBlockNumber() + 1);
+            _swap(true, 1e18);
+            _swap(false, 1e18);
+        }
+    }
+
+    /// @dev Edge the sleeve has earned since the current epoch started.
+    function _epochEdge() internal view returns (int256) {
+        return hook.edge(0) - vault.epochStartEdge();
+    }
+
+    /// @dev Curator posts `amount` of token1 as bond.
+    function _postBond(uint256 amount) internal {
+        token1.mint(curator, amount);
+        vm.startPrank(curator);
+        token1.approve(address(vault), amount);
+        vault.postBond(amount);
+        vm.stopPrank();
+    }
+
     function _liquidity() internal view returns (uint128) {
         return hook.sleeve(0).liquidity;
     }
@@ -125,7 +174,7 @@ contract UkiyoVaultTest is Test {
     function _assertSolvent() internal view {
         (uint256 r0, uint256 r1) = vault.reserved();
         assertGe(token0.balanceOf(address(vault)), r0, "token0 below reserved");
-        assertGe(token1.balanceOf(address(vault)), r1, "token1 below reserved");
+        assertGe(token1.balanceOf(address(vault)), r1 + vault.bond(), "token1 below reserved plus bond");
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -159,7 +208,7 @@ contract UkiyoVaultTest is Test {
 
     function test_constructorChecks() public {
         vm.expectRevert(UkiyoVault.ZeroCurator.selector);
-        new UkiyoVault(hook, 0, address(0), EPOCH, "x", "x");
+        new UkiyoVault(hook, 0, address(0), EPOCH, 0, "x", "x");
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -335,6 +384,126 @@ contract UkiyoVaultTest is Test {
         (uint256 h0, uint256 h1) = vault.holdings();
         assertApproxEqRel(h0 + h1, 2e18, 1e14, "nothing lost moving the range");
         _assertSolvent();
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Performance fee
+    // ------------------------------------------------------------------------------------------------------------
+
+    function test_performanceFeeIsAShareOfPositiveEdge() public {
+        _deposit(alice, 10e18, 10e18);
+        _settle();
+        _winningEpoch();
+        int256 earned = _epochEdge();
+        assertGt(earned, 0, "a winning epoch");
+        _settle();
+
+        uint256 shares = vault.balanceOf(curator);
+        assertGt(shares, 0, "curator paid in shares");
+        // the shares are worth FEE_BPS of the Edge, at the mark
+        uint256 worth = shares * vault.valueAtMark() / vault.totalSupply();
+        uint256 due = uint256(earned) * FEE_BPS / 10_000;
+        assertApproxEqRel(worth, due, 0.01e18, "fee worth 10% of the epoch's Edge");
+        assertLe(worth, due + 2, "never more than earned");
+        assertEq(vault.highWaterMark(), vault.edgePerShare(), "high-water mark raised");
+    }
+
+    function test_noFeeOnLossesAndLossesMustBeEarnedBack() public {
+        _deposit(alice, 10e18, 10e18);
+        _settle();
+        _losingEpoch();
+        assertLt(_epochEdge(), 0, "a losing epoch");
+        _settle();
+        assertEq(vault.balanceOf(curator), 0, "no fee on a loss");
+        assertLt(vault.edgePerShare(), 0);
+        assertEq(vault.highWaterMark(), 0, "mark not lowered");
+
+        // a small winning epoch that does not recover the loss pays nothing either
+        vm.roll(vm.getBlockNumber() + 1);
+        _swap(true, 1e17);
+        _swap(false, 1e17);
+        assertGt(_epochEdge(), 0);
+        _settle();
+        assertLt(vault.edgePerShare(), 0, "still under water");
+        assertEq(vault.balanceOf(curator), 0, "no fee until the high-water mark is regained");
+    }
+
+    function test_constructorCapsTheFee() public {
+        vm.expectRevert(abi.encodeWithSelector(UkiyoVault.AboveCap.selector, 2001, 2000));
+        new UkiyoVault(hook, 0, curator, EPOCH, 2001, "x", "x");
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // LVR bond
+    // ------------------------------------------------------------------------------------------------------------
+
+    function test_bondPaysTheOvershootToDepositors() public {
+        _deposit(alice, 10e18, 10e18);
+        _settle(); // budget 0 from the start
+        _postBond(1000e18);
+        _losingEpoch();
+        uint256 loss = uint256(-_epochEdge());
+        (, uint256 before1) = vault.holdings();
+        _settle();
+        assertEq(vault.bond(), 1000e18 - loss, "the whole loss came out of the bond");
+        (, uint256 after1) = vault.holdings();
+        // collected fees land in holdings too, so depositors gain at least the penalty in token1
+        assertGe(after1, before1 + loss - 2, "penalty became depositors' capital");
+        _assertSolvent();
+    }
+
+    function test_bondPenaltyIsCappedAtTheBond() public {
+        _deposit(alice, 10e18, 10e18);
+        _settle();
+        _postBond(1e9); // far smaller than the epoch's loss
+        _losingEpoch();
+        assertGt(uint256(-_epochEdge()), 1e9);
+        _settle();
+        assertEq(vault.bond(), 0, "bond exhausted, never more");
+        _assertSolvent();
+    }
+
+    function test_lossesWithinTheBudgetCostNothing() public {
+        _deposit(alice, 10e18, 10e18);
+        vm.prank(curator);
+        vault.setLvrBudget(1000); // 10% of value per epoch
+        assertEq(vault.lvrBudgetBps(), 0, "budget waits for the next epoch");
+        _settle();
+        assertEq(vault.lvrBudgetBps(), 1000);
+        _postBond(1000e18);
+        _losingEpoch();
+        _settle();
+        assertEq(vault.bond(), 1000e18, "loss inside the budget");
+    }
+
+    function test_bondWithdrawalWaitsForSettlementAndPenalty() public {
+        _deposit(alice, 10e18, 10e18);
+        _settle();
+        _postBond(1000e18);
+        vm.prank(curator);
+        vault.requestBondWithdrawal(1000e18);
+        assertEq(token1.balanceOf(curator), 0, "nothing paid yet");
+        _losingEpoch();
+        uint256 loss = uint256(-_epochEdge());
+        _settle();
+        assertEq(token1.balanceOf(curator), 1000e18 - loss, "paid what is left after the penalty");
+        assertEq(vault.bond(), 0);
+        assertEq(vault.bondWithdrawal(), 0);
+        _assertSolvent();
+    }
+
+    function test_onlyCuratorManagesTheBond() public {
+        vm.startPrank(stranger);
+        vm.expectRevert(UkiyoVault.NotCurator.selector);
+        vault.postBond(1);
+        vm.expectRevert(UkiyoVault.NotCurator.selector);
+        vault.requestBondWithdrawal(1);
+        vm.expectRevert(UkiyoVault.NotCurator.selector);
+        vault.setLvrBudget(1);
+        vm.stopPrank();
+        vm.prank(curator);
+        vm.expectRevert(abi.encodeWithSelector(UkiyoVault.AboveCap.selector, 1001, 1000));
+        vault.setLvrBudget(1001);
     }
 
     // ------------------------------------------------------------------------------------------------------------

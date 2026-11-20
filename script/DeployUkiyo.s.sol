@@ -1,0 +1,219 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.30;
+
+import {Script, console2} from "forge-std/Script.sol";
+import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
+import {V4PoolManagerDeployer} from "hookmate/artifacts/V4PoolManager.sol";
+import {AddressConstants} from "hookmate/constants/AddressConstants.sol";
+import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
+import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {PoolSwapTest} from "@uniswap/v4-core/src/test/PoolSwapTest.sol";
+
+import {UkiyoHook} from "../src/UkiyoHook.sol";
+import {UkiyoVault} from "../src/UkiyoVault.sol";
+
+/// @title DeployUkiyo
+/// @notice Deploys the full Ukiyo demo: two faucet test tokens (tBTC, tUSD), the hook at a mined address, a 5 bps
+///         hook-exclusive pool at the BTC price the replay starts from, one sleeve and one curator vault per strategy,
+///         seed deposits, and a swap router. Writes every address to `web/src/deployments/<chainId>.json`, which the
+///         site and the replay bot read.
+/// @dev On a chain with a canonical v4 PoolManager (Unichain Sepolia, 1301) it uses that one; on anvil it deploys the
+///      canonical bytecode. Environment (all optional):
+///        THRESHOLD  priority fee per gas (wei) at or above which a swap is arbitrage   default 0.1 gwei
+///        EPOCH      vault epoch length in seconds                                      default 600
+///        CURATOR    curator of every vault (the replay bot)                            default the broadcaster
+///        START_PRICE  tUSD per tBTC                                                    default 42,268 (1 Jan 2024)
+contract DeployUkiyo is Script {
+    /// @dev forge's CREATE2 deployer proxy, the `deployer` HookMiner must mine against.
+    address internal constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
+
+    uint24 internal constant FEE = 500; // 5 bps: the tier that tolerates an imperfect classifier
+    int24 internal constant SPACING = 10;
+
+    uint160 internal constant HOOK_FLAGS = uint160(
+        Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG
+            | Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG
+    );
+
+    /// @notice One curator strategy: a name and a half-width in ticks around the start price.
+    struct Strategy {
+        string name;
+        string symbol;
+        string style;
+        int24 halfWidth;
+    }
+
+    /// @notice Everything the deployment created, kept in memory to write the JSON at the end.
+    struct Deployed {
+        address manager;
+        MockERC20 btc;
+        MockERC20 usd;
+        UkiyoHook hook;
+        PoolSwapTest router;
+        PoolKey key;
+        UkiyoVault[] vaults;
+    }
+
+    /// @notice Deployment settings read from the environment.
+    struct Config {
+        uint256 threshold;
+        uint256 epochLength;
+        uint256 startPrice;
+        address curator;
+        address deployer;
+    }
+
+    /// @notice Deploys everything and writes the deployment file.
+    function run() external {
+        Config memory c = Config({
+            threshold: vm.envOr("THRESHOLD", uint256(0.1 gwei)),
+            epochLength: vm.envOr("EPOCH", uint256(600)),
+            startPrice: vm.envOr("START_PRICE", uint256(42_268)),
+            curator: vm.envOr("CURATOR", msg.sender),
+            deployer: msg.sender
+        });
+        Strategy[] memory strategies = _strategies();
+
+        Deployed memory d;
+        d.vaults = new UkiyoVault[](strategies.length);
+
+        vm.startBroadcast();
+        d.manager = block.chainid == 31_337
+            ? V4PoolManagerDeployer.deploy(c.deployer)
+            : AddressConstants.getPoolManagerAddress(block.chainid);
+
+        // tUSD must sort after tBTC so it is token1: the hook books Edge in token1, so Edge reads in dollars.
+        d.btc = new MockERC20{salt: 0}("Ukiyo Test BTC", "tBTC", 18);
+        bytes32 usdSalt = _usdSalt(address(d.btc));
+        d.usd = new MockERC20{salt: usdSalt}("Ukiyo Test USD", "tUSD", 18);
+
+        // The hook's address must carry its permission flags in its low bits.
+        bytes memory args = abi.encode(IPoolManager(d.manager), c.deployer, c.threshold);
+        (address target, bytes32 salt) =
+            HookMiner.find(CREATE2_DEPLOYER, HOOK_FLAGS, type(UkiyoHook).creationCode, args);
+        d.hook = new UkiyoHook{salt: salt}(IPoolManager(d.manager), c.deployer, c.threshold);
+        require(address(d.hook) == target, "hook address mismatch");
+
+        bool btcIs0 = address(d.btc) < address(d.usd);
+        d.key = PoolKey({
+            currency0: Currency.wrap(btcIs0 ? address(d.btc) : address(d.usd)),
+            currency1: Currency.wrap(btcIs0 ? address(d.usd) : address(d.btc)),
+            fee: FEE,
+            tickSpacing: SPACING,
+            hooks: IHooks(address(d.hook))
+        });
+        uint160 sqrtPrice = _sqrtPriceX96(c.startPrice, btcIs0);
+        IPoolManager(d.manager).initialize(d.key, sqrtPrice);
+        int24 tick = TickMath.getTickAtSqrtPrice(sqrtPrice);
+
+        for (uint256 i; i < strategies.length; ++i) {
+            d.vaults[i] = _openVault(d, c, strategies[i], tick, btcIs0);
+        }
+
+        d.router = new PoolSwapTest(IPoolManager(d.manager));
+        vm.stopBroadcast();
+
+        _write(d, strategies, c);
+    }
+
+    /// @notice Opens one sleeve, hands it to a new vault and queues the seed deposit: 10 tBTC and its worth in tUSD.
+    ///         The deposit is minted when the bot settles the vault's first epoch.
+    function _openVault(Deployed memory d, Config memory c, Strategy memory s, int24 tick, bool btcIs0)
+        internal
+        returns (UkiyoVault v)
+    {
+        uint256 seedBtc = 10 ether;
+        uint256 seedUsd = seedBtc * c.startPrice;
+        d.btc.mint(c.deployer, seedBtc);
+        d.usd.mint(c.deployer, seedUsd);
+        uint256 id = d.hook.openSleeve(c.curator, _floor(tick - s.halfWidth), _ceil(tick + s.halfWidth));
+        v = new UkiyoVault(d.hook, id, c.curator, c.epochLength, s.name, s.symbol);
+        d.hook.setSleeveManager(id, address(v));
+        d.btc.approve(address(v), type(uint256).max);
+        d.usd.approve(address(v), type(uint256).max);
+        (uint256 a0, uint256 a1) = btcIs0 ? (seedBtc, seedUsd) : (seedUsd, seedBtc);
+        v.requestDeposit(a0, a1);
+    }
+
+    /// @notice First CREATE2 salt that puts tUSD at a higher address than tBTC.
+    function _usdSalt(address btc) internal pure returns (bytes32 salt) {
+        bytes32 initHash =
+            keccak256(abi.encodePacked(type(MockERC20).creationCode, abi.encode("Ukiyo Test USD", "tUSD", uint8(18))));
+        for (uint256 i;; ++i) {
+            salt = bytes32(i);
+            if (vm.computeCreate2Address(salt, initHash, CREATE2_DEPLOYER) > btc) return salt;
+        }
+    }
+
+    /// @notice The demo's curators. Widths follow the backtest's strategies (±25%, ±8%, ±1.5%, ±4%).
+    function _strategies() internal pure returns (Strategy[] memory s) {
+        s = new Strategy[](4);
+        s[0] = Strategy("Ukiyo Passive Wide", "ukWIDE", "Passive wide: 25% each side, never moves", 2230);
+        s[1] = Strategy("Ukiyo Passive Mid", "ukMID", "Passive mid: 8% each side, never moves", 770);
+        s[2] = Strategy("Ukiyo Tight Chaser", "ukTIGHT", "Tight chaser: 1.5% each side, recentres on exit", 150);
+        s[3] = Strategy("Ukiyo Vol Adaptive", "ukVOL", "Vol-adaptive: width follows recent volatility", 390);
+    }
+
+    /// @notice sqrt(price) in Q64.96, where price is token1 per token0.
+    /// @param usdPerBtc Start price in whole tUSD per tBTC (both tokens have 18 decimals).
+    /// @param btcIs0 Whether tBTC is token0.
+    function _sqrtPriceX96(uint256 usdPerBtc, bool btcIs0) internal pure returns (uint160) {
+        uint256 q192 = 1 << 192;
+        return uint160(btcIs0 ? Math.sqrt(usdPerBtc * q192) : Math.sqrt(q192 / usdPerBtc));
+    }
+
+    /// @dev Round down to a multiple of the tick spacing (toward negative infinity).
+    function _floor(int24 t) internal pure returns (int24) {
+        int24 r = (t / SPACING) * SPACING;
+        return r > t ? r - SPACING : r;
+    }
+
+    /// @dev Round up to a multiple of the tick spacing.
+    function _ceil(int24 t) internal pure returns (int24) {
+        int24 r = (t / SPACING) * SPACING;
+        return r < t ? r + SPACING : r;
+    }
+
+    /// @notice Writes the deployment file the site and the bot read.
+    function _write(Deployed memory d, Strategy[] memory strategies, Config memory c) internal {
+        string[] memory vaults = new string[](d.vaults.length);
+        for (uint256 i; i < d.vaults.length; ++i) {
+            string memory k = string.concat("vault", vm.toString(i));
+            vm.serializeAddress(k, "address", address(d.vaults[i]));
+            vm.serializeUint(k, "sleeveId", i);
+            vm.serializeString(k, "name", strategies[i].name);
+            vm.serializeString(k, "symbol", strategies[i].symbol);
+            vaults[i] = vm.serializeString(k, "style", strategies[i].style);
+        }
+
+        string memory o = "deployment";
+        vm.serializeUint(o, "chainId", block.chainid);
+        vm.serializeUint(o, "deployBlock", block.number);
+        vm.serializeAddress(o, "poolManager", d.manager);
+        vm.serializeAddress(o, "hook", address(d.hook));
+        vm.serializeAddress(o, "router", address(d.router));
+        vm.serializeAddress(o, "token0", Currency.unwrap(d.key.currency0));
+        vm.serializeAddress(o, "token1", Currency.unwrap(d.key.currency1));
+        vm.serializeAddress(o, "btc", address(d.btc));
+        vm.serializeAddress(o, "usd", address(d.usd));
+        vm.serializeUint(o, "fee", FEE);
+        vm.serializeInt(o, "tickSpacing", SPACING);
+        vm.serializeString(o, "threshold", vm.toString(c.threshold));
+        vm.serializeUint(o, "epochLength", c.epochLength);
+        vm.serializeUint(o, "startPrice", c.startPrice);
+        vm.serializeAddress(o, "curator", c.curator);
+        string memory json = vm.serializeString(o, "vaults", vaults);
+
+        string memory path = string.concat("web/src/deployments/", vm.toString(block.chainid), ".json");
+        vm.writeJson(json, path);
+        console2.log("hook", address(d.hook));
+        console2.log("wrote", path);
+    }
+}

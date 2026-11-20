@@ -8,7 +8,7 @@ bytecode_hash = "none"
 optimizer = true
 optimizer_runs = 800
 via_ir = false
-fs_permissions = [{ access = "read-write", path = ".forge-snapshots/" }]
+fs_permissions = [{ access = "read-write", path = ".forge-snapshots/" }, { access = "read-write", path = "web/src/deployments/" }]
 
 [fuzz]
 runs = 1024

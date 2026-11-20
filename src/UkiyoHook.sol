@@ -19,6 +19,7 @@ import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/src/type
 import {ModifyLiquidityParams, SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SqrtPriceMath} from "@uniswap/v4-core/src/libraries/SqrtPriceMath.sol";
 
 import {EdgeMath} from "./libraries/EdgeMath.sol";
 
@@ -121,6 +122,11 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @notice True while the user-impact term of `lastMarkedBlock` is still to be credited.
     bool public impactPending;
 
+    /// @notice The contract allowed to move a sleeve's liquidity and range, usually its curator vault. While unset,
+    ///         the owner manages the sleeve. Set once: an owner who could re-point it could pull a vault's liquidity
+    ///         to themselves, because liquidity removals pay out to the caller.
+    mapping(uint256 sleeveId => address) public sleeveManager;
+
     Sleeve[] internal _sleeves;
     mapping(uint256 sleeveId => Ledger) internal _ledgers;
 
@@ -155,6 +161,9 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @notice Emitted when the arbitrage threshold changes.
     event PriorityFeeThresholdSet(uint256 threshold);
 
+    /// @notice Emitted when a sleeve is handed to its manager for good.
+    event SleeveManagerSet(uint256 indexed sleeveId, address indexed manager);
+
     /// @notice The hook is already bound to a pool.
     error PoolAlreadyBound();
 
@@ -178,6 +187,12 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
 
     /// @notice A sleeve's range can only change while it holds no liquidity.
     error SleeveNotEmpty(uint256 sleeveId);
+
+    /// @notice The sleeve already has a manager, or the manager address is zero.
+    error InvalidSleeveManager(uint256 sleeveId);
+
+    /// @notice The caller may not move this sleeve's liquidity or range.
+    error NotSleeveController(uint256 sleeveId, address caller);
 
     // ---------------------------------------------------------------------------------------------------------------
     // Construction and admin
@@ -218,6 +233,26 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         emit PriorityFeeThresholdSet(threshold);
     }
 
+    /// @notice Hand a sleeve to its manager (a curator vault) for good. From then on only the manager can move the
+    ///         sleeve's liquidity or range; the owner keeps no way to touch it.
+    /// @param sleeveId Sleeve to hand over.
+    /// @param manager Contract that will control the sleeve.
+    function setSleeveManager(uint256 sleeveId, address manager) external onlyOwner {
+        _sleeve(sleeveId);
+        if (manager == address(0) || sleeveManager[sleeveId] != address(0)) revert InvalidSleeveManager(sleeveId);
+        sleeveManager[sleeveId] = manager;
+        emit SleeveManagerSet(sleeveId, manager);
+    }
+
+    /// @dev The sleeve's manager if it has one, otherwise the owner.
+    modifier onlySleeveController(uint256 sleeveId) {
+        address m = sleeveManager[sleeveId];
+        if (m == address(0) ? msg.sender != owner() : msg.sender != m) {
+            revert NotSleeveController(sleeveId, msg.sender);
+        }
+        _;
+    }
+
     // ---------------------------------------------------------------------------------------------------------------
     // Sleeve management
     // ---------------------------------------------------------------------------------------------------------------
@@ -249,7 +284,10 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @param sleeveId Sleeve to move.
     /// @param tickLower New lower tick.
     /// @param tickUpper New upper tick.
-    function setSleeveRange(uint256 sleeveId, int24 tickLower, int24 tickUpper) external onlyOwner {
+    function setSleeveRange(uint256 sleeveId, int24 tickLower, int24 tickUpper)
+        external
+        onlySleeveController(sleeveId)
+    {
         Sleeve storage s = _sleeve(sleeveId);
         if (s.liquidity != 0) revert SleeveNotEmpty(sleeveId);
         _checkRange(tickLower, tickUpper);
@@ -264,7 +302,7 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     ///      Fees the position has accrued in the PoolManager are paid out to the caller on every modification.
     /// @param sleeveId Sleeve to modify.
     /// @param liquidityDelta Positive to add, negative to remove.
-    function modifySleeveLiquidity(uint256 sleeveId, int256 liquidityDelta) external onlyOwner {
+    function modifySleeveLiquidity(uint256 sleeveId, int256 liquidityDelta) external onlySleeveController(sleeveId) {
         _sleeve(sleeveId);
         // unlockCallback returns no data, so the bytes unlock passes back carry nothing to check
         // forge-lint: disable-start(unused-return)
@@ -330,6 +368,22 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     function edge(uint256 sleeveId) external view returns (int256) {
         Ledger storage l = _ledgers[sleeveId];
         return SafeCast.toInt256(l.userFees + l.userImpact) - SafeCast.toInt256(l.arbLoss);
+    }
+
+    /// @notice The bound pool's current square-root price (Q64.96), or 0 before initialization.
+    function sqrtPriceX96() external view returns (uint160) {
+        return _currentSqrtPrice();
+    }
+
+    /// @notice Tokens a sleeve's position holds at the current price, excluding fees not yet collected.
+    /// @dev Rounds down, so a vault valuing itself from this never overstates its holdings.
+    function sleeveAmounts(uint256 sleeveId) external view returns (uint256 amount0, uint256 amount1) {
+        Sleeve storage s = _sleeve(sleeveId);
+        if (s.liquidity == 0) return (0, 0);
+        (uint160 lo, uint160 hi) = _bounds(s);
+        uint160 p = _currentSqrtPrice();
+        if (p < hi) amount0 = SqrtPriceMath.getAmount0Delta(p > lo ? p : lo, hi, s.liquidity, false);
+        if (p > lo) amount1 = SqrtPriceMath.getAmount1Delta(lo, p < hi ? p : hi, s.liquidity, false);
     }
 
     /// @notice Classify the current transaction: true if its priority fee per gas meets the threshold.
@@ -481,9 +535,9 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     }
 
     /// @dev The bound pool's current square-root price, or 0 before initialization.
-    function _currentSqrtPrice() internal view returns (uint160 sqrtPriceX96) {
+    function _currentSqrtPrice() internal view returns (uint160 sqrtPrice) {
         if (!poolBound) return 0;
-        (sqrtPriceX96,,,) = poolManager.getSlot0(poolKey.toId());
+        (sqrtPrice,,,) = poolManager.getSlot0(poolKey.toId());
     }
 
     /// @dev Square-root price bounds of a sleeve's ticks.

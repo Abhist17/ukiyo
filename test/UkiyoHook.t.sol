@@ -203,6 +203,22 @@ contract UkiyoHookTest is Test {
         assertEq(hook.sleeve(0).liquidity, 0);
     }
 
+    /// @dev Vaults value themselves with `sleeveAmounts`, so it must equal what a full withdrawal pays, fees aside.
+    function test_sleeveAmountsMatchAFullWithdrawal() public {
+        _swapTo(_atTick(200), USER_TIP); // off-centre, so the two amounts differ
+        vm.roll(vm.getBlockNumber() + 1);
+        hook.modifySleeveLiquidity(0, 0); // collect fees first, so the withdrawal below is principal only
+        (uint256 a0, uint256 a1) = hook.sleeveAmounts(0);
+        uint256 b0 = token0.balanceOf(address(this));
+        uint256 b1 = token1.balanceOf(address(this));
+        hook.modifySleeveLiquidity(0, -int256(uint256(LIQ)));
+        assertEq(token0.balanceOf(address(this)) - b0, a0);
+        assertEq(token1.balanceOf(address(this)) - b1, a1);
+        (a0, a1) = hook.sleeveAmounts(0);
+        assertEq(a0 + a1, 0, "empty sleeve holds nothing");
+        assertEq(hook.sqrtPriceX96(), _atTick(200));
+    }
+
     // ------------------------------------------------------------------------------------------------------------
     // Classification and fee attribution
     // ------------------------------------------------------------------------------------------------------------

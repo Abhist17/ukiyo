@@ -16,6 +16,7 @@ from experiments import CURATORS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "web", "src", "data", "btc2024.json")
+OUT_HOURLY = os.path.join(HERE, "..", "web", "src", "data", "btc2024_hourly.json")
 WEEK_MINUTES = 7 * 24 * 60
 
 # Short series names the site shows; the order is the categorical colour order, so never reorder.
@@ -77,6 +78,13 @@ def main():
     with open(OUT, "w") as f:
         json.dump(out, f, separators=(",", ":"))
     print("wrote", os.path.relpath(OUT, HERE), os.path.getsize(OUT), "bytes,", len(weeks), "weeks")
+
+    # Hourly closes for the replay bot (web/scripts/bot.mts), which walks 2024 one hour per step.
+    hourly = [int(round(x)) for x in c[59::60]]
+    with open(OUT_HOURLY, "w") as f:
+        json.dump({"source": "Bitstamp BTC/USD 2024, hourly closes", "start": "2024-01-01T00:59:00Z",
+                   "close": hourly}, f, separators=(",", ":"))
+    print("wrote", os.path.relpath(OUT_HOURLY, HERE), os.path.getsize(OUT_HOURLY), "bytes,", len(hourly), "hours")
 
 
 if __name__ == "__main__":

@@ -5,17 +5,23 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "abi": "node scripts/abi.mjs",
+    "bot": "node scripts/bot.mts"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.106.0",
     "next": "16.4.5",
     "react": "19.2.9",
-    "react-dom": "19.2.9"
+    "react-dom": "19.2.9",
+    "viem": "2.57.16",
+    "wagmi": "3.7.11"
   },
   "devDependencies": {
     "@types/node": "22.15.29",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
-    "typescript": "5.8.3"
-  }
+    "typescript": "5.9.3"
+  },
+  "type": "module"
 }

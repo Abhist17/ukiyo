@@ -2,201 +2,201 @@
  "symmetric_3pct_5bps": [
   {
    "curator": "Passive wide (+-25%)",
-   "fee_bps": 2818.478834401016,
-   "vs_hodl_bps": -864.6718921259302,
-   "edge_old_bps": 1644.3571352102608,
-   "edge_new_bps": 171.5820508428486,
-   "true_hedged_bps": 226.43843962006744
+   "fee_bps": 2818.4788344010167,
+   "vs_hodl_bps": -864.6718921259265,
+   "edge_old_bps": 1644.3571352102615,
+   "edge_new_bps": 171.5820508428488,
+   "true_hedged_bps": 226.43843962006844
   },
   {
    "curator": "Passive mid (+-8%)",
-   "fee_bps": 8218.72229630757,
-   "vs_hodl_bps": -1375.1935070074587,
-   "edge_old_bps": 4872.0600202357045,
-   "edge_new_bps": 590.22519136532,
-   "true_hedged_bps": 746.0009063171065
+   "fee_bps": 8218.722296307571,
+   "vs_hodl_bps": -1375.193507007471,
+   "edge_old_bps": 4872.060020235705,
+   "edge_new_bps": 590.2251913653214,
+   "true_hedged_bps": 746.0009063170813
   },
   {
    "curator": "Tight chaser (+-1.5%)",
-   "fee_bps": 41463.25319582914,
-   "vs_hodl_bps": -7409.12397674925,
-   "edge_old_bps": 22541.671937950214,
-   "edge_new_bps": 869.862155057561,
-   "true_hedged_bps": 1328.4070675312262
+   "fee_bps": 41463.25319582916,
+   "vs_hodl_bps": -7409.123976749035,
+   "edge_old_bps": 22541.671937950225,
+   "edge_new_bps": 869.8621550575623,
+   "true_hedged_bps": 1328.4070675314247
   },
   {
    "curator": "Vol-adaptive (3 sigma)",
-   "fee_bps": 10112.732329997965,
-   "vs_hodl_bps": -1294.8520095206236,
-   "edge_old_bps": 6299.36379330086,
-   "edge_new_bps": 1228.3589042112683,
-   "true_hedged_bps": 1440.7198992424958
+   "fee_bps": 10112.732329997962,
+   "vs_hodl_bps": -1294.852009520617,
+   "edge_old_bps": 6299.363793300857,
+   "edge_new_bps": 1228.3589042112728,
+   "true_hedged_bps": 1440.7198992424892
   },
   {
    "curator": "Vol-adaptive (1.5 sigma)",
-   "fee_bps": 18826.019682499315,
-   "vs_hodl_bps": 1424.2774057872396,
-   "edge_old_bps": 11838.0863376287,
-   "edge_new_bps": 2428.1127814390256,
-   "true_hedged_bps": 2805.764285745543
+   "fee_bps": 18826.019682499325,
+   "vs_hodl_bps": 1424.277405787132,
+   "edge_old_bps": 11838.086337628707,
+   "edge_new_bps": 2428.112781439034,
+   "true_hedged_bps": 2805.764285745469
   },
   {
    "curator": "Momentum (+-10%)",
-   "fee_bps": 5856.923405495636,
-   "vs_hodl_bps": -448.4809220710549,
-   "edge_old_bps": 2694.016248031915,
-   "edge_new_bps": -314.94951273576777,
-   "true_hedged_bps": -204.64979735263452
+   "fee_bps": 5856.923405495634,
+   "vs_hodl_bps": -448.48092207103304,
+   "edge_old_bps": 2694.0162480319136,
+   "edge_new_bps": -314.9495127357675,
+   "true_hedged_bps": -204.64979735265058
   }
  ],
  "symmetric_3pct_30bps": [
   {
    "curator": "Passive wide (+-25%)",
-   "fee_bps": 2962.393312957668,
-   "vs_hodl_bps": -715.7938407229157,
-   "edge_old_bps": 2539.255977627033,
-   "edge_new_bps": 90.76332533774774,
-   "true_hedged_bps": 29.34327258407057
+   "fee_bps": 2962.381936429208,
+   "vs_hodl_bps": -715.8052172513761,
+   "edge_old_bps": 2539.245999310486,
+   "edge_new_bps": 90.77787158496271,
+   "true_hedged_bps": 29.355279616265452
   },
   {
    "curator": "Passive mid (+-8%)",
-   "fee_bps": 8633.156008288715,
-   "vs_hodl_bps": -834.9326549195034,
-   "edge_old_bps": 7378.083167748395,
-   "edge_new_bps": 251.74969921070493,
-   "true_hedged_bps": 71.62301798571451
+   "fee_bps": 8633.121893272897,
+   "vs_hodl_bps": -834.966769935324,
+   "edge_old_bps": 7378.053245577668,
+   "edge_new_bps": 251.79331932342146,
+   "true_hedged_bps": 71.65902370525004
   },
   {
    "curator": "Tight chaser (+-1.5%)",
-   "fee_bps": 43125.01476007112,
-   "vs_hodl_bps": -3521.825175212282,
-   "edge_old_bps": 35787.67656059685,
-   "edge_new_bps": 224.6179732734666,
-   "true_hedged_bps": -922.2457009107003
+   "fee_bps": 43124.843204272955,
+   "vs_hodl_bps": -3521.99673101068,
+   "edge_old_bps": 35787.52608955768,
+   "edge_new_bps": 224.83732780321017,
+   "true_hedged_bps": -922.0646372412994
   },
   {
    "curator": "Vol-adaptive (3 sigma)",
-   "fee_bps": 10078.387969676573,
-   "vs_hodl_bps": -1519.7869010668953,
-   "edge_old_bps": 8664.589585647183,
-   "edge_new_bps": 488.17920938619955,
-   "true_hedged_bps": 287.6385444928928
+   "fee_bps": 10078.337471518662,
+   "vs_hodl_bps": -1519.8373992247757,
+   "edge_old_bps": 8664.545293875184,
+   "edge_new_bps": 488.243777298224,
+   "true_hedged_bps": 287.6918413320916
   },
   {
    "curator": "Vol-adaptive (1.5 sigma)",
-   "fee_bps": 18674.418542652533,
-   "vs_hodl_bps": 853.6328579069586,
-   "edge_old_bps": 16092.443480874259,
-   "edge_new_bps": 985.7687574226005,
-   "true_hedged_bps": 608.4263041747481
+   "fee_bps": 18674.333886647477,
+   "vs_hodl_bps": 853.5482019019477,
+   "edge_old_bps": 16092.369229364314,
+   "edge_new_bps": 985.8770002123188,
+   "true_hedged_bps": 608.515651938615
   },
   {
    "curator": "Momentum (+-10%)",
-   "fee_bps": 6002.763272091613,
-   "vs_hodl_bps": -326.4273878563522,
-   "edge_old_bps": 4309.350646677794,
-   "edge_new_bps": -608.1150575192701,
-   "true_hedged_bps": -735.5294809057697
+   "fee_bps": 6002.763272091611,
+   "vs_hodl_bps": -326.4273878563459,
+   "edge_old_bps": 4309.350646677791,
+   "edge_new_bps": -608.1150575192719,
+   "true_hedged_bps": -735.5294809058099
   }
  ],
  "conservative_5bps": [
   {
    "curator": "Passive wide (+-25%)",
-   "fee_bps": 2818.478834401016,
-   "vs_hodl_bps": -864.6718921259302,
-   "edge_old_bps": 1644.3571352102608,
-   "edge_new_bps": 37.80964120794989,
-   "true_hedged_bps": 226.43843962006744
+   "fee_bps": 2818.4788344010167,
+   "vs_hodl_bps": -864.6718921259265,
+   "edge_old_bps": 1644.3571352102615,
+   "edge_new_bps": 37.80964120795005,
+   "true_hedged_bps": 226.43843962006844
   },
   {
    "curator": "Passive mid (+-8%)",
-   "fee_bps": 8218.72229630757,
-   "vs_hodl_bps": -1375.1935070074587,
-   "edge_old_bps": 4872.0600202357045,
-   "edge_new_bps": 199.35607211209765,
-   "true_hedged_bps": 746.0009063171065
+   "fee_bps": 8218.722296307571,
+   "vs_hodl_bps": -1375.193507007471,
+   "edge_old_bps": 4872.060020235705,
+   "edge_new_bps": 199.3560721120985,
+   "true_hedged_bps": 746.0009063170813
   },
   {
    "curator": "Tight chaser (+-1.5%)",
-   "fee_bps": 41463.25319582914,
-   "vs_hodl_bps": -7409.12397674925,
-   "edge_old_bps": 22541.671937950214,
-   "edge_new_bps": -1097.7556946054328,
-   "true_hedged_bps": 1328.4070675312262
+   "fee_bps": 41463.25319582916,
+   "vs_hodl_bps": -7409.123976749035,
+   "edge_old_bps": 22541.671937950225,
+   "edge_new_bps": -1097.7556946054322,
+   "true_hedged_bps": 1328.4070675314247
   },
   {
    "curator": "Vol-adaptive (3 sigma)",
-   "fee_bps": 10112.732329997965,
-   "vs_hodl_bps": -1294.8520095206236,
-   "edge_old_bps": 6299.36379330086,
-   "edge_new_bps": 738.2226156704036,
-   "true_hedged_bps": 1440.7198992424958
+   "fee_bps": 10112.732329997962,
+   "vs_hodl_bps": -1294.852009520617,
+   "edge_old_bps": 6299.363793300857,
+   "edge_new_bps": 738.2226156704044,
+   "true_hedged_bps": 1440.7198992424892
   },
   {
    "curator": "Vol-adaptive (1.5 sigma)",
-   "fee_bps": 18826.019682499315,
-   "vs_hodl_bps": 1424.2774057872396,
-   "edge_old_bps": 11838.0863376287,
-   "edge_new_bps": 1515.235321199319,
-   "true_hedged_bps": 2805.764285745543
+   "fee_bps": 18826.019682499325,
+   "vs_hodl_bps": 1424.277405787132,
+   "edge_old_bps": 11838.086337628707,
+   "edge_new_bps": 1515.2353211993243,
+   "true_hedged_bps": 2805.764285745469
   },
   {
    "curator": "Momentum (+-10%)",
-   "fee_bps": 5856.923405495636,
-   "vs_hodl_bps": -448.4809220710549,
-   "edge_old_bps": 2694.016248031915,
-   "edge_new_bps": -595.0723237305534,
-   "true_hedged_bps": -204.64979735263452
+   "fee_bps": 5856.923405495634,
+   "vs_hodl_bps": -448.48092207103304,
+   "edge_old_bps": 2694.0162480319136,
+   "edge_new_bps": -595.0723237305524,
+   "true_hedged_bps": -204.64979735265058
   }
  ],
  "conservative_30bps": [
   {
    "curator": "Passive wide (+-25%)",
-   "fee_bps": 2962.393312957668,
-   "vs_hodl_bps": -715.7938407229157,
-   "edge_old_bps": 2539.255977627033,
-   "edge_new_bps": -13.651065959799569,
-   "true_hedged_bps": 29.34327258407057
+   "fee_bps": 2962.381936429208,
+   "vs_hodl_bps": -715.8052172513761,
+   "edge_old_bps": 2539.245999310486,
+   "edge_new_bps": -13.641090920239863,
+   "true_hedged_bps": 29.355279616265452
   },
   {
    "curator": "Passive mid (+-8%)",
-   "fee_bps": 8633.156008288715,
-   "vs_hodl_bps": -834.9326549195034,
-   "edge_old_bps": 7378.083167748395,
-   "edge_new_bps": -51.24929470247923,
-   "true_hedged_bps": 71.62301798571451
+   "fee_bps": 8633.121893272897,
+   "vs_hodl_bps": -834.966769935324,
+   "edge_old_bps": 7378.053245577668,
+   "edge_new_bps": -51.21938235852362,
+   "true_hedged_bps": 71.65902370525004
   },
   {
    "curator": "Tight chaser (+-1.5%)",
-   "fee_bps": 43125.01476007112,
-   "vs_hodl_bps": -3521.825175212282,
-   "edge_old_bps": 35787.67656059685,
-   "edge_new_bps": -1299.434375908582,
-   "true_hedged_bps": -922.2457009107003
+   "fee_bps": 43124.843204272955,
+   "vs_hodl_bps": -3521.99673101068,
+   "edge_old_bps": 35787.52608955768,
+   "edge_new_bps": -1299.283954285766,
+   "true_hedged_bps": -922.0646372412994
   },
   {
    "curator": "Vol-adaptive (3 sigma)",
-   "fee_bps": 10078.387969676573,
-   "vs_hodl_bps": -1519.7869010668953,
-   "edge_old_bps": 8664.589585647183,
-   "edge_new_bps": 126.52584341393924,
-   "true_hedged_bps": 287.6385444928928
+   "fee_bps": 10078.337471518662,
+   "vs_hodl_bps": -1519.8373992247757,
+   "edge_old_bps": 8664.545293875184,
+   "edge_new_bps": 126.5701206400337,
+   "true_hedged_bps": 287.6918413320916
   },
   {
    "curator": "Vol-adaptive (1.5 sigma)",
-   "fee_bps": 18674.418542652533,
-   "vs_hodl_bps": 853.6328579069586,
-   "edge_old_bps": 16092.443480874259,
-   "edge_new_bps": 316.8898096709155,
-   "true_hedged_bps": 608.4263041747481
+   "fee_bps": 18674.333886647477,
+   "vs_hodl_bps": 853.5482019019477,
+   "edge_old_bps": 16092.369229364314,
+   "edge_new_bps": 316.96403679586695,
+   "true_hedged_bps": 608.515651938615
   },
   {
    "curator": "Momentum (+-10%)",
-   "fee_bps": 6002.763272091613,
-   "vs_hodl_bps": -326.4273878563522,
-   "edge_old_bps": 4309.350646677794,
-   "edge_new_bps": -820.9011626168206,
-   "true_hedged_bps": -735.5294809057697
+   "fee_bps": 6002.763272091611,
+   "vs_hodl_bps": -326.4273878563459,
+   "edge_old_bps": 4309.350646677791,
+   "edge_new_bps": -820.9011626168201,
+   "true_hedged_bps": -735.5294809058099
   }
  ]
 }

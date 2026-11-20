@@ -16,3 +16,4 @@ broadcast/**/dry-run/
 __pycache__/
 *.pyc
 backtest/results/*.npz
+backtest/*.npz

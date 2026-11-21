@@ -158,6 +158,10 @@ contract DeployUkiyo is Script {
     ///         it on some chains and sent from the broadcaster on others (Unichain Sepolia), which would move the
     ///         address away from the one HookMiner mined; calling the proxy makes the address the same everywhere.
     function _create2(bytes32 salt, bytes memory initCode) internal returns (address deployed) {
+        // Same salt and code give the same address on every run: if an earlier deployment already put the contract
+        // there (the test tokens), reuse it, so balances minted on earlier deployments carry over.
+        address predicted = vm.computeCreate2Address(salt, keccak256(initCode), CREATE2_DEPLOYER);
+        if (predicted.code.length != 0) return predicted;
         (bool ok, bytes memory ret) = CREATE2_DEPLOYER.call(abi.encodePacked(salt, initCode));
         require(ok && ret.length == 20, "create2 failed");
         deployed = address(bytes20(ret));

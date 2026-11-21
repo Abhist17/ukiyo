@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import type { TransactionReceipt } from "viem";
 import { usePublicClient, useWriteContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { CHAIN } from "@/lib/chain";
 
 export type TxState = { status: "idle" | "pending" | "done" | "error"; label?: string; message?: string; hash?: string };
 
-/** Sends a contract write, waits for it to be mined, then refreshes every live query. */
+/** Sends a contract write, waits for it to be mined, then refreshes every live query. Resolves to the receipt, or null. */
 export function useTx() {
   const { writeContractAsync } = useWriteContract();
   const pc = usePublicClient({ chainId: CHAIN.id });
@@ -23,11 +24,11 @@ export function useTx() {
       if (r.status !== "success") throw new Error("Transaction reverted");
       setState({ status: "done", label, hash });
       await qc.invalidateQueries();
-      return true;
+      return r as TransactionReceipt;
     } catch (e) {
       const msg = (e as { shortMessage?: string; message: string }).shortMessage ?? (e as Error).message;
       setState({ status: "error", label, message: msg.split("\n")[0] });
-      return false;
+      return null;
     }
   }
   return { state, send, reset: () => setState({ status: "idle" }) };

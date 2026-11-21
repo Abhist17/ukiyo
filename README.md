@@ -162,6 +162,27 @@ recomputing anything, so the site and the backtest always agree.
 
 ![Same curators, five rankings: only Ukiyo Edge puts them in the order of their true hedged P&L](assets/rankings.png)
 
+## Live deployment: Unichain Sepolia
+
+Deployed at block 68,392,689 with [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) (transactions in
+[`broadcast/`](broadcast/DeployUkiyo.s.sol/1301/run-latest.json)). The replay bot keeps it trading; the app reads it
+straight from the public RPC.
+
+| Contract | Address |
+| --- | --- |
+| Hook (`UkiyoHook`) | [`0xB2e6Ce049A3682B7dA2895E4AcF3371df21FaaC0`](https://sepolia.uniscan.xyz/address/0xB2e6Ce049A3682B7dA2895E4AcF3371df21FaaC0) |
+| PoolManager (canonical v4) | [`0x00B036B58a818B1BC34d502D3fE730Db729e62AC`](https://sepolia.uniscan.xyz/address/0x00B036B58a818B1BC34d502D3fE730Db729e62AC) |
+| Swap router (`PoolSwapTest`) | [`0x56b8aeCD24347d6284d4FE20F82B2f7d859a2415`](https://sepolia.uniscan.xyz/address/0x56b8aeCD24347d6284d4FE20F82B2f7d859a2415) |
+| tBTC (test token, token0) | [`0xe4134d0bA75d9cc0a22dac01a11f589559434148`](https://sepolia.uniscan.xyz/address/0xe4134d0bA75d9cc0a22dac01a11f589559434148) |
+| tUSD (test token, token1) | [`0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db`](https://sepolia.uniscan.xyz/address/0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db) |
+| Vault: Passive Wide (`ukWIDE`) | [`0x8F25E8A4525BB58551cC39fe852B02ddC251D194`](https://sepolia.uniscan.xyz/address/0x8F25E8A4525BB58551cC39fe852B02ddC251D194) |
+| Vault: Passive Mid (`ukMID`) | [`0x0964299F3b856D672C3aa1f41FFb958772BE21dd`](https://sepolia.uniscan.xyz/address/0x0964299F3b856D672C3aa1f41FFb958772BE21dd) |
+| Vault: Tight Chaser (`ukTIGHT`) | [`0x4EeeBD0397FE7F006b682DB8D084497167464942`](https://sepolia.uniscan.xyz/address/0x4EeeBD0397FE7F006b682DB8D084497167464942) |
+| Vault: Vol Adaptive (`ukVOL`) | [`0x18519b318C16b1Eee03607BcBBce53dCF666CE52`](https://sepolia.uniscan.xyz/address/0x18519b318C16b1Eee03607BcBBce53dCF666CE52) |
+
+Demo settings: 5 bps pool, classifier threshold 0.01 gwei, 10-minute epochs, 10% performance fee, curator bonds of
+$10K–$50K with a 25 bps per-epoch LVR budget. Test tokens only.
+
 ## Does the priority fee identify arbitrage on Unichain? (measured, not assumed)
 
 The classifier assumes arbitrageurs bid higher priority fees than users. We checked that on real flow:
@@ -286,7 +307,8 @@ No partner integrations.
 - [x] App (vaults, trade, analytics, faucet), landing page, research page; deploy script and replay bot, running
       end to end on a local chain
 - [x] Threat model, gas numbers
-- [ ] Public testnet deployment (Unichain Sepolia or Base Sepolia) and hosted site
+- [x] Deployed to Unichain Sepolia with the replay bot running
+- [ ] Hosted site (publishes automatically once the repository is public)
 - [ ] Demo video
 
 ### Known limitations

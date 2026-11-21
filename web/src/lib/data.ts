@@ -1,4 +1,7 @@
 import raw from "@/data/btc2024.json";
+import { pairAgreement, pct, ranks } from "./math";
+
+export { pairAgreement, pct, ranks };
 
 /** Pool fee tier of the replay. 5 bps is the demo tier: it tolerates a ~25%-error classifier. */
 export type Tier = "5bps" | "30bps";
@@ -57,14 +60,6 @@ export function total(tier: Tier, key: string): number[] {
   return CURATORS.map((_, i) => w.reduce((s, row) => s + row[i], 0));
 }
 
-/** Rank per curator, 1 = highest value. */
-export function ranks(values: number[]): number[] {
-  const order = values.map((v, i) => [v, i] as const).sort((a, b) => b[0] - a[0]);
-  const r = new Array<number>(values.length);
-  order.forEach(([, i], pos) => (r[i] = pos + 1));
-  return r;
-}
-
 /** Running total per curator, `[week 0..n][curator]`, starting at zero. */
 export function cumulative(tier: Tier, key: string): number[][] {
   const w = weekly(tier, key);
@@ -77,25 +72,6 @@ export function cumulative(tier: Tier, key: string): number[][] {
 export function mean(tier: Tier, key: string): number {
   const w = weekly(tier, key);
   return w.reduce((s, row) => s + row.reduce((a, b) => a + b, 0), 0) / (w.length * CURATORS.length);
-}
-
-/** Share of curator pairs that two rankings put in the same order. */
-export function pairAgreement(a: number[], b: number[]): number {
-  let same = 0;
-  let n = 0;
-  for (let i = 0; i < a.length; i++)
-    for (let j = i + 1; j < a.length; j++) {
-      n++;
-      if (Math.sign(a[i] - a[j]) === Math.sign(b[i] - b[j])) same++;
-    }
-  return same / n;
-}
-
-/** bps → signed percent, e.g. 2428 → "+24.3%". */
-export function pct(bps: number, digits = 1): string {
-  const v = bps / 100;
-  const s = Math.abs(v).toFixed(digits);
-  return (v > 0 ? "+" : v < 0 ? "−" : "") + s + "%";
 }
 
 export function bps(v: number): string {

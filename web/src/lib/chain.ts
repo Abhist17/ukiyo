@@ -2,6 +2,7 @@ import { baseSepolia, foundry, unichainSepolia } from "viem/chains";
 import type { Chain } from "viem";
 import { formatEther, type Address } from "viem";
 import { DEPLOYMENTS } from "@/deployments";
+import { quoteToTick, sqrtToPrice, tickToQuote } from "./math";
 
 /** A deployment written by script/DeployUkiyo.s.sol. */
 export interface Deployment {
@@ -62,19 +63,17 @@ export const MAX_SQRT = 1461446703485210103287273052203988822378723970341n;
 
 /** tUSD per tBTC from the pool's sqrt price. */
 export function priceOf(sqrtPriceX96: bigint): number {
-  const p = (Number(sqrtPriceX96) / 2 ** 96) ** 2;
-  return BTC_IS_0 ? p : 1 / p;
+  return sqrtToPrice(sqrtPriceX96, BTC_IS_0);
 }
 
 /** Tick of a tUSD-per-tBTC price, in the pool's orientation. */
 export function priceToTick(usdPerBtc: number): number {
-  return Math.floor(Math.log(BTC_IS_0 ? usdPerBtc : 1 / usdPerBtc) / Math.log(1.0001));
+  return quoteToTick(usdPerBtc, BTC_IS_0);
 }
 
 /** tUSD per tBTC at a tick. */
 export function tickToPrice(tick: number): number {
-  const p = 1.0001 ** tick;
-  return BTC_IS_0 ? p : 1 / p;
+  return tickToQuote(tick, BTC_IS_0);
 }
 
 /** Split a (token0, token1) pair into (btc, usd). */

@@ -97,15 +97,14 @@ contract DeployUkiyo is Script {
             : AddressConstants.getPoolManagerAddress(block.chainid);
 
         // tUSD must sort after tBTC so it is token1: the hook books Edge in token1, so Edge reads in dollars.
-        d.btc = new MockERC20{salt: 0}("Ukiyo Test BTC", "tBTC", 18);
-        bytes32 usdSalt = _usdSalt(address(d.btc));
-        d.usd = new MockERC20{salt: usdSalt}("Ukiyo Test USD", "tUSD", 18);
+        d.btc = MockERC20(_create2(bytes32(0), _tokenInitCode("Ukiyo Test BTC", "tBTC")));
+        d.usd = MockERC20(_create2(_usdSalt(address(d.btc)), _tokenInitCode("Ukiyo Test USD", "tUSD")));
 
         // The hook's address must carry its permission flags in its low bits.
         bytes memory args = abi.encode(IPoolManager(d.manager), c.deployer, c.threshold);
         (address target, bytes32 salt) =
             HookMiner.find(CREATE2_DEPLOYER, HOOK_FLAGS, type(UkiyoHook).creationCode, args);
-        d.hook = new UkiyoHook{salt: salt}(IPoolManager(d.manager), c.deployer, c.threshold);
+        d.hook = UkiyoHook(_create2(salt, abi.encodePacked(type(UkiyoHook).creationCode, args)));
         require(address(d.hook) == target, "hook address mismatch");
 
         bool btcIs0 = address(d.btc) < address(d.usd);
@@ -155,10 +154,24 @@ contract DeployUkiyo is Script {
         }
     }
 
+    /// @notice Deploy through the CREATE2 deployer proxy explicitly. `new X{salt: ...}` in a script is routed through
+    ///         it on some chains and sent from the broadcaster on others (Unichain Sepolia), which would move the
+    ///         address away from the one HookMiner mined; calling the proxy makes the address the same everywhere.
+    function _create2(bytes32 salt, bytes memory initCode) internal returns (address deployed) {
+        (bool ok, bytes memory ret) = CREATE2_DEPLOYER.call(abi.encodePacked(salt, initCode));
+        require(ok && ret.length == 20, "create2 failed");
+        deployed = address(bytes20(ret));
+        require(deployed.code.length != 0, "create2 deployed nothing");
+    }
+
+    /// @notice Creation code of a test token.
+    function _tokenInitCode(string memory name, string memory symbol) internal pure returns (bytes memory) {
+        return abi.encodePacked(type(MockERC20).creationCode, abi.encode(name, symbol, uint8(18)));
+    }
+
     /// @notice First CREATE2 salt that puts tUSD at a higher address than tBTC.
     function _usdSalt(address btc) internal pure returns (bytes32 salt) {
-        bytes32 initHash =
-            keccak256(abi.encodePacked(type(MockERC20).creationCode, abi.encode("Ukiyo Test USD", "tUSD", uint8(18))));
+        bytes32 initHash = keccak256(_tokenInitCode("Ukiyo Test USD", "tUSD"));
         for (uint256 i;; ++i) {
             salt = bytes32(i);
             if (vm.computeCreate2Address(salt, initHash, CREATE2_DEPLOYER) > btc) return salt;

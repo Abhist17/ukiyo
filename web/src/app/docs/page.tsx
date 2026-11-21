@@ -70,7 +70,7 @@ console.log("Edge", formatEther(edge), "= user fees", formatEther(l.userFees),
 
 const LOCAL = `
 git clone --recurse-submodules ${REPO} && cd ukiyo
-forge test                                   # 62 tests
+forge test                                   # 67 tests
 anvil --block-time 2                         # in another terminal
 EPOCH=120 forge script script/DeployUkiyo.s.sol --rpc-url http://127.0.0.1:8545 --broadcast \\
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80   # anvil's public dev key
@@ -165,6 +165,7 @@ export default function Docs() {
                 <tr><td><code>settleEpoch()</code></td><td>anyone, after <code>epochEndsAt()</code></td><td>Collects fees, books the epoch&apos;s Edge (bond, fee), pays redemptions, mints deposits, redeploys</td></tr>
                 <tr><td><code>claimRedemption(e)</code>, <code>claimRefund()</code></td><td>user</td><td>Withdraws payouts and the part of a deposit that did not fit the vault&apos;s mix</td></tr>
                 <tr><td><code>rebalance(lo, hi)</code></td><td>curator</td><td>Moves the range; removed liquidity always returns to the vault</td></tr>
+                <tr><td><code>rebalanceWithSwap(lo, hi, zeroForOne, amountIn)</code></td><td>curator</td><td>The same, after swapping idle tokens into the new range&apos;s mix; price move capped at 1%, booked as arbitrage</td></tr>
               </tbody>
             </table>
             <p>Deposits buy the same share of every token the vault holds (no oracle), and a new depositor must bring at least 0.01% of the vault&apos;s holdings of one token, so dust cannot fill the 32-slot queue.</p>

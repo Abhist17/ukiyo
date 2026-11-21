@@ -15,7 +15,7 @@ What each actor can and cannot do to the hook ([`UkiyoHook`](src/UkiyoHook.sol))
 | Actor | Can | Cannot |
 | --- | --- | --- |
 | Hook owner | Open sleeves (≤ 8), hand each to a manager once, lower `priorityFeeThreshold` at once or queue a raise (2-day delay) | Touch a sleeve after hand-over (`setSleeveManager` is one-way), move any vault's tokens |
-| Curator | Move its sleeve's range (`rebalance`), post and withdraw its bond, set its LVR budget | Take depositors' tokens (removed liquidity always returns to the vault), withdraw bond before the next settlement, change the budget for the current epoch, raise the fee above its immutable value |
+| Curator | Move its sleeve's range (`rebalance`, or `rebalanceWithSwap` with a swap bounded to a 1% price move), post and withdraw its bond, set its LVR budget | Take depositors' tokens (removed liquidity always returns to the vault), withdraw bond before the next settlement, change the budget for the current epoch, raise the fee above its immutable value |
 | Depositor | Request deposits and redemptions, cancel an unsettled deposit, claim payouts and refunds, settle a finished epoch | Enter or leave mid-epoch, claim more than its pro-rata share |
 | Swapper or arbitrageur | Trade in the pool, choose its priority fee | Add or remove liquidity (the pool is hook-exclusive; `beforeAddLiquidity` and `beforeRemoveLiquidity` reject everyone but the hook) |
 | Anyone | Call `settleEpoch` once an epoch is over | Settle early |
@@ -30,6 +30,8 @@ What each actor can and cannot do to the hook ([`UkiyoHook`](src/UkiyoHook.sol))
 | Owner raises the threshold so every swap counts as user flow, inflating every curator's Edge and fees | A raise waits `THRESHOLD_RAISE_DELAY` (2 days, longer than any epoch), so depositors can leave first; lowering (stricter) applies at once (`test_thresholdRaisesWaitAndLoweringIsImmediate`) | The owner still chooses the threshold; a malicious owner can raise it after the delay |
 | Same-block round trips farm the impact credit | Impact is credited per block from the block's close, net, so a same-block round trip earns nothing (`test_sameBlockRoundTripEarnsNoImpact`) | None known |
 | A curator dodges arbitrage loss by changing range just before a move | The hook anchors a re-shaped sleeve at the current price | Bounded to one block per change for that sleeve; each rebalance costs ~384k gas |
+| A curator trades its own vault's tokens with no tip so the hook credits its sleeve with the swap's fee and impact | Swaps sent by a sleeve manager are always arbitrage (`isSleeveManager`; `test_vaultSwapIsBookedAsArbitrage`) | None known |
+| A curator uses `rebalanceWithSwap` to push the price and hurt other sleeves' Edge | The swap's price limit caps the move at 1%, and the vault pays the swap's fee and impact itself | A manager swap that leads a block becomes the mark, so others are charged for that move; bounded and costly |
 | Rounding overstates Edge | Losses round up, credits and fees round down; `edgePerShare` floors | None known |
 
 ### Vault funds

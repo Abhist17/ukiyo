@@ -142,7 +142,7 @@ export default function Home() {
             <div><b>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>
             <div><b>6 / 6</b><span>curators in the true order</span></div>
             <div><b>0</b><span>oracles or keepers</span></div>
-            <div><b>62</b><span>tests, 10,000 fuzz runs each</span></div>
+            <div><b>67</b><span>tests, 10,000 fuzz runs each</span></div>
           </div>
         </div>
       </section>

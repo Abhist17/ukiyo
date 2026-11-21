@@ -95,6 +95,7 @@ back in. Removals pay the caller, so an owner who could re-point the manager cou
 | `settleEpoch()` | anyone, after `epochLength` | Collects the sleeve's fees, pays redemptions, mints deposits, deploys idle tokens, and records the Edge the sleeve earned that epoch |
 | `claimRedemption(epoch)`, `claimRefund()` | user | Withdraws redemption payouts and the parts of deposits that did not fit |
 | `rebalance(tickLower, tickUpper)` | curator only | Moves the range and redeploys; the hook anchors the new range at the current price |
+| `rebalanceWithSwap(tickLower, tickUpper, zeroForOne, amountIn)` | curator only | The same, after swapping idle tokens into the mix the new range needs. The swap moves the price at most 1% (a bigger order fills partially), and the hook books it as arbitrage because the vault is a sleeve manager, so a curator can never credit its own Edge by trading |
 
 - **Epochs.** Entries and exits settle in batches at the boundary, so the share price is fixed within an epoch. The
   Edge recorded for an epoch belongs to exactly the shares that held it, and no one can enter just before fees are
@@ -166,21 +167,21 @@ recomputing anything, so the site and the backtest always agree.
 
 ## Live deployment: Unichain Sepolia
 
-Deployed at block 68,392,689 with [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) (transactions in
+Deployed at block 68,398,948 with [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) (transactions in
 [`broadcast/`](broadcast/DeployUkiyo.s.sol/1301/run-latest.json)). The replay bot keeps it trading; the app reads it
-straight from the public RPC.
+straight from the public RPC. The test tokens sit at fixed CREATE2 addresses, so they carry over between deployments.
 
 | Contract | Address |
 | --- | --- |
-| Hook (`UkiyoHook`) | [`0xB2e6Ce049A3682B7dA2895E4AcF3371df21FaaC0`](https://sepolia.uniscan.xyz/address/0xB2e6Ce049A3682B7dA2895E4AcF3371df21FaaC0) |
+| Hook (`UkiyoHook`) | [`0xBc12a5Ec673BC47A591f8F7AB3565212fC63eAc0`](https://sepolia.uniscan.xyz/address/0xBc12a5Ec673BC47A591f8F7AB3565212fC63eAc0) |
 | PoolManager (canonical v4) | [`0x00B036B58a818B1BC34d502D3fE730Db729e62AC`](https://sepolia.uniscan.xyz/address/0x00B036B58a818B1BC34d502D3fE730Db729e62AC) |
-| Swap router (`PoolSwapTest`) | [`0x56b8aeCD24347d6284d4FE20F82B2f7d859a2415`](https://sepolia.uniscan.xyz/address/0x56b8aeCD24347d6284d4FE20F82B2f7d859a2415) |
+| Swap router (`PoolSwapTest`) | [`0xB1577bCD8a095FC5bE2aB019a58B5B6Dbc91cEbF`](https://sepolia.uniscan.xyz/address/0xB1577bCD8a095FC5bE2aB019a58B5B6Dbc91cEbF) |
 | tBTC (test token, token0) | [`0xe4134d0bA75d9cc0a22dac01a11f589559434148`](https://sepolia.uniscan.xyz/address/0xe4134d0bA75d9cc0a22dac01a11f589559434148) |
 | tUSD (test token, token1) | [`0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db`](https://sepolia.uniscan.xyz/address/0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db) |
-| Vault: Passive Wide (`ukWIDE`) | [`0x8F25E8A4525BB58551cC39fe852B02ddC251D194`](https://sepolia.uniscan.xyz/address/0x8F25E8A4525BB58551cC39fe852B02ddC251D194) |
-| Vault: Passive Mid (`ukMID`) | [`0x0964299F3b856D672C3aa1f41FFb958772BE21dd`](https://sepolia.uniscan.xyz/address/0x0964299F3b856D672C3aa1f41FFb958772BE21dd) |
-| Vault: Tight Chaser (`ukTIGHT`) | [`0x4EeeBD0397FE7F006b682DB8D084497167464942`](https://sepolia.uniscan.xyz/address/0x4EeeBD0397FE7F006b682DB8D084497167464942) |
-| Vault: Vol Adaptive (`ukVOL`) | [`0x18519b318C16b1Eee03607BcBBce53dCF666CE52`](https://sepolia.uniscan.xyz/address/0x18519b318C16b1Eee03607BcBBce53dCF666CE52) |
+| Vault: Passive Wide (`ukWIDE`) | [`0xb9EED30aB216F53376A761131443702B706Fe630`](https://sepolia.uniscan.xyz/address/0xb9EED30aB216F53376A761131443702B706Fe630) |
+| Vault: Passive Mid (`ukMID`) | [`0xD6Cf20dBf55a07a478ABB531e2A6eD854D47Ab64`](https://sepolia.uniscan.xyz/address/0xD6Cf20dBf55a07a478ABB531e2A6eD854D47Ab64) |
+| Vault: Tight Chaser (`ukTIGHT`) | [`0x06b289dFA1D090abB9dc1A691bcab77567c0C840`](https://sepolia.uniscan.xyz/address/0x06b289dFA1D090abB9dc1A691bcab77567c0C840) |
+| Vault: Vol Adaptive (`ukVOL`) | [`0x193Bf4981329708166573d78fe96D5fF72fC36fF`](https://sepolia.uniscan.xyz/address/0x193Bf4981329708166573d78fe96D5fF72fC36fF) |
 
 Demo settings: 5 bps pool, classifier threshold 0.01 gwei, 10-minute epochs, 10% performance fee, curator bonds of
 $10K–$50K with a 25 bps per-epoch LVR budget. Test tokens only.
@@ -245,7 +246,7 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
-forge test                          # 62 tests: unit, fuzz, integration, differential
+forge test                          # 67 tests: unit, fuzz, integration, differential
 forge test --match-test test_gas -vv
 ```
 
@@ -275,8 +276,8 @@ python export_web.py                       # refresh the site's data after exper
 | Path | Gas |
 | --- | --- |
 | First swap of a block, two sleeves (mark, impact credit, loss charge, fee attribution), including the router and PoolManager | ~277k |
-| Later swap in the same block, two sleeves | ~175k |
-| `requestDeposit` | ~176k |
+| Later swap in the same block, two sleeves | ~177k |
+| `requestDeposit` (including the minimum-deposit check) | ~189k |
 | `settleEpoch` with a performance fee, one redemption and one deposit | ~567k |
 | `rebalance` (remove, move range, redeploy) | ~384k |
 
@@ -291,7 +292,7 @@ measured a later swap twice.
 | Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees`, and a curator benchmark built on it that separates skill from market direction |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Curators are paid a performance fee only on Edge above a high-water mark and bonded against LVR, so depositors pay for skill and are compensated for losses beyond what was promised; any curator vault can adopt the meter as its scoring and fee standard |
-| Functionality (15%) | 62 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
+| Functionality (15%) | 67 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 
@@ -321,8 +322,9 @@ No partner integrations.
 - On real Unichain flow the priority fee does not separate informed from uninformed swaps: even at 1 wei, ~7% of
   informed swaps are called user flow (see the measurement above). The threshold is owner-set.
 - Vaults support ERC-20 pairs only: no native ETH, no fee-on-transfer or rebasing tokens.
-- A vault never swaps. When a new range needs a different token mix, what does not fit stays idle; it still counts
-  toward every share but earns no fees until the price or the range lets it in.
+- A vault swaps only through `rebalanceWithSwap`, bounded to a 1% price move. Its swaps are booked as arbitrage,
+  so if one is the first swap of a block, other sleeves are charged for a move they did not lose to (conservative,
+  and bounded by the 1% limit and the curator's own swap cost).
 - At most 32 new depositors per epoch, to bound the settlement loop, each bringing at least 0.01% of the vault's
   holdings of one token; the rest wait for the next epoch.
 - The LVR bond is judged on the epoch's Edge, which includes market volatility the curator does not control; the budget

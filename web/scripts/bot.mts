@@ -31,6 +31,8 @@ import { hookAbi, vaultAbi, tokenAbi, routerAbi } from "../src/lib/abi.ts";
 
 const RPC = process.env.RPC_URL ?? "http://127.0.0.1:8545";
 const STEP_MS = Number(process.env.STEP_MS ?? 4000);
+// median user trade in USD; keep it a few percent of the pool's active depth (the backtest's pool is deeper)
+const USER_MEDIAN_USD = Number(process.env.USER_MEDIAN_USD ?? 45_000);
 // anvil's first four well-known dev keys; never used anywhere but a local chain
 const ANVIL_KEYS: Hex[] = [
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
@@ -132,7 +134,8 @@ function swap(w: (typeof users)[number], zeroForOne: boolean, amountIn: bigint, 
     ],
     maxPriorityFeePerGas: tip,
     maxFeePerGas: maxFee,
-    gas: 600_000n,
+    // estimated, not fixed: a large swap crossing several sleeve boundaries needs more, and a swap that would revert
+    // fails here with its reason instead of on-chain
   });
 }
 
@@ -162,7 +165,7 @@ async function step(h: number) {
   // 2. user flow, no priority fee
   const n = Math.floor(Math.random() * 4);
   for (let i = 0; i < n; i++) {
-    const usd = Math.min(lognormal(45_000, 0.9), 400_000); // ~5% of TVL per hour, like the 5 bps backtest
+    const usd = Math.min(lognormal(USER_MEDIAN_USD, 0.9), USER_MEDIAN_USD * 9);
     const sellBtc = Math.random() < 0.5;
     const zeroForOne = sellBtc === btcIs0;
     const amount = parseEther((sellBtc ? usd / ext : usd).toFixed(12));
@@ -171,7 +174,9 @@ async function step(h: number) {
   const hashes = await Promise.all(pending);
   const receipts = await Promise.all(hashes.map((hash) => pc.waitForTransactionReceipt({ hash })));
   const blocks = new Set(receipts.map((r) => r.blockNumber));
-  const failed = receipts.filter((r) => r.status !== "success").length;
+  const failedTx = receipts.filter((r) => r.status !== "success");
+  const failed = failedTx.length;
+  for (const r of failedTx) console.log(`  reverted ${r.transactionHash} gas ${r.gasUsed}`);
 
   // 3. curators
   const after = await poolPrice();

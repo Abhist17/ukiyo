@@ -1,8 +1,10 @@
-<p align="center"><img src="assets/logo.svg" width="96" alt="Ukiyo logo: a vermilion sun over a navy sea, drawn as a coin"></p>
+<p align="center"><img src="assets/logo.svg" width="96" alt="Ukiyo logo: a wave splitting a coin into a vermilion sun and a navy sea"></p>
 
 <h1 align="center">Ukiyo 浮世</h1>
 
 <p align="center"><b>An honest scoreboard for curated liquidity on Uniswap v4.</b></p>
+
+![Ukiyo: rank liquidity curators by skill, not by luck](assets/hero.png)
 
 Ukiyo is a Uniswap v4 hook that measures, block by block and with no oracle, how much skill each liquidity curator
 actually has. Every curator runs a hook-owned position ("sleeve") in a hook-exclusive pool, and the hook keeps a

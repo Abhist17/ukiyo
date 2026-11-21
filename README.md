@@ -67,8 +67,11 @@ down, so rounding can only understate Edge.
 | File | Role |
 | --- | --- |
 | [`src/UkiyoHook.sol`](src/UkiyoHook.sol) | The meter: hook-exclusive pool, sleeves (≤ 8), per-block marks, priority-fee classifier, per-sleeve ledgers, `edge(sleeveId)` |
-| [`src/UkiyoVault.sol`](src/UkiyoVault.sol) | One curator vault per sleeve: two-token deposits, ERC-20 shares, entries and exits settled at epoch boundaries, curator rebalancing |
+| [`src/UkiyoVault.sol`](src/UkiyoVault.sol) | One curator vault per sleeve: two-token deposits, ERC-20 shares, entries and exits settled at epoch boundaries, curator rebalancing, performance fee on Edge above a high-water mark, LVR bond |
 | [`src/libraries/EdgeMath.sol`](src/libraries/EdgeMath.sol) | Closed forms: rebalancing loss, impact credit, per-sleeve swap fee, clipping |
+| [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) | Demo deployment: test tokens, mined hook address, 5 bps pool, four bonded curator vaults, swap router |
+| [`web/scripts/bot.mts`](web/scripts/bot.mts) | Replay bot: BTC/USD 2024 through the pool, priority-fee arbitrage, user flow, live curators, epoch settlement |
+| [`THREAT_MODEL.md`](THREAT_MODEL.md) | Every actor's powers, the mitigations, and what is still open |
 
 ### Key lines
 
@@ -261,10 +264,10 @@ measured a later swap twice.
 
 | Criterion (weight) | Where to look |
 | --- | --- |
-| Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees` and a curator benchmark built on it; no other hook measures curator skill against LVR |
+| Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees`, and a curator benchmark built on it that separates skill from market direction |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
-| Impact (20%) | Any curator vault can adopt the meter as its scoring and performance-fee standard |
-| Functionality (15%) | 62 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults; backtest on real prices; classifier measured on real Unichain swaps |
+| Impact (20%) | Curators are paid a performance fee only on Edge above a high-water mark and bonded against LVR, so depositors pay for skill and are compensated for losses beyond what was promised; any curator vault can adopt the meter as its scoring and fee standard |
+| Functionality (15%) | 62 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 
@@ -275,13 +278,15 @@ No partner integrations.
 ## Status
 
 - [x] Backtest: equation derived and validated (synthetic + BTC/USD 2024)
-- [x] Phase 1: LVR meter hook, EdgeMath, tests
+- [x] Hook: LVR meter, EdgeMath, priority-fee classifier (raises of the threshold delayed 2 days)
 - [x] Priority fees measured on real Unichain swaps; ex-post classifiers backtested
-- [x] Phase 2a: curator vaults (two-token deposits, ERC-20 shares, epoch settlement)
-- [x] Scoreboard site on backtest data, logo
-- [x] App: live vault ranking, deposits and redemptions, swaps, analytics, faucet; deploy script and replay bot (local)
-- [ ] Unichain Sepolia deployment
-- [x] Phase 2b: Edge-based performance fee with a high-water mark, LVR bond
+- [x] Curator vaults: two-token deposits, ERC-20 shares, epoch settlement, performance fee with a high-water mark,
+      LVR bond
+- [x] App (vaults, trade, analytics, faucet), landing page, research page; deploy script and replay bot, running
+      end to end on a local chain
+- [x] Threat model, gas numbers
+- [ ] Unichain Sepolia deployment and hosted site
+- [ ] Demo video
 
 ### Known limitations
 

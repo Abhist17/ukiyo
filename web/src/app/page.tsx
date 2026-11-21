@@ -4,6 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { HeroRank } from "@/components/landing/HeroRank";
 import { HeroLive } from "@/components/landing/HeroLive";
 import { LiveNumbers } from "@/components/landing/LiveNumbers";
+import { BlockExplainer } from "@/components/landing/BlockExplainer";
 import { RankShift } from "@/components/RankShift";
 import { error } from "@/lib/data";
 import { CHAIN } from "@/lib/chain";
@@ -152,6 +153,7 @@ export default function Home() {
             Every curator runs a sleeve in the same hook-exclusive pool. The hook keeps a ledger per sleeve, block by
             block.
           </p>
+          <BlockExplainer />
           <div className="l-steps">
             {STEPS.map((s) => (
               <div className="l-step" key={s.k}>

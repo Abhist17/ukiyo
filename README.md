@@ -344,6 +344,11 @@ No partner integrations.
 - Liquidity and range changes take effect immediately, so the block in which a sleeve changes is measured with its new
   shape (bounded to one block for one sleeve).
 - Fee attribution assumes no protocol fee.
+- Each block is marked after its first swap, whatever its class, so an arbitrage the classifier misses at the top of a
+  block is still charged. The cost: when a user swap opens a block, its own price impact is charged as arbitrage loss
+  once arbitrage reverts it. Edge errs low, never high, by about the square of that swap's impact, which is negligible
+  for trades that are small against the pool's depth. (The testnet bot gives its users a 0.4% slippage limit for this
+  reason; with uncapped swaps on thin liquidity it understated every curator.)
 - On real Unichain flow the priority fee does not separate informed from uninformed swaps: even at 1 wei, ~7% of
   informed swaps are called user flow (see the measurement above). The threshold is owner-set.
 - Vaults support ERC-20 pairs only: no native ETH, no fee-on-transfer or rebasing tokens.

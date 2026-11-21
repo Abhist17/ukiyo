@@ -246,7 +246,7 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
-forge test                          # 67 tests: unit, fuzz, integration, differential
+forge test                          # 67 tests + 4 stateful invariants: unit, fuzz, integration, differential
 forge test --match-test test_gas -vv
 ```
 
@@ -270,6 +270,7 @@ python export_web.py                       # refresh the site's data after exper
 | `EdgeMath.t.sol` | The closed-form loss equals the exact holding-vs-position gap from Uniswap's amount math (1,024 fuzz runs); fee attribution matches `SqrtPriceMath`; credits never exceed losses |
 | `UkiyoHook.t.sol` | Against the canonical PoolManager bytecode: pool binding, hook-only liquidity, access control, classification, fee attribution matching the PoolManager's own fee growth, marks, loss, impact, round-trip immunity, anchors on range change, `sleeveAmounts` equal to a full withdrawal to the wei, and a differential fuzz test where every ledger field equals an independent replay of random blocks of swaps |
 | `UkiyoVault.t.sol` | On a 5 bps pool: one-time hand-over that locks the owner out, epoch gating, first-mint shares and dead shares, proportional deposits with refunds, pro-rata redemptions, fees reaching shareholders, per-epoch Edge snapshots, curator-only rebalancing, the depositor cap, the performance fee (a share of positive Edge, nothing on losses, losses earned back before any fee), the LVR bond (overshoot paid to depositors, capped at the bond, budgets deferred one epoch, withdrawals only after the penalty), and fuzz tests that a deposit-redeem round trip never pays out more than went in and that the vault always holds what it owes plus the bond |
+| `invariant/UkiyoVault.invariant.t.sol` | Stateful: random sequences of deposits, cancels, redemptions, claims, user and arbitrage swaps, settlements, rebalances (with and without a swap) and bond moves, by four depositors and the curator. After every step the vault holds all it owes (escrows, refunds, payouts, bond), every share sits with a known holder, escrowed redemption shares are all there, and the high-water mark never goes negative |
 
 ### Gas (measured inside one test transaction, `forge test --match-test test_gas -vv`)
 
@@ -292,7 +293,7 @@ measured a later swap twice.
 | Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees`, and a curator benchmark built on it that separates skill from market direction |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Curators are paid a performance fee only on Edge above a high-water mark and bonded against LVR, so depositors pay for skill and are compensated for losses beyond what was promised; any curator vault can adopt the meter as its scoring and fee standard |
-| Functionality (15%) | 67 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
+| Functionality (15%) | 67 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 4 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 

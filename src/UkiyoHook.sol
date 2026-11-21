@@ -113,6 +113,18 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @notice Swaps paying at least this priority fee per gas (wei) are classified as arbitrage.
     uint256 public priorityFeeThreshold;
 
+    /// @notice How long a raise of `priorityFeeThreshold` waits before it applies. Raising the threshold lets more swaps
+    ///         count as user flow, which raises every curator's Edge and performance fee, so depositors get time to
+    ///         leave first. It should exceed every vault's epoch length. Lowering applies at once: it only makes the
+    ///         classifier stricter.
+    uint256 public constant THRESHOLD_RAISE_DELAY = 2 days;
+
+    /// @notice A queued raise of the threshold, applicable from `pendingThresholdAt`.
+    uint256 public pendingThreshold;
+
+    /// @notice When `pendingThreshold` can be applied; 0 when nothing is queued.
+    uint256 public pendingThresholdAt;
+
     /// @notice Block number of the last block that had a swap, i.e. the block whose post-arbitrage mark is stored.
     uint256 public lastMarkedBlock;
 
@@ -161,6 +173,9 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @notice Emitted when the arbitrage threshold changes.
     event PriorityFeeThresholdSet(uint256 threshold);
 
+    /// @notice A raise of the threshold was queued; it can be applied from `applicableAt`.
+    event PriorityFeeThresholdQueued(uint256 threshold, uint256 applicableAt);
+
     /// @notice Emitted when a sleeve is handed to its manager for good.
     event SleeveManagerSet(uint256 indexed sleeveId, address indexed manager);
 
@@ -194,6 +209,12 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @notice The caller may not move this sleeve's liquidity or range.
     error NotSleeveController(uint256 sleeveId, address caller);
 
+    /// @notice No raise of the threshold is queued.
+    error NoPendingThreshold();
+
+    /// @notice The queued threshold applies from `applicableAt`.
+    error ThresholdNotReady(uint256 applicableAt);
+
     // ---------------------------------------------------------------------------------------------------------------
     // Construction and admin
     // ---------------------------------------------------------------------------------------------------------------
@@ -226,10 +247,34 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         });
     }
 
-    /// @notice Set the priority fee per gas at or above which a swap counts as arbitrage.
+    /// @notice Set the priority fee per gas at or above which a swap counts as arbitrage. Lowering it applies at once
+    ///         and cancels any queued raise; raising it is queued for `THRESHOLD_RAISE_DELAY`.
     /// @param threshold New threshold in wei per gas.
     function setPriorityFeeThreshold(uint256 threshold) external onlyOwner {
+        if (threshold <= priorityFeeThreshold) {
+            priorityFeeThreshold = threshold;
+            pendingThreshold = 0;
+            pendingThresholdAt = 0;
+            emit PriorityFeeThresholdSet(threshold);
+            return;
+        }
+        uint256 at = block.timestamp + THRESHOLD_RAISE_DELAY;
+        pendingThreshold = threshold;
+        pendingThresholdAt = at;
+        emit PriorityFeeThresholdQueued(threshold, at);
+    }
+
+    /// @notice Apply a queued raise of the threshold once its delay has passed. Anyone can call it.
+    function applyPriorityFeeThreshold() external {
+        uint256 at = pendingThresholdAt;
+        if (at == 0) revert NoPendingThreshold();
+        // a delay of days; a few seconds of timestamp skew do not matter
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp < at) revert ThresholdNotReady(at);
+        uint256 threshold = pendingThreshold;
         priorityFeeThreshold = threshold;
+        pendingThreshold = 0;
+        pendingThresholdAt = 0;
         emit PriorityFeeThresholdSet(threshold);
     }
 

@@ -174,6 +174,29 @@ contract UkiyoHookTest is Test {
         vm.stopPrank();
     }
 
+    function test_thresholdRaisesWaitAndLoweringIsImmediate() public {
+        uint256 t0 = hook.priorityFeeThreshold();
+        hook.setPriorityFeeThreshold(t0 * 10);
+        assertEq(hook.priorityFeeThreshold(), t0, "a raise does not apply at once");
+        uint256 at = hook.pendingThresholdAt();
+        assertEq(at, block.timestamp + hook.THRESHOLD_RAISE_DELAY());
+        vm.expectRevert(abi.encodeWithSelector(UkiyoHook.ThresholdNotReady.selector, at));
+        hook.applyPriorityFeeThreshold();
+
+        vm.warp(at);
+        vm.prank(stranger); // anyone can apply it once due
+        hook.applyPriorityFeeThreshold();
+        assertEq(hook.priorityFeeThreshold(), t0 * 10);
+        vm.expectRevert(UkiyoHook.NoPendingThreshold.selector);
+        hook.applyPriorityFeeThreshold();
+
+        // lowering is immediate and cancels a queued raise
+        hook.setPriorityFeeThreshold(t0 * 100);
+        hook.setPriorityFeeThreshold(1);
+        assertEq(hook.priorityFeeThreshold(), 1);
+        assertEq(hook.pendingThresholdAt(), 0, "queued raise cancelled");
+    }
+
     function test_rejectsBadRanges() public {
         vm.expectRevert(abi.encodeWithSelector(UkiyoHook.InvalidRange.selector, int24(60), int24(-60)));
         hook.openSleeve(stranger, 60, -60);

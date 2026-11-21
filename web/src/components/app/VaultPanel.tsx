@@ -3,14 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, usePublicClient, useReadContracts } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
-import { formatEther, maxUint256, parseAbiItem, parseEther } from "viem";
+import { formatEther, maxUint256, parseEther } from "viem";
 import { tokenAbi, vaultAbi } from "@/lib/abi";
 import { CHAIN, DEP, join, num, split, usd } from "@/lib/chain";
 import type { Live, VaultLive } from "@/lib/useUkiyo";
 import { useTx } from "./useTx";
+import { useVaultLogs } from "@/lib/logs";
 import { TxStatus } from "./TxStatus";
 
-const REDEEM_EVENT = parseAbiItem("event RedeemRequested(uint256 indexed epoch, address indexed user, uint256 shares)");
 
 /** Seconds until `to` (chain time), ticking every second between polls. */
 function useCountdown(to: number, chainNow: number) {
@@ -61,14 +61,29 @@ export function VaultPanel({ v, live }: { v: VaultLive; live: Live }) {
   const myValue = shares && v.supply > 0n ? (Number(shares) / Number(v.supply)) * v.tvl : 0;
 
   // epochs this user asked to redeem in, and still holds a claim for
+  const vlogs = useVaultLogs();
+  const askedIn = [
+    ...new Set(
+      (vlogs.data?.logs ?? [])
+        .filter(
+          (l) =>
+            l.name === "RedeemRequested" &&
+            l.vault.toLowerCase() === v.address.toLowerCase() &&
+            (l.args.user as string).toLowerCase() === (address ?? "").toLowerCase(),
+        )
+        .map((l) => l.args.epoch as bigint)
+        .filter((e) => e < BigInt(v.epoch)),
+    ),
+  ];
   const claims = useQuery({
-    queryKey: ["claims", v.address, address, live.block.toString()],
-    enabled: ready && !!pc,
+    queryKey: ["claims", v.address, address, askedIn.join(","), live.block.toString()],
+    enabled: ready && !!pc && askedIn.length > 0,
     queryFn: async () => {
-      const logs = await pc!.getLogs({ address: v.address, event: REDEEM_EVENT, args: { user: address }, fromBlock: BigInt(DEP!.deployBlock) });
-      const epochs = [...new Set(logs.map((l) => l.args.epoch!))].filter((e) => e < BigInt(v.epoch));
       const open = await Promise.all(
-        epochs.map(async (e) => ({ e, s: await pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "pendingRedeem", args: [e, address!] }) })),
+        askedIn.map(async (e) => ({
+          e,
+          s: await pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "pendingRedeem", args: [e, address!] }),
+        })),
       );
       return open.filter((o) => o.s > 0n);
     },

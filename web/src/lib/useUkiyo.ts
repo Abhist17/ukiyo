@@ -5,6 +5,7 @@ import { usePublicClient } from "wagmi";
 import { encodeAbiParameters, keccak256, parseAbiItem, type Address } from "viem";
 import { hookAbi, vaultAbi } from "./abi";
 import { CHAIN, DEP, POOL_KEY, num, priceOf, split } from "./chain";
+import { useVaultLogs } from "./logs";
 
 /** Live state of one curator vault and its sleeve, money in tUSD. */
 export interface VaultLive {
@@ -76,9 +77,6 @@ const SWAP_EVENT = parseAbiItem(
   "event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)",
 );
 const CLASSIFIED_EVENT = parseAbiItem("event SwapClassified(uint256 indexed blockNumber, bool isArbitrage, uint256 priorityFeePerGas)");
-const SETTLED_EVENT = parseAbiItem(
-  "event EpochSettled(uint256 indexed epoch, int256 edgeDelta, uint256 sharesMinted, uint256 sharesBurned, uint128 liquidityAfter)",
-);
 
 /** Hook, pool and vault state, refreshed every few seconds. */
 export function useLive() {
@@ -161,7 +159,7 @@ export function useLive() {
 }
 
 /** The latest swaps in the pool, each tagged arbitrage or user as the hook classified it. */
-export function useTape(lookback = 400n) {
+export function useTape(lookback = 900n) { // the public RPC serves at most 1,000 blocks of logs per call
   const pc = usePublicClient({ chainId: CHAIN.id });
   return useQuery({
     queryKey: ["tape", CHAIN.id],
@@ -198,55 +196,35 @@ export function useTape(lookback = 400n) {
 
 /** Cumulative Edge per vault at every settled epoch, from EpochSettled logs. */
 export function useEdgeHistory() {
-  const pc = usePublicClient({ chainId: CHAIN.id });
-  return useQuery({
-    queryKey: ["edge-history", CHAIN.id],
-    enabled: !!pc && !!DEP,
-    refetchInterval: POLL_MS * 4,
-    queryFn: async () => {
-      const d = DEP!;
-      const logs = await Promise.all(
-        d.vaults.map((v) =>
-          pc!.getLogs({ address: v.address, event: SETTLED_EVENT, fromBlock: BigInt(d.deployBlock), toBlock: "latest" }),
-        ),
-      );
-      return logs.map((ls) => {
-        let run = 0;
-        return [{ block: BigInt(d.deployBlock), edge: 0 }].concat(
-          ls.map((l) => ({ block: l.blockNumber, edge: (run += num(l.args.edgeDelta!)) })),
-        );
-      });
-    },
+  const q = useVaultLogs();
+  const d = DEP;
+  if (!q.data || !d) return { data: undefined };
+  const data = d.vaults.map((v) => {
+    let run = 0;
+    return [{ block: BigInt(d.deployBlock), edge: 0 }].concat(
+      q.data.logs
+        .filter((l) => l.name === "EpochSettled" && l.vault.toLowerCase() === v.address.toLowerCase())
+        .map((l) => ({ block: l.block, edge: (run += num(l.args.edgeDelta as bigint)) })),
+    );
   });
+  return { data };
 }
-
-const FEE_EVENT = parseAbiItem("event PerformanceFee(uint256 indexed epoch, uint256 shares, uint256 value)");
-const PENALTY_EVENT = parseAbiItem("event BondPenalty(uint256 indexed epoch, uint256 overshoot, uint256 penalty)");
 
 /** What each curator has been paid in performance fees and has paid back in bond penalties, from vault events. */
 export function useAccountability() {
-  const pc = usePublicClient({ chainId: CHAIN.id });
-  return useQuery({
-    queryKey: ["accountability", CHAIN.id],
-    enabled: !!pc && !!DEP,
-    refetchInterval: POLL_MS * 4,
-    queryFn: async () => {
-      const d = DEP!;
-      const from = BigInt(d.deployBlock);
-      return Promise.all(
-        d.vaults.map(async (v) => {
-          const [fees, pens] = await Promise.all([
-            pc!.getLogs({ address: v.address, event: FEE_EVENT, fromBlock: from, toBlock: "latest" }),
-            pc!.getLogs({ address: v.address, event: PENALTY_EVENT, fromBlock: from, toBlock: "latest" }),
-          ]);
-          return {
-            feesPaid: fees.reduce((a, l) => a + num(l.args.value!), 0),
-            feeEpochs: fees.length,
-            penalties: pens.reduce((a, l) => a + num(l.args.penalty!), 0),
-            penaltyEpochs: pens.length,
-          };
-        }),
-      );
-    },
+  const q = useVaultLogs();
+  const d = DEP;
+  if (!q.data || !d) return { data: undefined };
+  const data = d.vaults.map((v) => {
+    const mine = q.data.logs.filter((l) => l.vault.toLowerCase() === v.address.toLowerCase());
+    const fees = mine.filter((l) => l.name === "PerformanceFee");
+    const pens = mine.filter((l) => l.name === "BondPenalty");
+    return {
+      feesPaid: fees.reduce((a, l) => a + num(l.args.value as bigint), 0),
+      feeEpochs: fees.length,
+      penalties: pens.reduce((a, l) => a + num(l.args.penalty as bigint), 0),
+      penaltyEpochs: pens.length,
+    };
   });
+  return { data };
 }

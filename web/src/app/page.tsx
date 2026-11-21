@@ -3,7 +3,7 @@ import { Logo, Wordmark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { HeroRank } from "@/components/landing/HeroRank";
 import { LiveNumbers } from "@/components/landing/LiveNumbers";
-import { Motion, ScrollWords } from "@/components/landing/Motion";
+import { Marquee, Motion } from "@/components/landing/Motion";
 import { BlockExplainer } from "@/components/landing/BlockExplainer";
 import { RankShift } from "@/components/RankShift";
 import { error } from "@/lib/data";
@@ -119,10 +119,8 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="l-pin" data-scroll="view">
-        <div className="l-pin-in">
-          <ScrollWords text="Fee APR rewards volume. Beat-HODL rewards the market." accent="Edge rewards skill." />
-        </div>
+      <section className="l-marquee" data-scroll="view">
+        <Marquee quiet="Fee APR rewards volume · Beat-HODL rewards the market" loud="Edge rewards skill" />
       </section>
 
       <LiveNumbers />

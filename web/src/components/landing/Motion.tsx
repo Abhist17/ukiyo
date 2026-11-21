@@ -92,18 +92,16 @@ export function Motion() {
   return null;
 }
 
-/** A sentence whose words light up one by one as the reader scrolls through a pinned section. */
-export function ScrollWords({ text, accent }: { text: string; accent: string }) {
-  const words = text.split(" ");
-  const lit = accent.split(" ");
-  const all = [...words, ...lit];
+/**
+ * Two huge lines of type that slide sideways in opposite directions as the page scrolls past (the section's `--p`).
+ * Each line repeats its phrase so it never runs out of text while it moves.
+ */
+export function Marquee({ quiet, loud }: { quiet: string; loud: string }) {
+  const row = (t: string) => Array.from({ length: 4 }, () => `${t} · `).join("");
   return (
-    <p className="sw-text" aria-label={`${text} ${accent}`}>
-      {all.map((w, i) => (
-        <span key={i} aria-hidden className={i >= words.length ? "sw-accent" : undefined} style={{ ["--i" as string]: (i + 1) / all.length }}>
-          {w}{" "}
-        </span>
-      ))}
-    </p>
+    <div className="mq" aria-label={`${quiet}. ${loud}.`} role="img">
+      <div className="mq-row mq-quiet" aria-hidden>{row(quiet)}</div>
+      <div className="mq-row mq-loud" aria-hidden>{row(loud)}</div>
+    </div>
   );
 }

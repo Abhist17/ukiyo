@@ -1370,42 +1370,37 @@
   }
 }
 
-/* The statement: no pinning, it scrolls past normally and its words light up in turn on the way to the middle of the
-   screen (--p is the section's progress across the viewport, so it is fully lit by the time it is centred) */
-.l-pin {
-  position: relative;
+/* Kinetic type: two lines slide in opposite directions while the section crosses the screen (--p from 0 to 1) */
+.l-marquee {
   background: #0d1224;
-  color: #f6f5f1;
+  overflow: hidden;
+  padding: clamp(56px, 10vh, 104px) 0;
 }
 
-.l-pin-in {
+.mq {
   display: grid;
-  place-items: center;
-  padding: clamp(96px, 18vh, 180px) 16px;
-}
-
-.sw-text {
-  margin: 0;
-  max-width: 16ch;
-  text-align: center;
-  font-size: clamp(38px, 7vw, 92px);
+  gap: 0.05em;
+  font-size: clamp(52px, 9.5vw, 136px);
   font-weight: 700;
   letter-spacing: -0.05em;
-  line-height: 1.04;
+  line-height: 1;
 }
 
-.sw-text span {
-  /* 0 until the scroll reaches this word, 1 just after */
-  --w: clamp(0, calc(((var(--p) - 0.12) * 2.7 - var(--i)) * 9 + 1), 1);
-  display: inline-block;
-  white-space: pre;
-  opacity: calc(0.14 + 0.86 * var(--w));
-  transform: translateY(calc((1 - var(--w)) * 0.22em));
-  filter: blur(calc((1 - var(--w)) * 5px));
+.mq-row {
+  white-space: nowrap;
+  width: max-content;
+  will-change: transform;
 }
 
-.sw-text .sw-accent {
+.mq-quiet {
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(238, 240, 248, 0.38);
+  transform: translateX(calc(-8% - var(--p, 0.5) * 22%));
+}
+
+.mq-loud {
   color: #f0583d;
+  transform: translateX(calc(-34% + var(--p, 0.5) * 22%));
 }
 
 /* The proof section grows from an inset card toward the full width as it arrives */

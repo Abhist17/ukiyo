@@ -3,6 +3,7 @@ out/
 cache/
 broadcast/*/31337/
 broadcast/**/dry-run/
+broadcast/**/*.lock
 .forge-snapshots/
 # Env
 .env

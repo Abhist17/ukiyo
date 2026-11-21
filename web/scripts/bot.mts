@@ -33,6 +33,9 @@ const RPC = process.env.RPC_URL ?? "http://127.0.0.1:8545";
 const STEP_MS = Number(process.env.STEP_MS ?? 4000);
 // median user trade in USD; keep it a few percent of the pool's active depth (the backtest's pool is deeper)
 const USER_MEDIAN_USD = Number(process.env.USER_MEDIAN_USD ?? 45_000);
+// most user swaps per step; with the median size this sets user volume per replayed hour (the backtest ran ~10% of
+// the pool's value an hour, which is what keeps curators' fees in the same league as their arbitrage loss)
+const USER_SWAPS_MAX = Number(process.env.USER_SWAPS_MAX ?? 3);
 // anvil's first four well-known dev keys; never used anywhere but a local chain
 const ANVIL_KEYS: Hex[] = [
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
@@ -121,7 +124,7 @@ async function setup() {
 }
 
 /** Swap through the test router. Exact input; `limit` caps how far the price moves. */
-function swap(w: (typeof users)[number], zeroForOne: boolean, amountIn: bigint, limit: bigint, tip: bigint, maxFee: bigint) {
+function swap(w: (typeof users)[number], zeroForOne: boolean, amountIn: bigint, limit: bigint, tip: bigint, maxFee: bigint, nonce?: number) {
   return w.writeContract({
     address: router,
     abi: routerAbi,
@@ -134,8 +137,10 @@ function swap(w: (typeof users)[number], zeroForOne: boolean, amountIn: bigint, 
     ],
     maxPriorityFeePerGas: tip,
     maxFeePerGas: maxFee,
-    // estimated, not fixed: a large swap crossing several sleeve boundaries needs more, and a swap that would revert
-    // fails here with its reason instead of on-chain
+    nonce,
+    // Fixed and generous: an estimate is taken against the state before this block's arbitrage, but the swap runs
+    // after it and may pay for the hook's per-block bookkeeping, so estimates ran out of gas. Only gas used is paid.
+    gas: 1_500_000n,
   });
 }
 
@@ -162,14 +167,17 @@ async function step(h: number) {
     arb = `${up ? "↑" : "↓"} ${p.toFixed(0)}→${target.toFixed(0)}`;
   }
 
-  // 2. user flow, no priority fee
-  const n = Math.floor(Math.random() * 4);
+  // 2. user flow, no priority fee: USER_SWAPS_MAX swaps spread over the trader wallets, nonces assigned up front so
+  // every swap goes out at once and lands in the arbitrage's block
+  const n = 1 + Math.floor(Math.random() * USER_SWAPS_MAX);
+  const nonces = await Promise.all(users.map((u) => pc.getTransactionCount({ address: u.account.address, blockTag: "pending" })));
   for (let i = 0; i < n; i++) {
     const usd = Math.min(lognormal(USER_MEDIAN_USD, 0.9), USER_MEDIAN_USD * 9);
     const sellBtc = Math.random() < 0.5;
     const zeroForOne = sellBtc === btcIs0;
     const amount = parseEther((sellBtc ? usd / ext : usd).toFixed(12));
-    pending.push(swap(users[i], zeroForOne, amount, zeroForOne ? MIN_SQRT : MAX_SQRT, 0n, base * 2n + 1n));
+    const w = i % users.length;
+    pending.push(swap(users[w], zeroForOne, amount, zeroForOne ? MIN_SQRT : MAX_SQRT, 0n, base * 2n + 1n, nonces[w]++));
   }
   const hashes = await Promise.all(pending);
   const receipts = await Promise.all(hashes.map((hash) => pc.waitForTransactionReceipt({ hash })));

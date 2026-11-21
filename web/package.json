@@ -10,7 +10,8 @@
     "bot": "node scripts/bot.mts",
     "bot:testnet": "node --env-file=../.env scripts/bot.mts",
     "test": "node --experimental-strip-types --no-warnings --test \"test/*.test.mts\"",
-    "logo": "node --experimental-strip-types --no-warnings scripts/logo.mts"
+    "logo": "node --experimental-strip-types --no-warnings scripts/logo.mts",
+    "deploy:vercel": "bash scripts/deploy-vercel.sh"
   },
   "dependencies": {
     "@tanstack/react-query": "5.106.0",

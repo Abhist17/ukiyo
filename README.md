@@ -142,6 +142,8 @@ loss beats what users paid by more than it promised.
 
 ## App and demo
 
+**Live site: [ukiyo-ochre.vercel.app](https://ukiyo-ochre.vercel.app)** (Unichain Sepolia, test tokens; `npm run deploy:vercel` in `web/` republishes it).
+
 ![The Ukiyo app: curator vaults ranked live by Edge, with deposit and redeem](assets/app.png)
 
 [`web/`](web/) is the frontend (Next.js, exported as a static site; wallet via wagmi and viem):

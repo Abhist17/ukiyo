@@ -86,6 +86,7 @@ export default function Home() {
             <a href="#how" className="hide-sm">How it works</a>
             <a href="#proof" className="hide-sm">Proof</a>
             <a href="#faq" className="hide-sm">FAQ</a>
+            <Link href="/docs/" className="hide-sm">Docs</Link>
             <a href={REPO} className="hide-sm" target="_blank" rel="noreferrer">GitHub ↗</a>
             <ThemeToggle />
             <Link className="btn sm" href="/app/">Launch app</Link>

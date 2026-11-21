@@ -1125,3 +1125,14 @@ table.acct {
     transform: translateY(6px);
   }
 }
+
+.docs-link {
+  font-size: 14px;
+  color: var(--ink-2);
+  text-decoration: none;
+  padding: 6px 8px;
+}
+
+.docs-link:hover {
+  color: var(--ink);
+}

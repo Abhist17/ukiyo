@@ -97,6 +97,7 @@ export function DApp() {
             ))}
           </nav>
           <div className="app-actions">
+            <Link href="/docs/" className="docs-link hide-sm">Docs</Link>
             <span className="chain-pill hide-sm"><span className="dot live" />{CHAIN_LABEL}</span>
             <ThemeToggle />
             <ConnectButton />

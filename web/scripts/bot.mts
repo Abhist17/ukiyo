@@ -217,7 +217,7 @@ async function curate(h: number, tick: number, price: number) {
     // how far the price is outside the range, in ticks (0 inside)
     const away = tick < s.tickLower ? s.tickLower - tick : tick >= s.tickUpper ? tick - s.tickUpper + 1 : 0;
     const halfNow = (s.tickUpper - s.tickLower) / 2;
-    const outside = away > halfNow; // a one-sided range sits just outside the price on purpose
+    const outside = away > halfNow; // well outside: more than half the range's width away
     let half = 0;
     if (v.name.includes("Tight") && outside) half = 150;
     if (v.name.includes("Vol") && h % 24 === 0 && h >= 168) {
@@ -229,26 +229,33 @@ async function curate(h: number, tick: number, price: number) {
       if (outside || Math.abs(want - halfNow) / halfNow > 0.3) half = want;
     }
     if (half) {
-      // A vault never swaps. If it holds mostly one token (the price ran through its range), a symmetric range could
-      // not be funded, so it places the range on the side that token can fill, like a range order, and waits for the
-      // price to come back to it.
+      // Recentre around the price. If the vault holds mostly one token (the price ran through its range), swap the
+      // excess toward a 50/50 value mix first with rebalanceWithSwap: the vault's swap is capped at a 1% price move
+      // and booked as arbitrage by the hook, so it never flatters this curator's Edge.
       const [h0, h1] = await pc.readContract({ address: v.address, abi: vaultAbi, functionName: "holdings" });
       const [b, u] = btcIs0 ? [h0, h1] : [h1, h0];
       const btcVal = Number(formatEther(b)) * price;
       const usdVal = Number(formatEther(u));
-      const usdShare = usdVal / (btcVal + usdVal || 1);
-      // token1 funds ranges below the current tick, token0 ranges above it
-      const onlyToken1 = btcIs0 ? usdShare > 0.85 : usdShare < 0.15;
-      const onlyToken0 = btcIs0 ? usdShare < 0.15 : usdShare > 0.85;
-      let lo = floorT(tick - half);
-      let hi = ceilT(tick + half);
-      if (onlyToken1) [lo, hi] = [floorT(tick) - 2 * half, floorT(tick)];
-      if (onlyToken0) [lo, hi] = [ceilT(tick + 1), ceilT(tick + 1) + 2 * half];
-      lo = floorT(lo);
-      hi = ceilT(hi);
-      await pc.waitForTransactionReceipt({
-        hash: await main.writeContract({ address: v.address, abi: vaultAbi, functionName: "rebalance", args: [lo, hi], gas: 3_000_000n }),
-      });
+      const total = btcVal + usdVal;
+      const lo = floorT(tick - half);
+      const hi = ceilT(tick + half);
+      let hash: Hex;
+      if (total > 0 && Math.abs(usdVal / total - 0.5) > 0.15) {
+        const sellUsd = usdVal > btcVal;
+        const excessUsd = Math.abs(usdVal - btcVal) / 2;
+        const amountIn = parseEther((sellUsd ? excessUsd : excessUsd / price).toFixed(12));
+        const zeroForOne = sellUsd ? !btcIs0 : btcIs0; // selling token0 = zeroForOne
+        hash = await main.writeContract({
+          address: v.address,
+          abi: vaultAbi,
+          functionName: "rebalanceWithSwap",
+          args: [lo, hi, zeroForOne, amountIn],
+          gas: 4_000_000n,
+        });
+      } else {
+        hash = await main.writeContract({ address: v.address, abi: vaultAbi, functionName: "rebalance", args: [lo, hi], gas: 3_000_000n });
+      }
+      await pc.waitForTransactionReceipt({ hash });
       console.log(`  ${v.name} rebalanced to [${lo}, ${hi}]`);
     }
   }

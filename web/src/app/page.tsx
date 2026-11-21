@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { HeroBoard } from "@/components/landing/HeroBoard";
+import { LiveNumbers } from "@/components/landing/LiveNumbers";
 import { RankShift } from "@/components/RankShift";
 import { error, pairAgreement, total } from "@/lib/data";
 import { CHAIN } from "@/lib/chain";
@@ -130,6 +131,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <LiveNumbers />
 
       <section className="l-numbers">
         <div className="wrap">

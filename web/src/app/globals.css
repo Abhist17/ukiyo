@@ -987,3 +987,91 @@ details.table-view th {
   color: var(--paper);
   background: var(--ink);
 }
+
+/* Edge breakdown in the vault panel: fees and impact stack up, arbitrage loss comes off the top, Edge is what is left */
+.eb {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: var(--card-2);
+}
+
+.eb-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.eb-head span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.eb-head b {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.eb-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  padding: 3px 0;
+}
+
+.eb-label {
+  color: var(--ink-2);
+}
+
+.eb-track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  overflow: hidden;
+}
+
+.eb-track i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 4px;
+  transition: left 600ms, width 600ms;
+}
+
+.eb-track i.pos {
+  background: var(--good);
+}
+
+.eb-track i.neg {
+  background: var(--bad);
+}
+
+.eb-val {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 92px;
+}
+
+.eb-off {
+  color: var(--muted);
+}
+
+.eb-off .eb-val {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.eb .pos {
+  color: var(--good);
+}
+
+.eb .neg {
+  color: var(--bad);
+}

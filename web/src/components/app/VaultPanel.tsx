@@ -11,6 +11,7 @@ import { useTx } from "./useTx";
 import { useVaultLogs } from "@/lib/logs";
 import { TxStatus } from "./TxStatus";
 import { VaultHistory } from "./VaultHistory";
+import { EdgeBreakdown } from "./EdgeBreakdown";
 
 
 /** Seconds until `to` (chain time), ticking every second between polls. */
@@ -130,6 +131,8 @@ export function VaultPanel({ v, live }: { v: VaultLive; live: Live }) {
           </div>
         </div>
       </div>
+
+      <EdgeBreakdown v={v} />
 
       <div className="mini-stats">
         <div><span>This epoch&apos;s Edge</span><b className={v.epochEdge >= 0 ? "pos" : "neg"}>{usd(v.epochEdge)}</b></div>

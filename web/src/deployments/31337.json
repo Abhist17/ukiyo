@@ -5,7 +5,7 @@
   "deployBlock": 1,
   "epochLength": 60,
   "fee": 500,
-  "hook": "0xc2a69fb5ec4a6B203e3eC44D6B9090f6791aaAc0",
+  "hook": "0x7B3cD22C65D2a24971C04838CE41C657BC462ac0",
   "performanceFeeBps": 1000,
   "poolManager": "0x5BD46E1FaA70f83F5d6A5d69F7e63429332101d2",
   "router": "0x4c5859f0F772848b2D91F1D83E2Fe57935348029",

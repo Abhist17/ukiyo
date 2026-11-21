@@ -3,7 +3,10 @@
 # Needs a .env with PRIVATE_KEY and RPC_URL (see .env.example). Afterwards: cd web && npm run bot:testnet
 set -euo pipefail
 cd "$(dirname "$0")"
+# values set on the command line (e.g. THRESHOLD=2000000 ./deploy-testnet.sh) win over .env
+caller_env="$(export -p)"
 set -a; source .env; set +a
+eval "$caller_env"
 : "${PRIVATE_KEY:?set PRIVATE_KEY in .env}"
 : "${RPC_URL:?set RPC_URL in .env}"
 export PATH="$HOME/.foundry/bin:$PATH"
@@ -18,7 +21,7 @@ esac
 echo "chain:    $name ($chain)"
 echo "deployer: $me"
 echo "balance:  $(cast balance "$me" --rpc-url "$RPC_URL" --ether) ETH"
-EPOCH="${EPOCH:-600}" forge script script/DeployUkiyo.s.sol --rpc-url "$RPC_URL" --broadcast --slow \
+EPOCH="${EPOCH:-600}" THRESHOLD="${THRESHOLD:-2000000}" forge script script/DeployUkiyo.s.sol --rpc-url "$RPC_URL" --broadcast --slow \
   --private-key "$PRIVATE_KEY"
 (cd web && node scripts/abi.mjs)
 echo "deployed; addresses in web/src/deployments/$chain.json. Next: cd web && npm run bot:testnet"

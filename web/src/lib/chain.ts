@@ -96,3 +96,6 @@ export function compactUsd(v: number): string {
 }
 
 export const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+
+/** A wei amount in gwei with three significant digits, so testnet-sized tips (thousandths of a gwei) never print 0.00. */
+export const gwei = (wei: bigint) => `${(Number(wei) / 1e9).toLocaleString("en-US", { maximumSignificantDigits: 3 })} gwei`;

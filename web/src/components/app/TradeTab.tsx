@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useAccount, usePublicClient, useReadContracts } from "wagmi";
 import { formatEther, maxUint256, parseEther } from "viem";
 import { routerAbi, tokenAbi } from "@/lib/abi";
-import { BTC_IS_0, CHAIN, DEP, MAX_SQRT, MIN_SQRT, POOL_KEY, usd } from "@/lib/chain";
+import { BTC_IS_0, CHAIN, DEP, MAX_SQRT, MIN_SQRT, POOL_KEY, usd, gwei } from "@/lib/chain";
 import type { Live } from "@/lib/useUkiyo";
 import { useTx } from "./useTx";
 import { TxStatus } from "./TxStatus";
@@ -105,13 +105,13 @@ export function TradeTab({ live }: { live: Live }) {
         </label>
         <div className="route">
           <span>Pool price</span><b>{usd(live.price, 2)}</b>
-          <span>Priority fee</span><b>{asArb ? `${(Number(tip) / 1e9).toFixed(2)} gwei` : "none"}</b>
+          <span>Priority fee</span><b>{asArb ? gwei(tip) : "none"}</b>
           <span>Hook will classify</span>
           <b><span className={`badge ${asArb ? "arb" : "user"}`}>{asArb ? "ARBITRAGE" : "USER FLOW"}</span></b>
         </div>
         <label className="check">
           <input type="checkbox" checked={asArb} onChange={(e) => setAsArb(e.target.checked)} />
-          Bid a priority fee like an arbitrageur (≥ {(Number(live.threshold) / 1e9).toFixed(2)} gwei). The hook will
+          Bid a priority fee like an arbitrageur (≥ {gwei(live.threshold)}). The hook will
           book this swap&apos;s fee as arbitrage, so it will not count toward any curator&apos;s Edge.
         </label>
         <button className="btn wide" disabled={!ready || amountIn === 0n || amountIn > (bal ?? 0n) || tx.state.status === "pending"} onClick={swap}>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Live } from "@/lib/useUkiyo";
 import { useAccountability, useEdgeHistory, useTape } from "@/lib/useUkiyo";
-import { DEP, EXPLORER, compactUsd, short, usd } from "@/lib/chain";
+import { DEP, EXPLORER, compactUsd, short, usd, gwei } from "@/lib/chain";
 import { ClassifierNow, FlowChart } from "./FlowChart";
 
 function useWidth(): [React.RefObject<HTMLDivElement | null>, number] {
@@ -153,7 +153,7 @@ export function AnalyticsTab({ live }: { live: Live }) {
             </div>
             <ClassifierNow live={live} rows={rows} />
             <p className="fine">
-              A swap is arbitrage when its priority fee is at least {(Number(live.threshold) / 1e9).toFixed(2)} gwei. Under
+              A swap is arbitrage when its priority fee is at least {gwei(live.threshold)}. Under
               priority ordering arbitrageurs bid for the top of the block; when in doubt the hook calls a swap arbitrage,
               so Edge is never overstated.
             </p>

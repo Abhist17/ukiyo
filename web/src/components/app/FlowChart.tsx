@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Live, TapeRow } from "@/lib/useUkiyo";
-import { compactUsd, usd } from "@/lib/chain";
+import { compactUsd, usd, gwei } from "@/lib/chain";
 
 function useWidth(): [React.RefObject<HTMLDivElement | null>, number] {
   const ref = useRef<HTMLDivElement>(null);
@@ -16,7 +16,6 @@ function useWidth(): [React.RefObject<HTMLDivElement | null>, number] {
   return [ref, w];
 }
 
-const gwei = (wei: bigint) => `${(Number(wei) / 1e9).toFixed(Number(wei) < 1e7 ? 4 : 3)} gwei`;
 
 /** Every recent swap as a bar (size, coloured by how the hook classified it), with the pool price beneath. */
 export function FlowChart({ rows }: { rows: TapeRow[] }) {

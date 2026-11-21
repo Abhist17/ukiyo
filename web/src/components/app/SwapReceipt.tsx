@@ -2,7 +2,7 @@
 
 import { decodeEventLog, parseAbiItem, type TransactionReceipt } from "viem";
 import { hookAbi } from "@/lib/abi";
-import { DEP, EXPLORER, num, priceOf, split, tickToPrice, usd } from "@/lib/chain";
+import { DEP, EXPLORER, num, priceOf, split, tickToPrice, usd, gwei } from "@/lib/chain";
 import type { Live } from "@/lib/useUkiyo";
 
 const SWAP_EVENT = parseAbiItem(
@@ -67,7 +67,7 @@ export function SwapReceipt({ receipt, intent, live, onClose }: { receipt: Trans
       <dl className="receipt-rows">
         <div><dt>Traded</dt><dd>{intent.sellBtc ? `${btc.toFixed(4)} tBTC → ${usd(usdAmt)}` : `${usd(usdAmt)} → ${btc.toFixed(4)} tBTC`}</dd></div>
         <div><dt>Price</dt><dd>{usd(intent.priceBefore)} → {usd(after)} <span className={moveBps >= 0 ? "pos" : "neg"}>({moveBps >= 0 ? "+" : ""}{moveBps.toFixed(1)} bps)</span></dd></div>
-        <div><dt>Priority fee</dt><dd>{(Number(cls.priorityFeePerGas) / 1e9).toFixed(4)} gwei {arb ? "≥" : "<"} threshold {(Number(live.threshold) / 1e9).toFixed(2)}</dd></div>
+        <div><dt>Priority fee</dt><dd>{gwei(cls.priorityFeePerGas)} {arb ? "≥" : "<"} threshold {gwei(live.threshold)}</dd></div>
         <div><dt>LP fee you paid</dt><dd>{usd(feeUsd, 2)}</dd></div>
       </dl>
       <p className="receipt-verdict">

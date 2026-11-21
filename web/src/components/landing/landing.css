@@ -834,19 +834,17 @@
 }
 
 .landing .l-hero h1 {
-  font-family: var(--display);
-  font-weight: 400;
   color: #f6f5f1;
-  letter-spacing: -0.025em;
-  font-size: clamp(52px, 9vw, 116px);
-  line-height: 0.95;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  font-size: clamp(46px, 8vw, 100px);
+  line-height: 0.98;
   margin: 0 auto 22px;
 }
 
 .l-hero h1 em {
-  font-style: italic;
+  font-style: normal;
   color: #f0583d;
-  margin-right: -0.05em;
 }
 
 .l-hero .l-lede {
@@ -878,24 +876,6 @@
 
 .hero-card .hr-card {
   box-shadow: 0 -30px 120px -40px rgba(240, 88, 61, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-/* Section headings and the big numbers share the hero's serif */
-.landing .l-section h2,
-.landing .l-dark h2,
-.landing .l-final h2,
-.landing .l-numbers .big-num,
-.landing .l-live .big-num {
-  font-family: var(--display);
-  font-weight: 400;
-  letter-spacing: -0.02em;
-}
-
-.landing .l-section h2,
-.landing .l-dark h2,
-.landing .l-final h2 {
-  font-size: clamp(36px, 5vw, 58px);
-  line-height: 1.02;
 }
 
 /* Rank-by card */

@@ -10,6 +10,7 @@ import type { Live, VaultLive } from "@/lib/useUkiyo";
 import { useTx } from "./useTx";
 import { useVaultLogs } from "@/lib/logs";
 import { TxStatus } from "./TxStatus";
+import { VaultHistory } from "./VaultHistory";
 
 
 /** Seconds until `to` (chain time), ticking every second between polls. */
@@ -223,6 +224,7 @@ export function VaultPanel({ v, live }: { v: VaultLive; live: Live }) {
         </button>
       )}
       <TxStatus s={tx.state} />
+      <VaultHistory v={v} />
     </aside>
   );
 }

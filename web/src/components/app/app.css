@@ -1136,3 +1136,38 @@ table.acct {
 .docs-link:hover {
   color: var(--ink);
 }
+
+/* Track record */
+.history {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.history ol {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.history li {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.h-icon {
+  color: var(--muted);
+  text-align: center;
+}
+
+.h-block {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}

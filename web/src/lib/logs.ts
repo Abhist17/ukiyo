@@ -16,13 +16,14 @@ const VAULT_EVENTS = parseAbi([
   "event BondPenalty(uint256 indexed epoch, uint256 overshoot, uint256 penalty)",
   "event RedeemRequested(uint256 indexed epoch, address indexed user, uint256 shares)",
   "event SwapClassified(uint256 indexed blockNumber, bool isArbitrage, uint256 priorityFeePerGas)",
+  "event Rebalanced(int24 tickLower, int24 tickUpper, uint128 liquidity)",
 ]);
 
 /** One vault event, flattened to what the app reads. */
 export interface VaultLog {
   vault: Address;
   block: bigint;
-  name: "EpochSettled" | "PerformanceFee" | "BondPenalty" | "RedeemRequested" | "SwapClassified";
+  name: "EpochSettled" | "PerformanceFee" | "BondPenalty" | "RedeemRequested" | "SwapClassified" | "Rebalanced";
   args: Record<string, unknown>;
 }
 

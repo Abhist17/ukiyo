@@ -214,7 +214,7 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
-forge test                          # 59 tests: unit, fuzz, integration, differential
+forge test                          # 62 tests: unit, fuzz, integration, differential
 forge test --match-test test_gas -vv
 ```
 
@@ -260,7 +260,7 @@ measured a later swap twice.
 | Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees` and a curator benchmark built on it; no other hook measures curator skill against LVR |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Any curator vault can adopt the meter as its scoring and performance-fee standard |
-| Functionality (15%) | 59 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults; backtest on real prices; classifier measured on real Unichain swaps |
+| Functionality (15%) | 62 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test; curator vaults; backtest on real prices; classifier measured on real Unichain swaps |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 
@@ -289,12 +289,13 @@ No partner integrations.
 - Vaults support ERC-20 pairs only: no native ETH, no fee-on-transfer or rebasing tokens.
 - A vault never swaps. When a new range needs a different token mix, what does not fit stays idle; it still counts
   toward every share but earns no fees until the price or the range lets it in.
-- At most 32 new depositors per epoch, to bound the settlement loop; the rest wait for the next epoch.
+- At most 32 new depositors per epoch, to bound the settlement loop, each bringing at least 0.01% of the vault's
+  holdings of one token; the rest wait for the next epoch.
 - The LVR bond is judged on the epoch's Edge, which includes market volatility the curator does not control; the budget
   is how a curator prices that in. The post-arbitrage mark used for valuation is set by the first swap of a block, so
   a curator who outbids arbitrageurs for that slot can still nudge it, at the cost of trading against every sleeve.
-- The hook owner sets the classifier threshold, and with it every curator's Edge and fee: use a timelock or make it
-  immutable before real funds. 32 dust deposits can fill an epoch's queue. See [`THREAT_MODEL.md`](THREAT_MODEL.md).
+- The hook owner sets the classifier threshold, and with it every curator's Edge and fee. Raising it waits 2 days so
+  depositors can leave first; lowering (stricter) applies at once. See [`THREAT_MODEL.md`](THREAT_MODEL.md).
 - Unaudited hackathon code.
 
 ## Credits

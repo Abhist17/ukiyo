@@ -267,6 +267,17 @@ contract UkiyoVaultTest is Test {
         _assertSolvent();
     }
 
+    function test_dustCannotFillTheQueue() public {
+        _deposit(alice, 10e18, 10e18);
+        _settle();
+        (uint256 h0, uint256 h1) = vault.holdings();
+        vm.prank(bob);
+        vm.expectRevert(UkiyoVault.DepositTooSmall.selector);
+        vault.requestDeposit(h0 / 20_000, h1 / 20_000);
+        _deposit(bob, h0 / 10_000 + 1, 0); // one token at the minimum is enough
+        _deposit(bob, 1, 1); // and an open request can be topped up by any amount
+    }
+
     function test_cancelReturnsTheEscrow() public {
         _deposit(alice, 1e18, 2e18);
         uint256 before1 = token1.balanceOf(alice);
@@ -575,6 +586,7 @@ contract UkiyoVaultTest is Test {
     function testFuzz_alwaysSolvent(uint96 a, uint96 b, uint96 swapIn, bool dir, uint8 redeemPct) public {
         a = uint96(bound(a, 1e15, 1e24));
         b = uint96(bound(b, 1e15, 1e24));
+        b = uint96(bound(b, uint256(a) / 5000 + 1, 1e24)); // above the minimum deposit
         swapIn = uint96(bound(swapIn, 1, a / 4 + 1));
         redeemPct = uint8(bound(redeemPct, 1, 100));
 

@@ -66,6 +66,10 @@ contract UkiyoVault is ERC20, ReentrancyGuard {
     /// @notice Most deposit requests one epoch accepts. Settlement loops over them, so the cap bounds its gas.
     uint256 public constant MAX_DEPOSITORS_PER_EPOCH = 32;
 
+    /// @notice A new depositor must bring at least this fraction (bps) of the vault's holdings of one token. It stops
+    ///         dust requests from filling the epoch's `MAX_DEPOSITORS_PER_EPOCH` slots, without needing a price.
+    uint256 public constant MIN_DEPOSIT_BPS = 1;
+
     /// @notice Shares minted to a dead address on the first mint, so share price cannot be inflated from zero.
     uint256 public constant DEAD_SHARES = 1000;
 
@@ -229,6 +233,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard {
     /// @notice That epoch has not been settled yet.
     error EpochNotSettled(uint256 epoch);
 
+    /// @notice A new deposit request is below `MIN_DEPOSIT_BPS` of the vault's holdings in both tokens.
+    error DepositTooSmall();
+
     /// @notice A fee or budget is above its cap.
     error AboveCap(uint256 bps, uint256 cap);
 
@@ -289,6 +296,10 @@ contract UkiyoVault is ERC20, ReentrancyGuard {
         uint256 e = epoch;
         if (!_isDepositor[e][msg.sender]) {
             if (_depositors[e].length >= MAX_DEPOSITORS_PER_EPOCH) revert EpochFull();
+            (uint256 h0, uint256 h1) = holdings();
+            if (h0 + h1 != 0 && amount0 * 10_000 < h0 * MIN_DEPOSIT_BPS && amount1 * 10_000 < h1 * MIN_DEPOSIT_BPS) {
+                revert DepositTooSmall();
+            }
             _isDepositor[e][msg.sender] = true;
             _depositors[e].push(msg.sender);
         }

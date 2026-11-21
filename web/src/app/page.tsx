@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Logo, Wordmark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { HeroRank } from "@/components/landing/HeroRank";
+import { HeroSun } from "@/components/landing/HeroSun";
 import { HeroLive } from "@/components/landing/HeroLive";
 import { LiveNumbers } from "@/components/landing/LiveNumbers";
 import { BlockExplainer } from "@/components/landing/BlockExplainer";
@@ -95,34 +96,29 @@ export default function Home() {
       </header>
 
       <section className="l-hero">
-        <div className="hero-sun" aria-hidden />
-        <div className="hero-sea" aria-hidden />
         <div className="wrap hero-in">
-          <span className="pill dark">
-            <span className="dot live" /> Uniswap v4 hook · {CHAIN.id === 31337 ? "built for Unichain" : `live on ${CHAIN.name}`}
-          </span>
           <h1>
-            Rank liquidity curators
+            Rank curators
             <br />
-            by <em>skill</em>, not by luck
+            by <em>skill</em>, not luck
           </h1>
-          <p className="l-lede">
-            Fee APR rewards volume. Beat-HODL rewards the market. Ukiyo&apos;s hook measures what is left, on-chain and
-            with no oracle: <b>Edge</b>.
-          </p>
+          <p className="l-lede">An on-chain score for every Uniswap v4 liquidity curator.</p>
           <div className="l-cta">
             <Link className="btn primary" href="/app/">Launch app</Link>
-            <Link className="btn ghost-light" href="/research/">Read the research</Link>
+            <a className="btn ghost-light" href="#try">See it work</a>
           </div>
-          <div className="l-formula">
-            <b>Edge</b> = user fees + user price impact − arbitrage loss
-          </div>
+        </div>
+        <HeroSun />
+      </section>
 
-          <div className="l-stage">
-            <HeroLive side="left" />
-            <HeroRank />
-            <HeroLive side="right" />
+      <section className="l-try" id="try">
+        <div className="wrap l-try-in">
+          <div>
+            <h2>Same six curators. Three yardsticks.</h2>
+            <p className="l-sub">Only <b>Edge</b> puts them in their true order.</p>
+            <HeroLive />
           </div>
+          <HeroRank />
         </div>
       </section>
 

@@ -15,7 +15,6 @@
   --good: #1e8e5a;
   --bad: #d23c2a;
   --rank-grey: #c3c0b8;
-  --logo-sea: #11162b;
   --rank-bg: var(--card);
   --story-2: #3558a8;
   --grid: rgba(14, 19, 36, 0.07);
@@ -52,7 +51,6 @@
     --good: #3fcb86;
     --bad: #ff6b57;
     --rank-grey: #39415c;
-    --logo-sea: #f4efe6;
     --story-2: #7b9be8;
     --grid: rgba(238, 240, 248, 0.07);
     --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 40px -18px rgba(0, 0, 0, 0.7);
@@ -82,7 +80,6 @@
   --good: #3fcb86;
   --bad: #ff6b57;
   --rank-grey: #39415c;
-  --logo-sea: #f4efe6;
   --story-2: #7b9be8;
   --grid: rgba(238, 240, 248, 0.07);
   --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 40px -18px rgba(0, 0, 0, 0.7);

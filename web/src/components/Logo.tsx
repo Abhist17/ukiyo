@@ -1,10 +1,11 @@
 import { useId } from "react";
+import { LOGO } from "@/lib/logo";
 
 /**
  * The Ukiyo mark: one wave (a price path) splits a coin into the vermilion sun of the floating world and the sea.
- * The sea follows the theme (`--logo-sea`): navy on light backgrounds, cream on dark ones, so the mark never vanishes.
+ * Fixed colours from `lib/logo.ts`, so it is the same mark on every page, in both themes, and in the static files.
  */
-export function Logo({ size = 32, title = "Ukiyo", sea }: { size?: number; title?: string; sea?: string }) {
+export function Logo({ size = 32, title = "Ukiyo" }: { size?: number; title?: string }) {
   const clip = useId();
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={title}>
@@ -14,18 +15,20 @@ export function Logo({ size = 32, title = "Ukiyo", sea }: { size?: number; title
         </clipPath>
       </defs>
       <g clipPath={`url(#${clip})`}>
-        <rect width="64" height="64" fill="#E8452C" />
-        <path d="M-2 34 C10 24 22 24 32 32 C42 40 54 40 66 30 V66 H-2Z" fill={sea ?? "var(--logo-sea, #11162B)"} />
+        <rect width="64" height="64" fill={LOGO.sun} />
+        <path d={`${LOGO.wave} V66 H-2Z`} fill={LOGO.sea} />
+        <path d={LOGO.wave} fill="none" stroke={LOGO.cream} strokeWidth="3" strokeLinecap="round" />
       </g>
+      <circle cx="32" cy="32" r="30.5" fill="none" stroke={LOGO.cream} strokeOpacity="0.55" strokeWidth="1.5" />
     </svg>
   );
 }
 
 /** Mark plus the lowercase wordmark, whose i is dotted with a small sun. */
-export function Wordmark({ size = 28, sea }: { size?: number; sea?: string }) {
+export function Wordmark({ size = 28 }: { size?: number }) {
   return (
     <span className="wordmark" style={{ fontSize: size * 0.82 }}>
-      <Logo size={size} sea={sea} />
+      <Logo size={size} />
       <span className="wm-text" aria-label="ukiyo">
         uk<span className="wm-i" aria-hidden>ı</span>yo
       </span>

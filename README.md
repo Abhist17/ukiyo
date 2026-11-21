@@ -144,10 +144,14 @@ EPOCH=120 forge script script/DeployUkiyo.s.sol --rpc-url http://127.0.0.1:8545 
 cd web && npm ci && npm run abi && npm run bot      # leave running
 npm run dev                                         # http://localhost:3000/app
 
-# Unichain Sepolia (chain 1301, canonical v4 PoolManager)
-forge script script/DeployUkiyo.s.sol --rpc-url https://sepolia.unichain.org --broadcast --private-key $PRIVATE_KEY
-cd web && npm run abi && RPC_URL=https://sepolia.unichain.org PRIVATE_KEY=$PRIVATE_KEY STEP_MS=6000 npm run bot
+# Unichain Sepolia (chain 1301, canonical v4 PoolManager): cp .env.example .env, add a funded key, then
+./deploy-sepolia.sh                                 # deploys and writes web/src/deployments/1301.json
+cd web && npm run bot:sepolia                       # the replay bot, reading .env
 ```
+
+The site is a static export, so it can be hosted anywhere; [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
+publishes it to GitHub Pages on every push once the repository is public. It reads the chain straight from the public
+Unichain Sepolia RPC, with no backend.
 
 [`backtest/export_web.py`](backtest/export_web.py) copies the backtest's numbers into `web/src/data/` without
 recomputing anything, so the site and the backtest always agree.

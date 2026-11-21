@@ -31,11 +31,17 @@ import { hookAbi, vaultAbi, tokenAbi, routerAbi } from "../src/lib/abi.ts";
 
 const RPC = process.env.RPC_URL ?? "http://127.0.0.1:8545";
 const STEP_MS = Number(process.env.STEP_MS ?? 4000);
-// median user trade in USD; keep it a few percent of the pool's active depth (the backtest's pool is deeper)
-const USER_MEDIAN_USD = Number(process.env.USER_MEDIAN_USD ?? 45_000);
-// most user swaps per step; with the median size this sets user volume per replayed hour (the backtest ran ~10% of
-// the pool's value an hour, which is what keeps curators' fees in the same league as their arbitrage loss)
-const USER_SWAPS_MAX = Number(process.env.USER_SWAPS_MAX ?? 3);
+// median user trade in USD
+const USER_MEDIAN_USD = Number(process.env.USER_MEDIAN_USD ?? 30_000);
+// most user swaps per step; with the median size this sets user volume per replayed hour, ~4-5% of the pool's value as
+// in the backtest, where users (not arbitrageurs) pay most of the fees
+const USER_SWAPS_MAX = Number(process.env.USER_SWAPS_MAX ?? 8);
+// Users set a slippage limit like real traders: together they move the price at most this far from the post-arbitrage
+// price in either direction (a swap that would start past its limit simply reverts, as a real one would). This keeps
+// the test pool in the backtest's regime of small user trades. Without it, thin active liquidity let three swaps move
+// the price ~3.5% an hour, and whenever they spilled into a block of their own (Unichain makes one a second), the hook
+// rightly marked after the first of them and charged the reversal to the curators.
+const USER_MAX_MOVE_BPS = Number(process.env.USER_MAX_MOVE_BPS ?? 60);
 // anvil's first four well-known dev keys; never used anywhere but a local chain
 const ANVIL_KEYS: Hex[] = [
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
@@ -43,10 +49,11 @@ const ANVIL_KEYS: Hex[] = [
   "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a",
   "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6",
 ];
-const MIN_SQRT = 4295128740n;
-const MAX_SQRT = 1461446703485210103287273052203988822378723970341n;
 
-const pc = createPublicClient({ transport: http(RPC) });
+// Poll for receipts at about the block time (viem's default is 4 s; Unichain makes a block every second, and a step
+// waits for several receipts in turn).
+const POLL_MS = Number(process.env.POLL_MS ?? 750);
+const pc = createPublicClient({ transport: http(RPC), pollingInterval: POLL_MS });
 const chainId = await pc.getChainId();
 const chain = [unichainSepolia, baseSepolia].find((c) => c.id === chainId) ?? foundry;
 const dep = JSON.parse(readFileSync(new URL(`../src/deployments/${chainId}.json`, import.meta.url), "utf8"));
@@ -63,8 +70,8 @@ if (!mainKey) throw new Error("set PRIVATE_KEY");
 // Users need their own accounts so their swaps land in the same block as the arbitrage, ordered by priority fee.
 const userKeys: Hex[] =
   chainId === 31337 ? ANVIL_KEYS.slice(1) : [1, 2, 3].map((i) => keccak256(encodePacked(["bytes32", "uint256"], [mainKey, BigInt(i)])));
-const main = createWalletClient({ account: privateKeyToAccount(mainKey), chain, transport: http(RPC) });
-const users = userKeys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(RPC) }));
+const main = createWalletClient({ account: privateKeyToAccount(mainKey), chain, transport: http(RPC), pollingInterval: POLL_MS });
+const users = userKeys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(RPC), pollingInterval: POLL_MS }));
 
 const hook = dep.hook as Address;
 const router = dep.router as Address;
@@ -156,6 +163,7 @@ async function step(h: number) {
 
   // 1. arbitrage, top of block: move the pool to within one fee-width of the external price
   const p = await poolPrice();
+  let post = p; // where the arbitrage leaves the price: the reference for the users' slippage limits
   let arb = "";
   if (p < ext / (1 + FEE) || p > ext / (1 - FEE)) {
     const up = p < ext; // pool too cheap: buy tBTC with tUSD
@@ -165,6 +173,7 @@ async function step(h: number) {
     const tip = threshold * 3n;
     pending.push(swap(main, zeroForOne, parseEther("1000000000"), sqrtLimit(target), tip, base * 2n + tip));
     arb = `${up ? "↑" : "↓"} ${p.toFixed(0)}→${target.toFixed(0)}`;
+    post = target;
   }
 
   // 2. user flow, no priority fee: USER_SWAPS_MAX swaps spread over the trader wallets, nonces assigned up front so
@@ -177,14 +186,16 @@ async function step(h: number) {
     const zeroForOne = sellBtc === btcIs0;
     const amount = parseEther((sellBtc ? usd / ext : usd).toFixed(12));
     const w = i % users.length;
-    pending.push(swap(users[w], zeroForOne, amount, zeroForOne ? MIN_SQRT : MAX_SQRT, 0n, base * 2n + 1n, nonces[w]++));
+    const m = USER_MAX_MOVE_BPS / 1e4;
+    const limit = sqrtLimit(sellBtc ? post * (1 - m) : post * (1 + m));
+    pending.push(swap(users[w], zeroForOne, amount, limit, 0n, base * 2n + 1n, nonces[w]++));
   }
   const hashes = await Promise.all(pending);
   const receipts = await Promise.all(hashes.map((hash) => pc.waitForTransactionReceipt({ hash })));
   const blocks = new Set(receipts.map((r) => r.blockNumber));
   const failedTx = receipts.filter((r) => r.status !== "success");
   const failed = failedTx.length;
-  for (const r of failedTx) console.log(`  reverted ${r.transactionHash} gas ${r.gasUsed}`);
+  // a user swap that would start past its slippage limit reverts by design; it is counted, not logged one by one
 
   // 3. curators
   const after = await poolPrice();

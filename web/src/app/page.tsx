@@ -119,7 +119,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="l-pin" data-scroll="pin">
+      <section className="l-pin" data-scroll="view">
         <div className="l-pin-in">
           <ScrollWords text="Fee APR rewards volume. Beat-HODL rewards the market." accent="Edge rewards skill." />
         </div>

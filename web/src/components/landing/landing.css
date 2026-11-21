@@ -1370,21 +1370,18 @@
   }
 }
 
-/* Pinned sentence: the section is tall, its child sticks, and each word lights up in turn (--p across the section) */
+/* The statement: no pinning, it scrolls past normally and its words light up in turn on the way to the middle of the
+   screen (--p is the section's progress across the viewport, so it is fully lit by the time it is centred) */
 .l-pin {
   position: relative;
-  height: 240vh;
   background: #0d1224;
   color: #f6f5f1;
 }
 
 .l-pin-in {
-  position: sticky;
-  top: 0;
-  height: 100vh;
   display: grid;
   place-items: center;
-  padding: 0 16px;
+  padding: clamp(96px, 18vh, 180px) 16px;
 }
 
 .sw-text {
@@ -1399,7 +1396,7 @@
 
 .sw-text span {
   /* 0 until the scroll reaches this word, 1 just after */
-  --w: clamp(0, calc((var(--p) * 1.2 - var(--i)) * 9 + 1), 1);
+  --w: clamp(0, calc(((var(--p) - 0.12) * 2.7 - var(--i)) * 9 + 1), 1);
   display: inline-block;
   white-space: pre;
   opacity: calc(0.14 + 0.86 * var(--w));

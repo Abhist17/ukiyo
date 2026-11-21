@@ -1,11 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Ukiyo">
   <title>Ukiyo</title>
   <!-- Generated from web/src/lib/logo.ts (npm run logo). Edit there, not here. -->
-  <defs><clipPath id="ukiyo-coin"><circle cx="32" cy="32" r="30"/></clipPath></defs>
-  <g clip-path="url(#ukiyo-coin)">
-    <rect width="64" height="64" fill="#E8452C"/>
-    <path d="M-2 34 C10 24 22 24 32 32 C42 40 54 40 66 30 V66 H-2Z" fill="#11162B"/>
-    <path d="M-2 34 C10 24 22 24 32 32 C42 40 54 40 66 30" fill="none" stroke="#F4EFE6" stroke-width="3" stroke-linecap="round"/>
-  </g>
-  <circle cx="32" cy="32" r="30.5" fill="none" stroke="#F4EFE6" stroke-opacity="0.55" stroke-width="1.5"/>
+  <rect x="3" y="3" width="58" height="58" rx="15" fill="#11162B"/>
+  <rect x="3.75" y="3.75" width="56.5" height="56.5" rx="14.25" fill="none" stroke="#F4EFE6" stroke-opacity="0.18" stroke-width="1.5"/>
+  <circle cx="41" cy="22.5" r="10.5" fill="#E8452C"/>
+  <path d="M30 51 C36 51 42 49 53 44" fill="none" stroke="#F4EFE6" stroke-opacity="0.45" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M11 50 C19 50 23 44 26 37 C29.5 29 37 26.5 42 31 C46 35 43.5 41 38.5 40.5 C35.5 40.2 35 37 37 35.8" fill="none" stroke="#F4EFE6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

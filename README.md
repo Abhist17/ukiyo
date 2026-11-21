@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/logo.svg" width="96" alt="Ukiyo logo: a wave splitting a coin into a vermilion sun and a navy sea"></p>
+<p align="center"><img src="assets/logo.svg" width="96" alt="Ukiyo logo: a vermilion sun and a cream wave whose crest curls into a hook, on a navy tile"></p>
 
 <h1 align="center">Ukiyo 浮世</h1>
 

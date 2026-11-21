@@ -804,12 +804,12 @@
 }
 
 .l-hero {
-  --sun: min(640px, 128vw);
+  --sun: min(420px, 92vw);
   position: relative;
   overflow: hidden;
   text-align: center;
   color: #eef0f8;
-  padding: clamp(80px, 12vh, 128px) 0 calc(var(--sun) * 0.66 + 40px);
+  padding: clamp(72px, 11vh, 120px) 0 calc(var(--sun) * 0.86 + 24px);
   background:
     radial-gradient(60% 55% at 50% 100%, rgba(232, 69, 44, 0.22), transparent 70%),
     linear-gradient(180deg, #090c16 0%, #0d1224 70%, #11162b 100%);
@@ -858,15 +858,15 @@
   margin-top: 34px;
 }
 
-/* the mark itself, rising: the sun, the whole crest of the wave and the first of the sea */
+/* the mark itself at scale: the sun and the wave curling into a hook */
 .hero-sun {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--sun) * -0.34);
+  bottom: 0;
   width: var(--sun);
-  height: var(--sun);
+  height: calc(var(--sun) * 50 / 58);
   transform: translateX(-50%);
-  filter: drop-shadow(0 0 90px rgba(232, 69, 44, 0.4));
+  filter: drop-shadow(0 0 60px rgba(232, 69, 44, 0.3));
   pointer-events: none;
 }
 

@@ -1,25 +1,18 @@
-import { useId } from "react";
 import { LOGO } from "@/lib/logo";
 
 /**
- * The Ukiyo mark: one wave (a price path) splits a coin into the vermilion sun of the floating world and the sea.
- * Fixed colours from `lib/logo.ts`, so it is the same mark on every page, in both themes, and in the static files.
+ * The Ukiyo mark: a navy tile, the vermilion sun, and a wave whose crest curls into a hook. Fixed colours from
+ * `lib/logo.ts`, so it is the same mark on every page, in both themes, and in the static files.
  */
 export function Logo({ size = 32, title = "Ukiyo" }: { size?: number; title?: string }) {
-  const clip = useId();
+  const { cx, cy, r } = LOGO.sunAt;
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={title}>
-      <defs>
-        <clipPath id={clip}>
-          <circle cx="32" cy="32" r="30" />
-        </clipPath>
-      </defs>
-      <g clipPath={`url(#${clip})`}>
-        <rect width="64" height="64" fill={LOGO.sun} />
-        <path d={`${LOGO.wave} V66 H-2Z`} fill={LOGO.sea} />
-        <path d={LOGO.wave} fill="none" stroke={LOGO.cream} strokeWidth="3" strokeLinecap="round" />
-      </g>
-      <circle cx="32" cy="32" r="30.5" fill="none" stroke={LOGO.cream} strokeOpacity="0.55" strokeWidth="1.5" />
+      <rect x="3" y="3" width="58" height="58" rx="15" fill={LOGO.tile} />
+      <rect x="3.75" y="3.75" width="56.5" height="56.5" rx="14.25" fill="none" stroke={LOGO.cream} strokeOpacity="0.18" strokeWidth="1.5" />
+      <circle cx={cx} cy={cy} r={r} fill={LOGO.sun} />
+      <path d={LOGO.swell} fill="none" stroke={LOGO.cream} strokeOpacity="0.45" strokeWidth="3.2" strokeLinecap="round" />
+      <path d={LOGO.wave} fill="none" stroke={LOGO.cream} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

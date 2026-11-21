@@ -1,34 +1,28 @@
 import { LOGO } from "@/lib/logo";
 
 /**
- * The hero's art is the mark itself at scale: the same sun, wave and crest as `<Logo>`, with two faint swells in the sea
- * so the large version has texture the 16 px favicon does not need.
+ * The hero's art is the mark itself at scale, drawn like a woodblock print: the same sun and the same hook-curled wave
+ * as `<Logo>`, but in fine lines, with two echoes of the wave behind it the way ukiyo-e prints draw water.
  */
 export function HeroSun() {
+  const { cx, cy, r } = LOGO.sunAt;
   return (
-    <svg className="hero-sun" viewBox="0 0 64 64" aria-hidden>
+    <svg className="hero-sun" viewBox="4 8 58 50" aria-hidden>
       <defs>
-        <radialGradient id="hs-sun" cx="40%" cy="22%" r="80%">
-          <stop offset="0" stopColor="#FF9064" />
-          <stop offset="0.5" stopColor={LOGO.sun} />
-          <stop offset="1" stopColor="#B8321F" />
-        </radialGradient>
-        <linearGradient id="hs-sea" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0.45" stopColor={LOGO.sea} />
-          <stop offset="1" stopColor="#0B0F1C" />
+        <linearGradient id="hs-sun" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#F25A3B" />
+          <stop offset="1" stopColor="#D93D25" />
         </linearGradient>
-        <clipPath id="hs-coin">
-          <circle cx="32" cy="32" r="30" />
-        </clipPath>
       </defs>
-      <g clipPath="url(#hs-coin)">
-        <rect width="64" height="64" fill="url(#hs-sun)" />
-        <path d={`${LOGO.wave} V66 H-2Z`} fill="url(#hs-sea)" />
-        <path d="M-2 44 C10 37 22 37 32 42 C42 47 54 47 66 40" fill="none" stroke={LOGO.cream} strokeOpacity="0.14" strokeWidth="0.6" />
-        <path d="M-2 53 C10 47 22 47 32 51 C42 55 54 55 66 49" fill="none" stroke={LOGO.cream} strokeOpacity="0.08" strokeWidth="0.6" />
-        <path d={LOGO.wave} fill="none" stroke={LOGO.cream} strokeWidth="1.1" strokeLinecap="round" />
-      </g>
-      <circle cx="32" cy="32" r="30.3" fill="none" stroke={LOGO.cream} strokeOpacity="0.25" strokeWidth="0.35" />
+      <circle cx={cx} cy={cy} r={r} fill="url(#hs-sun)" />
+      {[
+        [6, 0.12],
+        [3, 0.3],
+      ].map(([d, o]) => (
+        <path key={d} d={LOGO.wave} transform={`translate(${d} ${d})`} fill="none" stroke={LOGO.cream} strokeOpacity={o} strokeWidth="0.7" strokeLinecap="round" />
+      ))}
+      <path d={LOGO.swell} transform="translate(0 2)" fill="none" stroke={LOGO.cream} strokeOpacity="0.3" strokeWidth="0.7" strokeLinecap="round" />
+      <path d={LOGO.wave} fill="none" stroke={LOGO.cream} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

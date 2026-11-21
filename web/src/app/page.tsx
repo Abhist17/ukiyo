@@ -2,8 +2,6 @@ import Link from "next/link";
 import { Logo, Wordmark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { HeroRank } from "@/components/landing/HeroRank";
-import { HeroSun } from "@/components/landing/HeroSun";
-import { HeroLive } from "@/components/landing/HeroLive";
 import { LiveNumbers } from "@/components/landing/LiveNumbers";
 import { BlockExplainer } from "@/components/landing/BlockExplainer";
 import { RankShift } from "@/components/RankShift";
@@ -105,20 +103,11 @@ export default function Home() {
           <p className="l-lede">An on-chain score for every Uniswap v4 liquidity curator.</p>
           <div className="l-cta">
             <Link className="btn primary" href="/app/">Launch app</Link>
-            <a className="btn ghost-light" href="#try">See it work</a>
+            <a className="btn ghost-light" href="#how">How it works</a>
           </div>
-        </div>
-        <HeroSun />
-      </section>
-
-      <section className="l-try" id="try">
-        <div className="wrap l-try-in">
-          <div>
-            <h2>Same six curators. Three yardsticks.</h2>
-            <p className="l-sub">Only <b>Edge</b> puts them in their true order.</p>
-            <HeroLive />
+          <div className="hero-card">
+            <HeroRank />
           </div>
-          <HeroRank />
         </div>
       </section>
 

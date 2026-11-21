@@ -30,7 +30,11 @@ function Numbers() {
           fees the hook refused to count as income.
         </p>
         <div className="num-row">
-          <div><b>{swaps.length.toLocaleString("en-US")}</b><span>swaps classified ({arb.toLocaleString("en-US")} arbitrage)</span></div>
+          <div>
+            {/* the swap history loads in 1,000-block chunks: show a placeholder, never a false zero */}
+            <b>{logs ? swaps.length.toLocaleString("en-US") : "…"}</b>
+            <span>{logs ? `swaps classified (${arb.toLocaleString("en-US")} arbitrage)` : "reading swap history"}</span>
+          </div>
           <div><b>{usd(userFees)}</b><span>user fees credited</span></div>
           <div><b>{compactUsd(live.tvl)}</b><span>in curator vaults</span></div>
           <div><b>{compactUsd(bonds)}</b><span>posted as LVR bonds</span></div>

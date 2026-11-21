@@ -32,6 +32,7 @@
   --serif: var(--font-sans), system-ui, sans-serif;
   --sans: var(--font-sans), system-ui, sans-serif;
   --mono: var(--font-mono), ui-monospace, monospace;
+  --display: var(--font-display), Georgia, serif;
   color-scheme: light;
 }
 
@@ -979,4 +980,28 @@ details.table-view th {
 .wordmark-link {
   text-decoration: none;
   display: inline-flex;
+}
+
+/* Page titles share the landing page's editorial serif; interface headings stay in Geist. */
+.research-hero h1,
+.landing .docs-body h1 {
+  font-family: var(--display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+}
+
+.research-hero h1 {
+  font-size: clamp(40px, 6vw, 68px);
+}
+
+.landing .docs-body h1 {
+  font-size: clamp(44px, 6vw, 64px);
+}
+
+/* A button inside a nav keeps its own colours (the nav's link rule would otherwise grey its label). */
+.nav a.btn,
+.nav a.btn:hover {
+  color: var(--paper);
+  background: var(--ink);
 }

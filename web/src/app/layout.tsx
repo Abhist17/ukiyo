@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
 const sans = Geist({ subsets: ["latin"], variable: "--font-sans" });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
+// Headlines and the big numbers: an editorial serif, the printed voice next to Geist's interface voice.
+const display = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-display" });
 
-// Where the site is published (GitHub Pages once the repository is public); link previews need absolute URLs.
-const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://abhist17.github.io/ukiyo/";
+// Where the site is published (Vercel; set at build time by scripts/deploy-vercel.sh); link previews need absolute URLs.
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://ukiyo-ochre.vercel.app/";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
@@ -34,7 +36,7 @@ const themeScript = `try{var t=localStorage.getItem("ukiyo-theme");if(t==="light
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${sans.variable} ${mono.variable} ${display.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

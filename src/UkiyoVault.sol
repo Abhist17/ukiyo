@@ -9,6 +9,13 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {IUnlockCallback} from "@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol";
+import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import {SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
+import {CurrencySettler} from "@openzeppelin/uniswap-hooks/src/utils/CurrencySettler.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import {SqrtPriceMath} from "@uniswap/v4-core/src/libraries/SqrtPriceMath.sol";
 import {LiquidityAmounts} from "@uniswap/v4-periphery/src/libraries/LiquidityAmounts.sol";
@@ -42,10 +49,12 @@ import {UkiyoHook} from "./UkiyoHook.sol";
 ///
 ///      The curator controls the range only. Liquidity removed through the hook is always paid to this vault, and
 ///      the hook never lets anyone but this vault touch the sleeve once it is handed over, so the curator has no
-///      path to depositors' tokens. The vault never swaps: when a new range needs a different token mix, what does
+///      path to depositors' tokens. The vault swaps only when its curator rebalances with `rebalanceWithSwap`, a bounded
+///      swap the hook books as arbitrage; with plain `rebalance`, when a new range needs a different token mix, what does
 ///      not fit stays idle and still counts toward every share.
-contract UkiyoVault is ERC20, ReentrancyGuard {
+contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     using SafeERC20 for IERC20;
+    using CurrencySettler for Currency;
 
     // ---------------------------------------------------------------------------------------------------------------
     // Types
@@ -108,6 +117,19 @@ contract UkiyoVault is ERC20, ReentrancyGuard {
 
     /// @notice Performance fee, in bps of Edge earned above the high-water mark.
     uint256 public immutable performanceFeeBps;
+
+    /// @notice Most the pool price may move because of the vault's own rebalancing swap, in bps of price.
+    uint256 public constant MAX_REBALANCE_MOVE_BPS = 100;
+
+    /// @notice The PoolManager the hook's pool lives in; the vault swaps through it when it rebalances.
+    IPoolManager public immutable poolManager;
+
+    /// @dev The pool's fee and tick spacing, to rebuild its key for swaps.
+    uint24 internal immutable _fee;
+    int24 internal immutable _tickSpacing;
+
+    /// @dev True only while `rebalanceWithSwap` waits on `unlock`, so the callback cannot be entered any other way.
+    bool private transient _swapping;
 
     // ---------------------------------------------------------------------------------------------------------------
     // Storage
@@ -236,6 +258,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard {
     /// @notice A new deposit request is below `MIN_DEPOSIT_BPS` of the vault's holdings in both tokens.
     error DepositTooSmall();
 
+    /// @notice `unlockCallback` was called by something other than the PoolManager answering this vault's own swap.
+    error NotOwnSwap();
+
     /// @notice A fee or budget is above its cap.
     error AboveCap(uint256 bps, uint256 cap);
 
@@ -264,9 +289,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard {
             revert AboveCap(performanceFeeBps_, MAX_PERFORMANCE_FEE_BPS);
         }
         if (!hook_.poolBound()) revert PoolNotBound();
-        // only the two currencies matter here; fee, spacing and hooks are the hook's own business
+        // the hooks field is the hook itself
         // forge-lint: disable-next-line(unused-return)
-        (Currency c0, Currency c1,,,) = hook_.poolKey();
+        (Currency c0, Currency c1, uint24 fee, int24 spacing,) = hook_.poolKey();
         if (c0.isAddressZero()) revert NativeCurrencyNotSupported();
         hook = hook_;
         sleeveId = sleeveId_;
@@ -275,6 +300,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard {
         curator = curator_;
         epochLength = epochLength_;
         performanceFeeBps = performanceFeeBps_;
+        poolManager = hook_.poolManager();
+        _fee = fee;
+        _tickSpacing = spacing;
         epochStart = block.timestamp;
         epochStartEdge = hook_.edge(sleeveId_);
         // The hook pulls tokens from its caller when this vault adds liquidity.
@@ -455,6 +483,80 @@ contract UkiyoVault is ERC20, ReentrancyGuard {
         emit Rebalanced(tickLower, tickUpper, _liquidity());
         // forge-lint: disable-end(reentrancy-no-eth)
         // forge-lint: disable-end(reentrancy-events)
+    }
+
+    /// @notice Move the sleeve to a new range, first swapping some idle tokens so the vault holds the mix the range
+    ///         needs. Without it, a vault whose range the price ran through holds one token and cannot fund a range
+    ///         around the price.
+    /// @dev The swap goes through the hook's own pool. The hook classifies it as arbitrage (the vault is a sleeve
+    ///      manager), so it can never add to any curator's Edge, and its price limit keeps the move within
+    ///      `MAX_REBALANCE_MOVE_BPS`: a larger order simply fills partially.
+    /// @param tickLower New lower tick.
+    /// @param tickUpper New upper tick.
+    /// @param zeroForOne True to sell token0 for token1, false for the reverse.
+    /// @param amountIn Tokens to sell; capped at the vault's idle balance of that token.
+    function rebalanceWithSwap(int24 tickLower, int24 tickUpper, bool zeroForOne, uint256 amountIn)
+        external
+        nonReentrant
+    {
+        _onlyCurator();
+        if (amountIn == 0) revert ZeroAmount();
+        // The hook and the PoolManager are trusted and this function is nonReentrant.
+        // forge-lint: disable-start(reentrancy-events)
+        // forge-lint: disable-start(reentrancy-no-eth)
+        uint128 liq = _liquidity();
+        if (liq != 0) hook.modifySleeveLiquidity(sleeveId, -int256(uint256(liq)));
+        hook.setSleeveRange(sleeveId, tickLower, tickUpper);
+
+        (uint256 i0, uint256 i1) = _idle();
+        uint256 have = zeroForOne ? i0 : i1;
+        if (amountIn > have) amountIn = have;
+        if (amountIn != 0) {
+            uint160 p = hook.sqrtPriceX96();
+            // price is the square of the sqrt price, so half the bps on the sqrt price bounds the price move
+            uint256 half = MAX_REBALANCE_MOVE_BPS / 2;
+            uint160 limit = SafeCast.toUint160(
+                zeroForOne ? Math.mulDiv(p, 10_000 - half, 10_000) : Math.mulDiv(p, 10_000 + half, 10_000)
+            );
+            _swapping = true;
+            // unlockCallback settles the swap and returns nothing
+            // forge-lint: disable-next-line(unused-return)
+            poolManager.unlock(abi.encode(zeroForOne, amountIn, limit));
+            _swapping = false;
+        }
+        _deployIdle();
+        emit Rebalanced(tickLower, tickUpper, _liquidity());
+        // forge-lint: disable-end(reentrancy-no-eth)
+        // forge-lint: disable-end(reentrancy-events)
+    }
+
+    /// @inheritdoc IUnlockCallback
+    /// @dev Runs only inside `rebalanceWithSwap`: swaps exact input, pays what the vault owes, takes what it is owed.
+    function unlockCallback(bytes calldata data) external returns (bytes memory) {
+        if (msg.sender != address(poolManager) || !_swapping) revert NotOwnSwap();
+        (bool zeroForOne, uint256 amountIn, uint160 limit) = abi.decode(data, (bool, uint256, uint160));
+        PoolKey memory key = PoolKey({
+            currency0: Currency.wrap(address(token0)),
+            currency1: Currency.wrap(address(token1)),
+            fee: _fee,
+            tickSpacing: _tickSpacing,
+            hooks: IHooks(address(hook))
+        });
+        BalanceDelta d = poolManager.swap(
+            key,
+            SwapParams({
+                zeroForOne: zeroForOne, amountSpecified: -SafeCast.toInt256(amountIn), sqrtPriceLimitX96: limit
+            }),
+            ""
+        );
+        int128 a0 = d.amount0();
+        int128 a1 = d.amount1();
+        // negative = owed to the PoolManager, positive = owed to the vault
+        if (a0 < 0) key.currency0.settle(poolManager, address(this), SafeCast.toUint256(-int256(a0)), false);
+        if (a1 < 0) key.currency1.settle(poolManager, address(this), SafeCast.toUint256(-int256(a1)), false);
+        if (a0 > 0) key.currency0.take(poolManager, address(this), SafeCast.toUint256(int256(a0)), false);
+        if (a1 > 0) key.currency1.take(poolManager, address(this), SafeCast.toUint256(int256(a1)), false);
+        return "";
     }
 
     // ---------------------------------------------------------------------------------------------------------------

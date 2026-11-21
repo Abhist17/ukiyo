@@ -166,6 +166,14 @@ contract UkiyoVaultTest is Test {
         vm.stopPrank();
     }
 
+    /// @dev Another sleeve, run by the hook owner (this test), so the vault's own swaps have liquidity to trade against.
+    function _backgroundLiquidity(uint128 l) internal {
+        hook.openSleeve(address(this), -3000, 3000);
+        token0.approve(address(hook), type(uint256).max);
+        token1.approve(address(hook), type(uint256).max);
+        hook.modifySleeveLiquidity(1, int256(uint256(l)));
+    }
+
     function _liquidity() internal view returns (uint128) {
         return hook.sleeve(0).liquidity;
     }
@@ -183,6 +191,7 @@ contract UkiyoVaultTest is Test {
 
     function test_managerIsSetOnceAndLocksOutTheOwner() public {
         assertEq(hook.sleeveManager(0), address(vault));
+        assertTrue(hook.isSleeveManager(address(vault)), "registered as a manager");
         vm.expectRevert(abi.encodeWithSelector(UkiyoHook.InvalidSleeveManager.selector, 0));
         hook.setSleeveManager(0, address(this));
         vm.expectRevert(abi.encodeWithSelector(UkiyoHook.NotSleeveController.selector, 0, address(this)));
@@ -395,6 +404,75 @@ contract UkiyoVaultTest is Test {
         (uint256 h0, uint256 h1) = vault.holdings();
         assertApproxEqRel(h0 + h1, 2e18, 1e14, "nothing lost moving the range");
         _assertSolvent();
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Rebalancing with a swap
+    // ------------------------------------------------------------------------------------------------------------
+
+    function test_rebalanceWithSwapFundsARangeAPlainRebalanceCannot() public {
+        _backgroundLiquidity(1e22);
+        _deposit(alice, 10e18, 10e18);
+        _settle();
+        // a range above the price takes only token0; the vault holds half its value in token1
+        uint256 snap = vm.snapshotState();
+        vm.prank(curator);
+        vault.rebalance(200, 1200);
+        uint128 plain = _liquidity();
+        vm.revertToState(snap);
+
+        vm.roll(vm.getBlockNumber() + 1);
+        vm.txGasPrice(BASE_FEE);
+        vm.prank(curator);
+        vault.rebalanceWithSwap(200, 1200, false, 8e18); // sell token1 for token0
+        uint128 swapped = _liquidity();
+        assertGt(swapped, plain * 3 / 2, "the swap funded a much larger position");
+        (uint256 h0, uint256 h1) = vault.holdings();
+        assertApproxEqRel(h0 + h1, 20e18, 0.01e18, "swap cost stays small");
+        _assertSolvent();
+    }
+
+    function test_vaultSwapIsBookedAsArbitrage() public {
+        _backgroundLiquidity(1e22);
+        _deposit(alice, 10e18, 10e18);
+        _settle();
+        UkiyoHook.Ledger memory before = hook.ledger(1);
+        vm.roll(vm.getBlockNumber() + 1);
+        vm.txGasPrice(BASE_FEE); // no tip at all: by tip alone this would be user flow
+        vm.prank(curator);
+        vault.rebalanceWithSwap(-500, 500, true, 2e18);
+        UkiyoHook.Ledger memory afterSwap = hook.ledger(1);
+        assertEq(afterSwap.userFees, before.userFees, "no user fees from a manager's swap");
+        assertGt(afterSwap.arbFees, before.arbFees, "its fee is booked as arbitrage");
+    }
+
+    function test_rebalanceSwapMovesThePriceAtMostOnePercent() public {
+        _backgroundLiquidity(1e19); // shallow: an unbounded swap would move the price far
+        _deposit(alice, 10e18, 10e18);
+        _settle();
+        uint160 p0 = hook.sqrtPriceX96();
+        vm.roll(vm.getBlockNumber() + 1);
+        vm.prank(curator);
+        vault.rebalanceWithSwap(-1000, 1000, false, 10e18);
+        uint160 p1 = hook.sqrtPriceX96();
+        // price = sqrtPrice^2; at most +1% means sqrtPrice at most +0.5%
+        assertLe(uint256(p1) * 10_000, uint256(p0) * 10_050, "price move bounded");
+        assertGt(p1, p0, "the swap did move the price");
+        _assertSolvent();
+    }
+
+    function test_onlyCuratorRebalancesWithSwap() public {
+        vm.prank(stranger);
+        vm.expectRevert(UkiyoVault.NotCurator.selector);
+        vault.rebalanceWithSwap(-500, 500, true, 1);
+    }
+
+    function test_unlockCallbackOnlyAnswersTheVaultsOwnSwap() public {
+        vm.expectRevert(UkiyoVault.NotOwnSwap.selector);
+        vault.unlockCallback(abi.encode(true, uint256(1), uint160(1)));
+        vm.prank(address(manager));
+        vm.expectRevert(UkiyoVault.NotOwnSwap.selector);
+        vault.unlockCallback(abi.encode(true, uint256(1), uint160(1)));
     }
 
     // ------------------------------------------------------------------------------------------------------------

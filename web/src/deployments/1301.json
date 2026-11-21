@@ -1,0 +1,48 @@
+{
+  "btc": "0xe4134d0bA75d9cc0a22dac01a11f589559434148",
+  "chainId": 1301,
+  "curator": "0xd3E4a71C208D23b9d5A284154d483D190219736d",
+  "deployBlock": 68392689,
+  "epochLength": 600,
+  "fee": 500,
+  "hook": "0xB2e6Ce049A3682B7dA2895E4AcF3371df21FaaC0",
+  "performanceFeeBps": 1000,
+  "poolManager": "0x00B036B58a818B1BC34d502D3fE730Db729e62AC",
+  "router": "0x56b8aeCD24347d6284d4FE20F82B2f7d859a2415",
+  "startPrice": 42268,
+  "threshold": "10000000",
+  "tickSpacing": 10,
+  "token0": "0xe4134d0bA75d9cc0a22dac01a11f589559434148",
+  "token1": "0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db",
+  "usd": "0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db",
+  "vaults": [
+    {
+      "address": "0x8F25E8A4525BB58551cC39fe852B02ddC251D194",
+      "name": "Ukiyo Passive Wide",
+      "sleeveId": 0,
+      "style": "Passive wide: 25% each side, never moves",
+      "symbol": "ukWIDE"
+    },
+    {
+      "address": "0x0964299F3b856D672C3aa1f41FFb958772BE21dd",
+      "name": "Ukiyo Passive Mid",
+      "sleeveId": 1,
+      "style": "Passive mid: 8% each side, never moves",
+      "symbol": "ukMID"
+    },
+    {
+      "address": "0x4EeeBD0397FE7F006b682DB8D084497167464942",
+      "name": "Ukiyo Tight Chaser",
+      "sleeveId": 2,
+      "style": "Tight chaser: 1.5% each side, recentres on exit",
+      "symbol": "ukTIGHT"
+    },
+    {
+      "address": "0x18519b318C16b1Eee03607BcBBce53dCF666CE52",
+      "name": "Ukiyo Vol Adaptive",
+      "sleeveId": 3,
+      "style": "Vol-adaptive: width follows recent volatility",
+      "symbol": "ukVOL"
+    }
+  ]
+}

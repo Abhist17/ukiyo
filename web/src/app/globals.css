@@ -14,6 +14,9 @@
   --sea: #141a2e;
   --good: #1e8e5a;
   --bad: #d23c2a;
+  --rank-grey: #c3c0b8;
+  --rank-bg: var(--card);
+  --story-2: #3558a8;
   --grid: rgba(14, 19, 36, 0.07);
   --shadow: 0 1px 2px rgba(14, 19, 36, 0.04), 0 10px 30px -14px rgba(14, 19, 36, 0.18);
   --texture-opacity: 0;
@@ -47,6 +50,8 @@
     --sea: #141a2e;
     --good: #3fcb86;
     --bad: #ff6b57;
+    --rank-grey: #39415c;
+    --story-2: #7b9be8;
     --grid: rgba(238, 240, 248, 0.07);
     --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 40px -18px rgba(0, 0, 0, 0.7);
     --texture-opacity: 0;
@@ -74,6 +79,8 @@
   --sea: #141a2e;
   --good: #3fcb86;
   --bad: #ff6b57;
+  --rank-grey: #39415c;
+  --story-2: #7b9be8;
   --grid: rgba(238, 240, 248, 0.07);
   --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 40px -18px rgba(0, 0, 0, 0.7);
   --texture-opacity: 0;
@@ -904,4 +911,34 @@ details.table-view th {
   .btn:hover {
     transform: none;
   }
+}
+
+/* Rank shift */
+.rankshift-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 10px 4px 4px;
+}
+
+.rankshift-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rankshift-key i {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.rankshift-key .muted {
+  flex-basis: 100%;
+  justify-content: center;
+  font-size: 12px;
 }

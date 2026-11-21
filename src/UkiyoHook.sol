@@ -139,6 +139,11 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     ///         to themselves, because liquidity removals pay out to the caller.
     mapping(uint256 sleeveId => address) public sleeveManager;
 
+    /// @notice Whether `account` manages a sleeve. A manager's own swaps are always classified as arbitrage, whatever
+    ///         tip they pay: otherwise a curator could trade its vault's tokens with no tip and have the hook credit
+    ///         its own sleeve with that swap's fee and price impact, inflating its Edge and its performance fee.
+    mapping(address account => bool) public isSleeveManager;
+
     Sleeve[] internal _sleeves;
     mapping(uint256 sleeveId => Ledger) internal _ledgers;
 
@@ -286,6 +291,7 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         _sleeve(sleeveId);
         if (manager == address(0) || sleeveManager[sleeveId] != address(0)) revert InvalidSleeveManager(sleeveId);
         sleeveManager[sleeveId] = manager;
+        isSleeveManager[manager] = true;
         emit SleeveManagerSet(sleeveId, manager);
     }
 
@@ -431,7 +437,8 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         if (p > lo) amount1 = SqrtPriceMath.getAmount1Delta(lo, p < hi ? p : hi, s.liquidity, false);
     }
 
-    /// @notice Classify the current transaction: true if its priority fee per gas meets the threshold.
+    /// @notice Classify the current transaction by its tip: true if its priority fee per gas meets the threshold.
+    ///         Swaps sent by a sleeve manager are arbitrage regardless (see `isSleeveManager`).
     function isArbitrage() public view returns (bool) {
         return _priorityFee() >= priorityFeeThreshold;
     }
@@ -473,7 +480,7 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
 
     /// @dev On a block's first swap, credit the previous marked block's user impact; then remember this swap's
     ///      starting price and classification for `_afterSwap`.
-    function _beforeSwap(address, PoolKey calldata, SwapParams calldata, bytes calldata)
+    function _beforeSwap(address sender, PoolKey calldata, SwapParams calldata, bytes calldata)
         internal
         override
         returns (bytes4, BeforeSwapDelta, uint24)
@@ -488,7 +495,8 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         }
 
         uint256 priorityFee = _priorityFee();
-        bool arb = priorityFee >= priorityFeeThreshold;
+        // a sleeve manager trading for its own vault is never user flow (see `isSleeveManager`)
+        bool arb = priorityFee >= priorityFeeThreshold || isSleeveManager[sender];
         _sqrtPriceBeforeSwap = sqrtPrice;
         _swapIsArbitrage = arb;
         _swapIsFirstInBlock = first;

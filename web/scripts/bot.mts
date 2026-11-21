@@ -143,7 +143,8 @@ async function step(h: number) {
   const ext = closes[h % closes.length];
   const block = await pc.getBlock();
   const base = block.baseFeePerGas ?? 0n;
-  const pending: Hex[] = [];
+  // every send of a step goes out together so they share a block; the priority fee then puts the arbitrage first
+  const pending: Promise<Hex>[] = [];
 
   // 1. arbitrage, top of block: move the pool to within one fee-width of the external price
   const p = await poolPrice();
@@ -154,7 +155,7 @@ async function step(h: number) {
     const buyBtcIs1to0 = btcIs0; // buying token0 means paying token1 (oneForZero)
     const zeroForOne = up ? !buyBtcIs1to0 : buyBtcIs1to0;
     const tip = threshold * 3n;
-    pending.push(await swap(main, zeroForOne, parseEther("1000000000"), sqrtLimit(target), tip, base * 2n + tip));
+    pending.push(swap(main, zeroForOne, parseEther("1000000000"), sqrtLimit(target), tip, base * 2n + tip));
     arb = `${up ? "↑" : "↓"} ${p.toFixed(0)}→${target.toFixed(0)}`;
   }
 
@@ -165,9 +166,10 @@ async function step(h: number) {
     const sellBtc = Math.random() < 0.5;
     const zeroForOne = sellBtc === btcIs0;
     const amount = parseEther((sellBtc ? usd / ext : usd).toFixed(12));
-    pending.push(await swap(users[i], zeroForOne, amount, zeroForOne ? MIN_SQRT : MAX_SQRT, 0n, base * 2n + 1n));
+    pending.push(swap(users[i], zeroForOne, amount, zeroForOne ? MIN_SQRT : MAX_SQRT, 0n, base * 2n + 1n));
   }
-  const receipts = await Promise.all(pending.map((hash) => pc.waitForTransactionReceipt({ hash })));
+  const hashes = await Promise.all(pending);
+  const receipts = await Promise.all(hashes.map((hash) => pc.waitForTransactionReceipt({ hash })));
   const blocks = new Set(receipts.map((r) => r.blockNumber));
   const failed = receipts.filter((r) => r.status !== "success").length;
 

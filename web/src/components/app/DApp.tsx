@@ -12,6 +12,7 @@ import { VaultsTab } from "./VaultsTab";
 import { TradeTab } from "./TradeTab";
 import { AnalyticsTab } from "./AnalyticsTab";
 import { FaucetTab } from "./FaucetTab";
+import { Ticker } from "./Ticker";
 import "./app.css";
 
 const TABS = [
@@ -103,6 +104,7 @@ export function DApp() {
           </div>
         </div>
       </header>
+      <Ticker />
       <LiveBar />
       <main className="wrap wide app-main">
         <Body tab={tab} />

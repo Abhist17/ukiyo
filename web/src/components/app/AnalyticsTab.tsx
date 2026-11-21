@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Live } from "@/lib/useUkiyo";
 import { useAccountability, useEdgeHistory, useTape } from "@/lib/useUkiyo";
 import { DEP, EXPLORER, compactUsd, short, usd } from "@/lib/chain";
+import { ClassifierNow, FlowChart } from "./FlowChart";
 
 function useWidth(): [React.RefObject<HTMLDivElement | null>, number] {
   const ref = useRef<HTMLDivElement>(null);
@@ -88,10 +89,6 @@ export function AnalyticsTab({ live }: { live: Live }) {
   const tape = useTape();
   const acct = useAccountability();
   const rows = tape.data ?? [];
-  const arb = rows.filter((r) => r.arb);
-  const user = rows.filter((r) => !r.arb);
-  const vol = (rs: typeof rows) => rs.reduce((a, r) => a + r.usd, 0);
-  const total = vol(rows) || 1;
   const maxAbs = Math.max(1, ...live.vaults.map((v) => Math.max(v.userFees + v.userImpact, v.arbLoss, v.arbFees)));
 
   return (
@@ -107,6 +104,18 @@ export function AnalyticsTab({ live }: { live: Live }) {
         </div>
         <EdgeChart live={live} />
         <p className="fine">Settled epochs (each vault&apos;s EpochSettled events) joined to the live value from the hook.</p>
+      </div>
+
+      <div className="panel">
+        <div className="panel-head">
+          <h2>Every swap, as the hook saw it</h2>
+          <div className="legend-inline">
+            <span><span className="badge arb">ARB</span> pays a priority fee, fee not counted</span>
+            <span><span className="badge user">USER</span> no tip, fee counts toward Edge</span>
+          </div>
+        </div>
+        <FlowChart rows={rows} />
+        <p className="fine">Last {rows.length} swaps, oldest on the left; bar height grows with the square root of size so small user trades stay visible.</p>
       </div>
 
       <div className="app-grid even">
@@ -139,17 +148,10 @@ export function AnalyticsTab({ live }: { live: Live }) {
         <div className="stack">
           <div className="panel">
             <div className="panel-head">
-              <h2>Who traded</h2>
-              <span className="muted sm">last {rows.length} swaps</span>
+              <h2>Classifier right now</h2>
+              <span className="muted sm">priority fee decides</span>
             </div>
-            <div className="split">
-              <div style={{ width: `${(vol(arb) / total) * 100}%` }} className="seg-arb" />
-              <div style={{ width: `${(vol(user) / total) * 100}%` }} className="seg-user" />
-            </div>
-            <div className="split-legend">
-              <div><span className="badge arb">ARB</span> {arb.length} swaps · {compactUsd(vol(arb))}</div>
-              <div><span className="badge user">USER</span> {user.length} swaps · {compactUsd(vol(user))}</div>
-            </div>
+            <ClassifierNow live={live} rows={rows} />
             <p className="fine">
               A swap is arbitrage when its priority fee is at least {(Number(live.threshold) / 1e9).toFixed(2)} gwei. Under
               priority ordering arbitrageurs bid for the top of the block; when in doubt the hook calls a swap arbitrage,

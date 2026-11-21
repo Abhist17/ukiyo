@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Live, VaultLive } from "@/lib/useUkiyo";
 import { compactUsd, tickToPrice, usd } from "@/lib/chain";
 import { VaultPanel } from "./VaultPanel";
+import { LiquidityChart } from "./LiquidityChart";
 
 /** Range bar: where the sleeve sits around the current price (window ±30%). */
 function RangeBar({ v, price }: { v: VaultLive; price: number }) {
@@ -58,6 +59,7 @@ export function VaultsTab({ live }: { live: Live }) {
       </div>
 
       <div className="app-grid">
+        <div className="stack">
         <div className="panel">
           <div className="panel-head">
             <h2>Curators, ranked by Edge</h2>
@@ -119,6 +121,14 @@ export function VaultsTab({ live }: { live: Live }) {
             Arbitrage fees ({usd(arbFees)} so far) are shown in Analytics but never count: pool-marked LVR already nets
             them out, so counting them would overstate every curator.
           </p>
+        </div>
+        <div className="panel">
+          <div className="panel-head">
+            <h2>Liquidity, read from the sleeves</h2>
+            <span className="muted sm">each curator&apos;s range, stacked</span>
+          </div>
+          <LiquidityChart live={live} />
+        </div>
         </div>
         {vault && <VaultPanel v={vault} live={live} />}
       </div>

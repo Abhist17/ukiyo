@@ -30,7 +30,10 @@ export const viewport: Viewport = {
 };
 
 // Applies a remembered theme before first paint, so dark-mode readers never see a light flash.
-const themeScript = `try{var t=localStorage.getItem("ukiyo-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+// Also arms the landing page's scroll reveals before first paint (no flash of content that then hides), and disarms
+// them after 3 s if the motion script never ran, so a failed script can never leave the page blank.
+const themeScript = `try{var t=localStorage.getItem("ukiyo-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}
+try{if(!matchMedia("(prefers-reduced-motion: reduce)").matches){var d=document.documentElement;d.classList.add("motion");setTimeout(function(){if(!window.__motion)d.classList.remove("motion")},3000)}}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

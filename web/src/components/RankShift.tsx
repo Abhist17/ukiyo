@@ -86,8 +86,8 @@ export function RankShift({ tier }: { tier: Tier }) {
               <g key={CURATORS[i].name} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
                 style={{ cursor: "default", transition: "opacity 150ms" }} opacity={dim ? 0.25 : 1}>
                 <path d={curve(pts)} fill="none" stroke="transparent" strokeWidth="18" />
-                <path d={curve(pts)} fill="none" stroke={c ?? "var(--rank-grey)"} strokeWidth={c ? 3 : 1.5}
-                  strokeLinecap="round" />
+                <path className="rs-line" pathLength={1} d={curve(pts)} fill="none" stroke={c ?? "var(--rank-grey)"}
+                  strokeWidth={c ? 3 : 1.5} strokeLinecap="round" />
                 {pts.map(([px, py], k) => (
                   <circle key={k} cx={px} cy={py} r={c ? 5 : 3.5} fill={c ?? "var(--rank-grey)"}
                     stroke="var(--rank-bg)" strokeWidth="2" />

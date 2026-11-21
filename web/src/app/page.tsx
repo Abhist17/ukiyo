@@ -3,6 +3,7 @@ import { Logo, Wordmark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { HeroRank } from "@/components/landing/HeroRank";
 import { LiveNumbers } from "@/components/landing/LiveNumbers";
+import { Motion, ScrollWords } from "@/components/landing/Motion";
 import { BlockExplainer } from "@/components/landing/BlockExplainer";
 import { RankShift } from "@/components/RankShift";
 import { error } from "@/lib/data";
@@ -95,10 +96,14 @@ export default function Home() {
 
       <section className="l-hero">
         <div className="wrap hero-in">
-          <h1>
-            Rank curators
-            <br />
-            by <em>skill</em>, not luck
+          {/* each word rises out of its line's mask, one after another */}
+          <h1 aria-label="Rank curators by skill, not luck">
+            <span className="ln" aria-hidden>
+              <W d={0}>Rank</W> <W d={1}>curators</W>
+            </span>
+            <span className="ln" aria-hidden>
+              <W d={2}>by</W> <W d={3}><em>skill</em>,</W> <W d={4}>not</W> <W d={5}>luck</W>
+            </span>
           </h1>
           <p className="l-lede">An on-chain score for every Uniswap v4 liquidity curator.</p>
           <div className="l-cta">
@@ -106,8 +111,17 @@ export default function Home() {
             <a className="btn ghost-light" href="#how">How it works</a>
           </div>
           <div className="hero-card">
-            <HeroRank />
+            {/* tilted back at first, it flattens to face the reader over the first third of a screen of scrolling */}
+            <div className="hero-tilt" data-scroll="top">
+              <HeroRank />
+            </div>
           </div>
+        </div>
+      </section>
+
+      <section className="l-pin" data-scroll="pin">
+        <div className="l-pin-in">
+          <ScrollWords text="Fee APR rewards volume. Beat-HODL rewards the market." accent="Edge rewards skill." />
         </div>
       </section>
 
@@ -115,32 +129,34 @@ export default function Home() {
 
       <section className="l-numbers">
         <div className="wrap">
-          <p className="l-kicker">Backtested on a full year of real BTC/USD prices</p>
-          <div className="big-num">
-            {e.edge.rmse.toFixed(0)} <span>bps</span>
+          <p className="l-kicker" data-reveal>Backtested on a full year of real BTC/USD prices</p>
+          <div className="big-num" data-reveal>
+            <b data-count>{e.edge.rmse.toFixed(0)}</b> <span>bps</span>
           </div>
-          <p className="big-cap">
+          <p className="big-cap" data-reveal>
             weekly error against each curator&apos;s true hedged P&amp;L. The obvious on-chain formula is off by{" "}
             <b>{e.naive.rmse.toFixed(0)} bps</b>.
           </p>
-          <div className="num-row">
-            <div><b>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>
-            <div><b>6 / 6</b><span>curators in the true order</span></div>
+          <div className="num-row" data-reveal="stagger">
+            <div><b data-count>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>
+            <div><b data-count>6 / 6</b><span>curators in the true order</span></div>
             <div><b>0</b><span>oracles or keepers</span></div>
-            <div><b>67</b><span>tests + 4 stateful invariants</span></div>
+            <div><b data-count>67</b><span>tests + 4 stateful invariants</span></div>
           </div>
         </div>
       </section>
 
       <section className="l-section" id="how">
         <div className="wrap">
-          <h2>One hook, three entries per swap</h2>
-          <p className="l-sub">
+          <h2 data-reveal>One hook, three entries per swap</h2>
+          <p className="l-sub" data-reveal>
             Every curator runs a sleeve in the same hook-exclusive pool. The hook keeps a ledger per sleeve, block by
             block.
           </p>
-          <BlockExplainer />
-          <div className="l-steps">
+          <div data-reveal>
+            <BlockExplainer />
+          </div>
+          <div className="l-steps" data-reveal="stagger">
             {STEPS.map((s) => (
               <div className="l-step" key={s.k}>
                 <span className="k">{s.k}</span>
@@ -160,14 +176,15 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="l-dark" id="proof">
+      {/* grows from a card to the full width as it scrolls in */}
+      <section className="l-dark" id="proof" data-scroll="view">
         <div className="wrap">
-          <h2>Every yardstick tells a different story</h2>
-          <p className="l-sub">
+          <h2 data-reveal>Every yardstick tells a different story</h2>
+          <p className="l-sub" data-reveal>
             The same six curators over 2024, ranked five ways. Fee income crowns the curator that trades most against
             arbitrageurs. Only Edge puts them in the order of their true hedged P&amp;L.
           </p>
-          <div className="dark-card">
+          <div className="dark-card" data-reveal>
             <RankShift tier="5bps" />
           </div>
           <div className="l-cta center">
@@ -179,7 +196,7 @@ export default function Home() {
 
       <section className="l-section">
         <div className="wrap l-split">
-          <div>
+          <div data-reveal>
             <h2>A vault per curator, scored by the hook</h2>
             <p className="l-sub">
               Depositors back a curator through a <code>UkiyoVault</code>. Entries and exits settle at epoch boundaries,
@@ -187,7 +204,7 @@ export default function Home() {
             </p>
             <Link className="btn primary" href="/app/">Open the vaults</Link>
           </div>
-          <ul className="l-list">
+          <ul className="l-list" data-reveal="stagger">
             <li><b>Paid only for Edge.</b> The curator&apos;s fee is a share of Edge above a high-water mark: nothing for fee volume or a rising market, nothing until losses are earned back.</li>
             <li><b>Bonded against LVR.</b> Curators post a bond and a loss budget; an epoch that loses more pays the overshoot to depositors.</li>
             <li><b>No oracle.</b> A deposit buys the same share of every token the vault holds; the rest is refunded.</li>
@@ -199,11 +216,11 @@ export default function Home() {
 
       <section className="l-section" id="faq">
         <div className="wrap l-faq">
-          <div>
+          <div data-reveal>
             <h2>Questions</h2>
             <p className="l-sub">The rest is in the README, with every number traced to the script that produced it.</p>
           </div>
-          <div>
+          <div data-reveal="stagger">
             {FAQ.map((f) => (
               <details key={f.q}>
                 <summary>{f.q}</summary>
@@ -215,7 +232,7 @@ export default function Home() {
       </section>
 
       <section className="l-final">
-        <div className="wrap">
+        <div className="wrap" data-reveal>
           <Logo size={56} />
           <h2>See which curator actually has Edge</h2>
           <div className="l-cta center">
@@ -232,6 +249,16 @@ export default function Home() {
           <span style={{ marginLeft: "auto" }}>Unaudited hackathon code. Test tokens only.</span>
         </div>
       </footer>
+      <Motion />
     </div>
+  );
+}
+
+/** One headline word, wrapped so it can rise out of its line. */
+function W({ d, children }: { d: number; children: React.ReactNode }) {
+  return (
+    <span className="wd">
+      <span style={{ ["--d" as string]: d }}>{children}</span>
+    </span>
   );
 }

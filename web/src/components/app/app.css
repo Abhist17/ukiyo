@@ -997,3 +997,131 @@ table.acct {
     animation: none;
   }
 }
+
+.rank-was {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--muted);
+  vertical-align: middle;
+}
+
+.callout {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  background: color-mix(in srgb, var(--seal) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--seal) 25%, transparent);
+}
+
+/* Swap receipt */
+.receipt {
+  margin-top: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  padding: 14px;
+  background: var(--card-2);
+  animation: receipt-in 400ms ease-out;
+}
+
+.receipt.is-user {
+  border-color: color-mix(in srgb, var(--good) 40%, var(--line));
+}
+
+.receipt.is-arb {
+  border-color: color-mix(in srgb, var(--bad) 40%, var(--line));
+}
+
+.receipt-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.receipt-head b {
+  font-size: 14px;
+}
+
+.receipt-head .link {
+  margin-left: auto;
+}
+
+.receipt-rows {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.receipt-rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.receipt-rows dt {
+  color: var(--muted);
+}
+
+.receipt-rows dd {
+  margin: 0;
+  font-family: var(--mono);
+  text-align: right;
+}
+
+.receipt-verdict {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 10px 0;
+  line-height: 1.5;
+}
+
+.receipt-split {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.receipt-split > div {
+  display: grid;
+  grid-template-columns: 12px 110px 1fr 70px;
+  gap: 8px;
+  align-items: center;
+}
+
+.receipt-split .track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--card);
+  overflow: hidden;
+}
+
+.receipt-split .track div {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.receipt-split b {
+  text-align: right;
+}
+
+.receipt-split small,
+.receipt-link {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.receipt-link {
+  display: inline-block;
+  margin-top: 8px;
+}
+
+@keyframes receipt-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}

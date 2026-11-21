@@ -1339,3 +1339,14 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.bx-chart {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .bx-chart svg {
+    min-width: 600px;
+  }
+}

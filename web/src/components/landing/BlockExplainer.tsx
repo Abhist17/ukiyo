@@ -65,6 +65,7 @@ export function BlockExplainer() {
       </div>
 
       <div className="bx-body">
+        <div className="bx-chart">
         <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Pool price through two blocks: arbitrage, user trades, and the revert">
           {/* blocks */}
           <rect x={X.b2} y={20} width={X.b3 - X.b2} height={250} rx="10" fill="var(--card-2)" />
@@ -116,6 +117,7 @@ export function BlockExplainer() {
             <text x={X.arb2 + 28} y={(y(CLOSE) + y(ARB_TO)) / 2 + 4} className="bx-lbl pos">impact credit</text>
           </g>
         </svg>
+        </div>
 
         <aside className="bx-side">
           <p className="bx-title">{STEPS[step].title}</p>

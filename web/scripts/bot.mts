@@ -50,7 +50,10 @@ const closes: number[] = JSON.parse(
 ).close;
 const STATE = new URL(`./.bot-state-${chainId}.json`, import.meta.url);
 
-const mainKey = (process.env.PRIVATE_KEY as Hex | undefined) ?? (chainId === 31337 ? ANVIL_KEYS[0] : undefined);
+// accept the key with or without its 0x prefix, as forge does
+const envKey = process.env.PRIVATE_KEY?.trim();
+const mainKey = (envKey ? (envKey.startsWith("0x") ? envKey : `0x${envKey}`) as Hex : undefined) ??
+  (chainId === 31337 ? ANVIL_KEYS[0] : undefined);
 if (!mainKey) throw new Error("set PRIVATE_KEY");
 // Users need their own accounts so their swaps land in the same block as the arbitrage, ordered by priority fee.
 const userKeys: Hex[] =

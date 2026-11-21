@@ -64,6 +64,28 @@ a full-year replay of Bitstamp BTC/USD 2024 prices.
 All formulas live in [`src/libraries/EdgeMath.sol`](src/libraries/EdgeMath.sol). Losses round up and credits round
 down, so rounding can only understate Edge.
 
+### Architecture
+
+```mermaid
+flowchart LR
+    ARB["Arbitrageur<br/>bids a priority fee"] -->|swap| PM
+    USR["Users<br/>no tip"] -->|swap| PM
+    PM["Uniswap v4 PoolManager<br/>hook-exclusive 5 bps pool"]
+    PM -->|"beforeSwap: classify by tip,<br/>credit last block's user impact"| HOOK
+    PM -->|"afterSwap: mark the post-arbitrage price,<br/>charge arbitrage loss, attribute fees"| HOOK
+    HOOK["UkiyoHook<br/>one ledger per sleeve<br/>edge(sleeveId)"]
+    HOOK -->|"Edge each epoch"| VAULT
+    VAULT["UkiyoVault (one per curator)<br/>epochs, shares, fee, bond"] -->|"modifySleeveLiquidity<br/>(only the vault)"| HOOK
+    VAULT -->|"rebalanceWithSwap: swap booked as arbitrage"| PM
+    DEP["Depositors"] -->|"deposit / redeem<br/>at epoch end"| VAULT
+    CUR["Curator"] -->|"rebalance, post bond,<br/>set LVR budget"| VAULT
+    VAULT -->|"settleEpoch: fee only on Edge above<br/>the high-water mark; bond pays overshoot"| DEP
+    APP["App, docs, replay bot"] -.->|"reads ledgers and events"| HOOK
+```
+
+Every swap passes through the hook twice. Vaults are the only way liquidity reaches the pool, and their own swaps can
+never count as user flow.
+
 ### Contracts
 
 | File | Role |

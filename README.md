@@ -147,14 +147,15 @@ EPOCH=120 forge script script/DeployUkiyo.s.sol --rpc-url http://127.0.0.1:8545 
 cd web && npm ci && npm run abi && npm run bot      # leave running
 npm run dev                                         # http://localhost:3000/app
 
-# Unichain Sepolia (chain 1301, canonical v4 PoolManager): cp .env.example .env, add a funded key, then
-./deploy-sepolia.sh                                 # deploys and writes web/src/deployments/1301.json
-cd web && npm run bot:sepolia                       # the replay bot, reading .env
+# Unichain Sepolia (1301) or Base Sepolia (84532), both with the canonical v4 PoolManager:
+# cp .env.example .env, add a funded key and the RPC, then
+./deploy-testnet.sh                                 # deploys and writes web/src/deployments/<chainId>.json
+cd web && npm run bot:testnet                       # the replay bot, reading .env
 ```
 
 The site is a static export, so it can be hosted anywhere; [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
 publishes it to GitHub Pages on every push once the repository is public. It reads the chain straight from the public
-Unichain Sepolia RPC, with no backend.
+testnet RPC, with no backend.
 
 [`backtest/export_web.py`](backtest/export_web.py) copies the backtest's numbers into `web/src/data/` without
 recomputing anything, so the site and the backtest always agree.
@@ -285,7 +286,7 @@ No partner integrations.
 - [x] App (vaults, trade, analytics, faucet), landing page, research page; deploy script and replay bot, running
       end to end on a local chain
 - [x] Threat model, gas numbers
-- [ ] Unichain Sepolia deployment and hosted site
+- [ ] Public testnet deployment (Unichain Sepolia or Base Sepolia) and hosted site
 - [ ] Demo video
 
 ### Known limitations

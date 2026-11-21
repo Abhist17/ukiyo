@@ -63,9 +63,9 @@ const FAQ = [
   {
     q: "Is it live, and is it audited?",
     a:
-      CHAIN.id === 1301
-        ? "The demo runs on Unichain Sepolia with free test tokens and a bot that replays BTC/USD 2024 through the pool. It is unaudited hackathon code: do not use it with real funds."
-        : "The demo runs on a local chain today (one deploy script and a bot that replays BTC/USD 2024 through the pool); the Unichain Sepolia deployment is next. It is unaudited hackathon code: do not use it with real funds.",
+      CHAIN.id !== 31337
+        ? `The demo runs on ${CHAIN.name} with free test tokens and a bot that replays BTC/USD 2024 through the pool. It works on any chain with a v4 PoolManager whose sequencer orders by priority fee, such as Unichain and Base. It is unaudited hackathon code: do not use it with real funds.`
+        : "The demo runs on a local chain today (one deploy script and a bot that replays BTC/USD 2024 through the pool); the public testnet deployment is next. It is unaudited hackathon code: do not use it with real funds.",
   },
 ];
 
@@ -96,7 +96,7 @@ export default function Home() {
       <section className="l-hero">
         <div className="wrap">
           <span className="pill">
-            <span className="dot live" /> Uniswap v4 hook · Unichain
+            <span className="dot live" /> Uniswap v4 hook · {CHAIN.id === 31337 ? "built for Unichain" : `live on ${CHAIN.name}`}
           </span>
           <h1>
             Rank liquidity curators

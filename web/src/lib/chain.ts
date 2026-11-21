@@ -1,4 +1,5 @@
-import { foundry, unichainSepolia } from "viem/chains";
+import { baseSepolia, foundry, unichainSepolia } from "viem/chains";
+import type { Chain } from "viem";
 import { formatEther, type Address } from "viem";
 import { DEPLOYMENTS } from "@/deployments";
 
@@ -25,13 +26,25 @@ export interface Deployment {
 const all = DEPLOYMENTS as unknown as Record<number, Deployment>;
 const wanted = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 0);
 
-/** The deployment the app talks to: NEXT_PUBLIC_CHAIN_ID if set, else Unichain Sepolia if deployed, else anvil. */
-export const DEP: Deployment | undefined = all[wanted] ?? all[unichainSepolia.id] ?? all[foundry.id];
-export const CHAIN = DEP?.chainId === unichainSepolia.id ? unichainSepolia : foundry;
+/** Chains the demo can run on: any with a canonical v4 PoolManager and priority-fee ordering. */
+const CHAINS: Record<number, Chain> = {
+  [unichainSepolia.id]: unichainSepolia,
+  [baseSepolia.id]: baseSepolia,
+  [foundry.id]: foundry,
+};
+
+/**
+ * The deployment the app talks to: NEXT_PUBLIC_CHAIN_ID if set, else Unichain Sepolia, else Base Sepolia, else anvil,
+ * whichever has been deployed.
+ */
+export const DEP: Deployment | undefined =
+  all[wanted] ?? all[unichainSepolia.id] ?? all[baseSepolia.id] ?? all[foundry.id];
+export const CHAIN: Chain = CHAINS[DEP?.chainId ?? foundry.id] ?? foundry;
 /** Human name of the chain, for the header. */
 export const CHAIN_LABEL = CHAIN.id === foundry.id ? "Local anvil" : CHAIN.name;
 export const RPC = process.env.NEXT_PUBLIC_RPC_URL || CHAIN.rpcUrls.default.http[0];
-export const EXPLORER = CHAIN.id === unichainSepolia.id ? "https://sepolia.uniscan.xyz" : undefined;
+export const EXPLORER =
+  CHAIN.id === unichainSepolia.id ? "https://sepolia.uniscan.xyz" : CHAIN.blockExplorers?.default.url;
 
 export const BTC_IS_0 = !!DEP && DEP.btc.toLowerCase() === DEP.token0.toLowerCase();
 

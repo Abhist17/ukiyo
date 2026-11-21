@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit",
     "abi": "node scripts/abi.mjs",
     "bot": "node scripts/bot.mts",
-    "bot:sepolia": "node --env-file=../.env scripts/bot.mts"
+    "bot:testnet": "node --env-file=../.env scripts/bot.mts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.106.0",

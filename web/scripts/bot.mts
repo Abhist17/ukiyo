@@ -26,7 +26,7 @@ import {
   type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { foundry, unichainSepolia } from "viem/chains";
+import { baseSepolia, foundry, unichainSepolia } from "viem/chains";
 import { hookAbi, vaultAbi, tokenAbi, routerAbi } from "../src/lib/abi.ts";
 
 const RPC = process.env.RPC_URL ?? "http://127.0.0.1:8545";
@@ -43,7 +43,7 @@ const MAX_SQRT = 1461446703485210103287273052203988822378723970341n;
 
 const pc = createPublicClient({ transport: http(RPC) });
 const chainId = await pc.getChainId();
-const chain = chainId === unichainSepolia.id ? unichainSepolia : foundry;
+const chain = [unichainSepolia, baseSepolia].find((c) => c.id === chainId) ?? foundry;
 const dep = JSON.parse(readFileSync(new URL(`../src/deployments/${chainId}.json`, import.meta.url), "utf8"));
 const closes: number[] = JSON.parse(
   readFileSync(new URL("../src/data/btc2024_hourly.json", import.meta.url), "utf8"),

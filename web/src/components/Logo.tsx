@@ -1,7 +1,10 @@
 import { useId } from "react";
 
-/** The Ukiyo coin: the vermilion sun of the floating world over a navy sea whose wave is a price path. */
-export function Logo({ size = 32, title = "Ukiyo" }: { size?: number; title?: string }) {
+/**
+ * The Ukiyo mark: one wave (a price path) splits a coin into the vermilion sun of the floating world and the sea.
+ * The sea follows the theme (`--logo-sea`): navy on light backgrounds, cream on dark ones, so the mark never vanishes.
+ */
+export function Logo({ size = 32, title = "Ukiyo", sea }: { size?: number; title?: string; sea?: string }) {
   const clip = useId();
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={title}>
@@ -12,9 +15,20 @@ export function Logo({ size = 32, title = "Ukiyo" }: { size?: number; title?: st
       </defs>
       <g clipPath={`url(#${clip})`}>
         <rect width="64" height="64" fill="#E8452C" />
-        <path d="M0 36 C10 27 18 27 26 33 S42 42 50 34 S60 27 64 29 V64 H0Z" fill="#141A2E" />
-        <path d="M0 47 C10 40 18 40 26 45 S42 52 50 45 S60 40 64 42" fill="none" stroke="#E8452C" strokeWidth="3.2" />
+        <path d="M-2 34 C10 24 22 24 32 32 C42 40 54 40 66 30 V66 H-2Z" fill={sea ?? "var(--logo-sea, #11162B)"} />
       </g>
     </svg>
+  );
+}
+
+/** Mark plus the lowercase wordmark, whose i is dotted with a small sun. */
+export function Wordmark({ size = 28, sea }: { size?: number; sea?: string }) {
+  return (
+    <span className="wordmark" style={{ fontSize: size * 0.82 }}>
+      <Logo size={size} sea={sea} />
+      <span className="wm-text" aria-label="ukiyo">
+        uk<span className="wm-i" aria-hidden>ı</span>yo
+      </span>
+    </span>
   );
 }

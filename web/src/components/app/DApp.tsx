@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
+import { Logo, Wordmark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CHAIN, DEP, EXPLORER, short, usd, CHAIN_LABEL } from "@/lib/chain";
 import { useLive, useTape } from "@/lib/useUkiyo";
@@ -86,9 +86,8 @@ export function DApp() {
     <Providers>
       <header className="app-header">
         <div className="wrap wide app-header-in">
-          <Link className="brand" href="/">
-            <Logo size={28} />
-            Ukiyo
+          <Link className="wordmark-link" href="/" aria-label="Ukiyo home">
+            <Wordmark size={28} />
           </Link>
           <nav className="app-tabs" role="tablist">
             {TABS.map((t) => (

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
+import { Logo, Wordmark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Scoreboard } from "@/components/Scoreboard";
 import { Method } from "@/components/Method";
@@ -17,9 +17,8 @@ export default function Research() {
     <>
       <header className="site-header">
         <div className="wrap">
-          <Link className="brand" href="/">
-            <Logo size={28} />
-            Ukiyo
+          <Link className="wordmark-link" href="/" aria-label="Ukiyo home">
+            <Wordmark size={28} />
           </Link>
           <nav className="nav">
             <a href="#scoreboard">Scoreboard</a>

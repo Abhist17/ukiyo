@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
+import { Logo, Wordmark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { HeroBoard } from "@/components/landing/HeroBoard";
+import { HeroRank } from "@/components/landing/HeroRank";
+import { HeroLive } from "@/components/landing/HeroLive";
 import { LiveNumbers } from "@/components/landing/LiveNumbers";
 import { RankShift } from "@/components/RankShift";
-import { error, pairAgreement, total } from "@/lib/data";
+import { error } from "@/lib/data";
 import { CHAIN } from "@/lib/chain";
 import "@/components/landing/landing.css";
 
@@ -72,16 +73,13 @@ const FAQ = [
 
 export default function Home() {
   const e = error("5bps");
-  const order = pairAgreement(total("5bps", "edge"), total("5bps", "truth"));
-  const fees = pairAgreement(total("5bps", "fees"), total("5bps", "truth"));
 
   return (
     <div className="landing">
       <header className="l-nav">
         <div className="wrap l-nav-in">
-          <Link className="brand" href="/">
-            <Logo size={28} />
-            Ukiyo
+          <Link className="wordmark-link" href="/" aria-label="Ukiyo home">
+            <Wordmark size={28} />
           </Link>
           <nav>
             <a href="#how" className="hide-sm">How it works</a>
@@ -95,8 +93,10 @@ export default function Home() {
       </header>
 
       <section className="l-hero">
-        <div className="wrap">
-          <span className="pill">
+        <div className="hero-sun" aria-hidden />
+        <div className="hero-sea" aria-hidden />
+        <div className="wrap hero-in">
+          <span className="pill dark">
             <span className="dot live" /> Uniswap v4 hook · {CHAIN.id === 31337 ? "built for Unichain" : `live on ${CHAIN.name}`}
           </span>
           <h1>
@@ -105,29 +105,21 @@ export default function Home() {
             by <em>skill</em>, not by luck
           </h1>
           <p className="l-lede">
-            Ukiyo&apos;s hook splits every curator&apos;s P&amp;L into what users paid and what arbitrage took, on-chain
-            and with no oracle. What&apos;s left is Edge.
+            Fee APR rewards volume. Beat-HODL rewards the market. Ukiyo&apos;s hook measures what is left, on-chain and
+            with no oracle: <b>Edge</b>.
           </p>
           <div className="l-cta">
             <Link className="btn primary" href="/app/">Launch app</Link>
-            <Link className="btn ghost" href="/research/">Read the research</Link>
+            <Link className="btn ghost-light" href="/research/">Read the research</Link>
           </div>
           <div className="l-formula">
             <b>Edge</b> = user fees + user price impact − arbitrage loss
           </div>
 
           <div className="l-stage">
-            <div className="float left">
-              <span>Arbitrage fees counted</span>
-              <b>$0</b>
-              <small>they come back as loss</small>
-            </div>
-            <HeroBoard />
-            <div className="float right">
-              <span>Ranked like true P&amp;L</span>
-              <b className="pos">{Math.round(order * 100)}% of pairs</b>
-              <small>fee APR: {Math.round(fees * 100)}%</small>
-            </div>
+            <HeroLive side="left" />
+            <HeroRank />
+            <HeroLive side="right" />
           </div>
         </div>
       </section>

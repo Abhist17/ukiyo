@@ -582,7 +582,7 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
             if (l == 0) continue;
             uint128 anchored = s.anchoredLiquidity;
             (uint160 lo, uint160 hi) = _bounds(s);
-            uint256 credit;
+            uint256 credit = 0;
             if (l > anchored) credit = EdgeMath.impactCredit(l - anchored, mark, sqrtClose, lo, hi);
             if (anchored != 0) credit += EdgeMath.impactCredit(anchored, s.anchor, sqrtClose, lo, hi);
             if (credit != 0) _ledgers[i].userImpact += credit;
@@ -607,7 +607,7 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
             }
             if (l == 0) continue;
             (uint160 lo, uint160 hi) = _bounds(s);
-            uint256 loss;
+            uint256 loss = 0;
             if (l > anchored && mark != 0) loss = EdgeMath.rebalancingLoss(l - anchored, mark, sqrtPost, lo, hi);
             if (anchored != 0) loss += EdgeMath.rebalancingLoss(anchored, anchor, sqrtPost, lo, hi);
             if (loss != 0) _ledgers[i].arbLoss += loss;

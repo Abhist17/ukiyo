@@ -18,6 +18,7 @@ import {
   createWalletClient,
   http,
   keccak256,
+  encodeFunctionData,
   encodePacked,
   parseEther,
   maxUint256,
@@ -54,6 +55,8 @@ const ANVIL_KEYS: Hex[] = [
 // waits for several receipts in turn).
 const POLL_MS = Number(process.env.POLL_MS ?? 750);
 const pc = createPublicClient({ transport: http(RPC), pollingInterval: POLL_MS });
+// Sends a step's signed transactions in one JSON-RPC batch, so the sequencer receives them together.
+const burst = createPublicClient({ transport: http(RPC, { batch: { wait: 20 } }) });
 const chainId = await pc.getChainId();
 const chain = [unichainSepolia, baseSepolia].find((c) => c.id === chainId) ?? foundry;
 const dep = JSON.parse(readFileSync(new URL(`../src/deployments/${chainId}.json`, import.meta.url), "utf8"));
@@ -130,10 +133,13 @@ async function setup() {
   }
 }
 
-/** Swap through the test router. Exact input; `limit` caps how far the price moves. */
-function swap(w: (typeof users)[number], zeroForOne: boolean, amountIn: bigint, limit: bigint, tip: bigint, maxFee: bigint, nonce?: number) {
-  return w.writeContract({
-    address: router,
+/**
+ * A swap through the test router, signed locally (exact input; `limit` caps how far the price moves). Signing first
+ * and sending a step's transactions in one batch makes them reach the sequencer together; sent one request each, with
+ * nonce lookups on the way, the arbitrage and the users kept landing in different blocks.
+ */
+function signSwap(w: (typeof users)[number], zeroForOne: boolean, amountIn: bigint, limit: bigint, tip: bigint, maxFee: bigint, nonce: number) {
+  const data = encodeFunctionData({
     abi: routerAbi,
     functionName: "swap",
     args: [
@@ -142,14 +148,23 @@ function swap(w: (typeof users)[number], zeroForOne: boolean, amountIn: bigint, 
       { takeClaims: false, settleUsingBurn: false },
       "0x",
     ],
+  });
+  return w.account.signTransaction({
+    chainId,
+    type: "eip1559",
+    to: router,
+    data,
+    nonce,
     maxPriorityFeePerGas: tip,
     maxFeePerGas: maxFee,
-    nonce,
     // Fixed and generous: an estimate is taken against the state before this block's arbitrage, but the swap runs
     // after it and may pay for the hook's per-block bookkeeping, so estimates ran out of gas. Only gas used is paid.
     gas: 1_500_000n,
   });
 }
+
+/** The next nonce of each wallet, read once per step so signing needs no further round trips. */
+const nonceOf = (w: (typeof users)[number]) => pc.getTransactionCount({ address: w.account.address, blockTag: "pending" });
 
 /** Box-Muller lognormal: median `m`. */
 const lognormal = (m: number, s: number) => m * Math.exp(s * Math.sqrt(-2 * Math.log(Math.random())) * Math.cos(2 * Math.PI * Math.random()));
@@ -159,7 +174,8 @@ async function step(h: number) {
   const block = await pc.getBlock();
   const base = block.baseFeePerGas ?? 0n;
   // every send of a step goes out together so they share a block; the priority fee then puts the arbitrage first
-  const pending: Promise<Hex>[] = [];
+  const signed: Promise<Hex>[] = [];
+  const [mainNonce, ...userNonces] = await Promise.all([main, ...users.slice(0, 2)].map(nonceOf));
 
   // 1. arbitrage, top of block: move the pool to within one fee-width of the external price
   const p = await poolPrice();
@@ -171,26 +187,29 @@ async function step(h: number) {
     const buyBtcIs1to0 = btcIs0; // buying token0 means paying token1 (oneForZero)
     const zeroForOne = up ? !buyBtcIs1to0 : buyBtcIs1to0;
     const tip = threshold * 3n;
-    pending.push(swap(main, zeroForOne, parseEther("1000000000"), sqrtLimit(target), tip, base * 2n + tip));
+    signed.push(signSwap(main, zeroForOne, parseEther("1000000000"), sqrtLimit(target), tip, base * 2n + tip, mainNonce));
     arb = `${up ? "↑" : "↓"} ${p.toFixed(0)}→${target.toFixed(0)}`;
     post = target;
   }
 
-  // 2. user flow, no priority fee: USER_SWAPS_MAX swaps spread over the trader wallets, nonces assigned up front so
-  // every swap goes out at once and lands in the arbitrage's block
+  // 2. user flow, no priority fee: up to USER_SWAPS_MAX random orders, combined into one swap for the buyers and one for
+  // the sellers (from two different wallets). Few transactions per step matter on Unichain: a burst that a block
+  // boundary cuts leaves a block that opens with a user swap, which the hook marks after (see the README).
   const n = 1 + Math.floor(Math.random() * USER_SWAPS_MAX);
-  const nonces = await Promise.all(users.map((u) => pc.getTransactionCount({ address: u.account.address, blockTag: "pending" })));
-  for (let i = 0; i < n; i++) {
-    const usd = Math.min(lognormal(USER_MEDIAN_USD, 0.9), USER_MEDIAN_USD * 9);
-    const sellBtc = Math.random() < 0.5;
+  const usdBy = { buy: 0, sell: 0 };
+  for (let i = 0; i < n; i++) usdBy[Math.random() < 0.5 ? "sell" : "buy"] += Math.min(lognormal(USER_MEDIAN_USD, 0.9), USER_MEDIAN_USD * 9);
+  const m = USER_MAX_MOVE_BPS / 1e4;
+  (["buy", "sell"] as const).forEach((side, w) => {
+    const usd = usdBy[side];
+    if (usd === 0) return;
+    const sellBtc = side === "sell";
     const zeroForOne = sellBtc === btcIs0;
     const amount = parseEther((sellBtc ? usd / ext : usd).toFixed(12));
-    const w = i % users.length;
-    const m = USER_MAX_MOVE_BPS / 1e4;
     const limit = sqrtLimit(sellBtc ? post * (1 - m) : post * (1 + m));
-    pending.push(swap(users[w], zeroForOne, amount, limit, 0n, base * 2n + 1n, nonces[w]++));
-  }
-  const hashes = await Promise.all(pending);
+    signed.push(signSwap(users[w], zeroForOne, amount, limit, 0n, base * 2n + 1n, userNonces[w]));
+  });
+  const raws = await Promise.all(signed);
+  const hashes = await Promise.all(raws.map((serializedTransaction) => burst.sendRawTransaction({ serializedTransaction })));
   const receipts = await Promise.all(hashes.map((hash) => pc.waitForTransactionReceipt({ hash })));
   const blocks = new Set(receipts.map((r) => r.blockNumber));
   const failedTx = receipts.filter((r) => r.status !== "success");

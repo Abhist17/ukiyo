@@ -58,8 +58,9 @@ a full-year replay of Bitstamp BTC/USD 2024 prices.
 | --- | --- | --- |
 | Classify | `beforeSwap` | A swap paying a priority fee (`tx.gasprice − block.basefee`) at or above `priorityFeeThreshold` is **arbitrage**. On Unichain, priority ordering makes arbitrageurs bid for the top of the block. Rule: *when in doubt, call it arbitrage* — the backtest shows a classifier that never misses an arbitrage never overstates Edge. |
 | Credit impact | first `beforeSwap` of a block | The previous block closed at the current price. Credit each sleeve `l·(close − s*)²/s*`: user displacement that the next arbitrage reverts in the LPs' favour. Net per block, so a same-block round trip earns nothing. |
-| Attribute fees | `afterSwap` | Each sleeve's LP fee is computed exactly from the price path and booked as user or arbitrage fee. Arbitrage fees never count toward Edge. |
+| Attribute fees | `afterSwap` | Each sleeve's LP fee is computed exactly from the price path, net of any protocol fee the pool pays, and booked as user or arbitrage fee. Arbitrage fees never count toward Edge. |
 | Mark and charge | first `afterSwap` of a block | Record `s*`, the price right after the arbitrage slot. Charge each sleeve `l·(s*_k − s*_{k−1})²/s*_{k−1}`. |
+| Anchor new liquidity | `modifySleeveLiquidity` | Liquidity added between marks is measured from the price it joins at, not from `s*`, until the next mark, so a deposit landing after user flow is never credited with that flow's impact. |
 
 All formulas live in [`src/libraries/EdgeMath.sol`](src/libraries/EdgeMath.sol). Losses round up and credits round
 down, so rounding can only understate Edge.
@@ -116,7 +117,7 @@ back in. Removals pay the caller, so an owner who could re-point the manager cou
 | `requestRedeem(shares)` | holder | Hands shares to the vault for the end of the epoch |
 | `settleEpoch()` | anyone, after `epochLength` | Collects the sleeve's fees, pays redemptions, mints deposits, deploys idle tokens, and records the Edge the sleeve earned that epoch |
 | `claimRedemption(epoch)`, `claimRefund()` | user | Withdraws redemption payouts and the parts of deposits that did not fit |
-| `rebalance(tickLower, tickUpper)` | curator only | Moves the range and redeploys; the hook anchors the new range at the current price |
+| `rebalance(tickLower, tickUpper)` | curator only | Moves the range and redeploys; the hook anchors the new liquidity at the current price |
 | `rebalanceWithSwap(tickLower, tickUpper, zeroForOne, amountIn)` | curator only | The same, after swapping idle tokens into the mix the new range needs. The swap moves the price at most 1% (a bigger order fills partially), and the hook books it as arbitrage because the vault is a sleeve manager, so a curator can never credit its own Edge by trading |
 
 - **Epochs.** Entries and exits settle in batches at the boundary, so the share price is fixed within an epoch. The
@@ -270,7 +271,7 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
-forge test                          # 67 tests + 4 stateful invariants: unit, fuzz, integration, differential
+forge test                          # 73 tests + 4 stateful invariants: unit, fuzz, integration, differential
 forge test --match-test test_gas -vv
 ```
 
@@ -292,7 +293,7 @@ python export_web.py                       # refresh the site's data after exper
 | Suite | What it proves |
 | --- | --- |
 | `EdgeMath.t.sol` | The closed-form loss equals the exact holding-vs-position gap from Uniswap's amount math (1,024 fuzz runs); fee attribution matches `SqrtPriceMath`; credits never exceed losses |
-| `UkiyoHook.t.sol` | Against the canonical PoolManager bytecode: pool binding, hook-only liquidity, access control, classification, fee attribution matching the PoolManager's own fee growth, marks, loss, impact, round-trip immunity, anchors on range change, `sleeveAmounts` equal to a full withdrawal to the wei, and a differential fuzz test where every ledger field equals an independent replay of random blocks of swaps |
+| `UkiyoHook.t.sol` | Against the canonical PoolManager bytecode: pool binding, hook-only liquidity, access control, classification, fee attribution matching the PoolManager's own fee growth, marks, loss, impact, round-trip immunity, anchors on range change and on added liquidity, fee attribution with a protocol fee switched on, `sleeveAmounts` equal to a full withdrawal to the wei, and a differential fuzz test where every ledger field equals an independent replay of random blocks of swaps, liquidity changes and protocol fees |
 | `UkiyoVault.t.sol` | On a 5 bps pool: one-time hand-over that locks the owner out, epoch gating, first-mint shares and dead shares, proportional deposits with refunds, pro-rata redemptions, fees reaching shareholders, per-epoch Edge snapshots, curator-only rebalancing, the depositor cap, the performance fee (a share of positive Edge, nothing on losses, losses earned back before any fee), the LVR bond (overshoot paid to depositors, capped at the bond, budgets deferred one epoch, withdrawals only after the penalty), and fuzz tests that a deposit-redeem round trip never pays out more than went in and that the vault always holds what it owes plus the bond |
 | `invariant/UkiyoVault.invariant.t.sol` | Stateful: random sequences of deposits, cancels, redemptions, claims, user and arbitrage swaps, settlements, rebalances (with and without a swap) and bond moves, by four depositors and the curator. After every step the vault holds all it owes (escrows, refunds, payouts, bond), every share sits with a known holder, escrowed redemption shares are all there, and the high-water mark never goes negative |
 
@@ -303,8 +304,8 @@ python export_web.py                       # refresh the site's data after exper
 | First swap of a block, two sleeves (mark, impact credit, loss charge, fee attribution), including the router and PoolManager | ~277k |
 | Later swap in the same block, two sleeves | ~177k |
 | `requestDeposit` (including the minimum-deposit check) | ~189k |
-| `settleEpoch` with a performance fee, one redemption and one deposit | ~567k |
-| `rebalance` (remove, move range, redeploy) | ~384k |
+| `settleEpoch` with a performance fee, one redemption and one deposit | ~591k |
+| `rebalance` (remove, move range, redeploy) | ~369k |
 
 The hook's per-swap work loops over the sleeves (at most 8), so a swap's cost grows with the sleeve count. Earlier
 versions of this table under-reported the first swap of a block: the test did not actually advance the block, so it
@@ -317,7 +318,7 @@ measured a later swap twice.
 | Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees`, and a curator benchmark built on it that separates skill from market direction |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Curators are paid a performance fee only on Edge above a high-water mark and bonded against LVR, so depositors pay for skill and are compensated for losses beyond what was promised; any curator vault can adopt the meter as its scoring and fee standard |
-| Functionality (15%) | 67 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 4 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
+| Functionality (15%) | 73 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 4 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 
@@ -336,18 +337,19 @@ No partner integrations.
       end to end on a local chain
 - [x] Threat model, gas numbers
 - [x] Deployed to Unichain Sepolia with the replay bot running
-- [ ] Hosted site (publishes automatically once the repository is public)
+- [x] Hosted site: https://ukiyo-ochre.vercel.app
 - [ ] Demo video
 
 ### Known limitations
 
-- Liquidity and range changes take effect immediately, so the block in which a sleeve changes is measured with its new
-  shape (bounded to one block for one sleeve).
-- Fee attribution assumes no protocol fee.
+- Liquidity removed between two marks is neither credited nor charged for that block's move up to its removal (bounded
+  to one block for one sleeve). Added liquidity has no such gap: the hook anchors it at the price it joins at, so it is
+  never credited with user impact, or charged for moves, from before it existed
+  (`test_addedLiquidityIsMeasuredFromWhereItJoined`).
 - Each block is marked after its first swap, whatever its class, so an arbitrage the classifier misses at the top of a
   block is still charged. The cost: when a user swap opens a block, its own price impact is charged as arbitrage loss
   once arbitrage reverts it. Edge errs low, never high, by about the square of that swap's impact, which is negligible
-  for trades that are small against the pool's depth. (The testnet bot gives its users a 0.4% slippage limit for this
+  for trades that are small against the pool's depth. (The testnet bot gives its users a 0.6% slippage limit for this
   reason; with uncapped swaps on thin liquidity it understated every curator.)
 - On real Unichain flow the priority fee does not separate informed from uninformed swaps: even at 1 wei, ~7% of
   informed swaps are called user flow (see the measurement above). The threshold is owner-set.

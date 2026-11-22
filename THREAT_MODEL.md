@@ -29,9 +29,12 @@ What each actor can and cannot do to the hook ([`UkiyoHook`](src/UkiyoHook.sol))
 | Arbitrage booked as user flow inflates Edge (and the curator's fee) | Rule: when in doubt, call it arbitrage; recommended threshold is 1 wei | **Open.** On real Unichain flow ~7% of informed swaps pay no tip ([measured](README.md#does-the-priority-fee-identify-arbitrage-on-unichain-measured-not-assumed)). The classifier is only as good as priority ordering |
 | Owner raises the threshold so every swap counts as user flow, inflating every curator's Edge and fees | A raise waits `THRESHOLD_RAISE_DELAY` (2 days, longer than any epoch), so depositors can leave first; lowering (stricter) applies at once (`test_thresholdRaisesWaitAndLoweringIsImmediate`) | The owner still chooses the threshold; a malicious owner can raise it after the delay |
 | Same-block round trips farm the impact credit | Impact is credited per block from the block's close, net, so a same-block round trip earns nothing (`test_sameBlockRoundTripEarnsNoImpact`) | None known |
-| A curator dodges arbitrage loss by changing range just before a move | The hook anchors a re-shaped sleeve at the current price | Bounded to one block per change for that sleeve; each rebalance costs ~384k gas |
+| A curator dodges arbitrage loss by changing range just before a move | The hook anchors liquidity at the price it is added at, so a re-ranged sleeve is measured from there | Bounded to one block per change for that sleeve; each rebalance costs ~369k gas |
+| Liquidity added right after user flow (a deposit settling, timed by anyone) is credited with that flow's impact | Added liquidity is anchored at the price it joins at and measured from there until the next mark; only liquidity present at the mark is credited for the block's impact (`test_addedLiquidityIsMeasuredFromWhereItJoined`, and the differential fuzz test adds and removes liquidity at random points) | Liquidity removed between marks skips that block's partial move, credit and charge alike |
+| A curator pushes the price with an untipped swap from another address, then reverts it as the next block's first swap, so its sleeve is credited the push's impact at the cost of two fees | Reverting the push is an arbitrage worth about the impact credited to the whole pool, so arbitrageurs compete for that top-of-block slot: winning it means bidding about that much in priority fees, which costs more than the 20% maximum performance fee the inflated Edge could earn | **Open** where the top-of-block slot is not competitive (thin or new pools); only a better classifier closes it |
 | A curator trades its own vault's tokens with no tip so the hook credits its sleeve with the swap's fee and impact | Swaps sent by a sleeve manager are always arbitrage (`isSleeveManager`; `test_vaultSwapIsBookedAsArbitrage`) | None known |
 | A curator uses `rebalanceWithSwap` to push the price and hurt other sleeves' Edge | The swap's price limit caps the move at 1%, and the vault pays the swap's fee and impact itself | A manager swap that leads a block becomes the mark, so others are charged for that move; bounded and costly |
+| A protocol fee switched on later makes fees overstated | Fee attribution reads the pool's protocol fee for each swap's direction and books only the LPs' part, exactly as `Pool.swap` splits it (`test_feeAttributionMatchesPoolManagerWithProtocolFee`) | None known |
 | Rounding overstates Edge | Losses round up, credits and fees round down; `edgePerShare` floors | None known |
 
 ### Vault funds
@@ -59,5 +62,4 @@ What each actor can and cannot do to the hook ([`UkiyoHook`](src/UkiyoHook.sol))
 
 - The demo's test tokens (anyone can mint) and swap router (v4-core's `PoolSwapTest`): demo infrastructure, not part of
   the protocol.
-- Protocol fees on the pool: fee attribution assumes none.
 - Native-currency pools: vaults reject them at construction.

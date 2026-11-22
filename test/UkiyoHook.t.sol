@@ -409,6 +409,57 @@ contract UkiyoHookTest is Test {
         assertEq(hook.sleeve(0).anchor, 0, "anchor is consumed by the next mark");
     }
 
+    /// @notice Liquidity added after users moved the price is not credited for that move. Before anchoring, a vault
+    ///         settling a large deposit right after user flow had its whole new liquidity credited with the block's
+    ///         impact, overstating Edge.
+    function test_addedLiquidityIsMeasuredFromWhereItJoined() public {
+        _swapTo(_atTick(60), ARB_TIP); // s* of this block
+        _swapTo(_atTick(-300), USER_TIP); // users push the price away
+        uint160 joined = _price();
+        uint256 impactBefore = hook.ledger(0).userImpact;
+        uint256 lossBefore = hook.ledger(0).arbLoss;
+        hook.modifySleeveLiquidity(0, int256(uint256(10 * LIQ))); // a deposit lands mid-block
+        assertEq(hook.sleeve(0).anchoredLiquidity, 10 * LIQ);
+        assertEq(hook.sleeve(0).anchor, joined);
+
+        _nextBlock();
+        _swapTo(_atTick(60), ARB_TIP); // arbitrage reverts the push
+
+        (uint160 lo, uint160 hi) = _bounds(0);
+        uint256 impact = hook.ledger(0).userImpact - impactBefore;
+        uint256 loss = hook.ledger(0).arbLoss - lossBefore;
+        // the old liquidity saw the push; the new liquidity only saw the reversal
+        assertEq(
+            impact, EdgeMath.impactCredit(LIQ, _atTick(60), joined, lo, hi), "impact only for liquidity that saw it"
+        );
+        assertEq(
+            loss, EdgeMath.rebalancingLoss(10 * LIQ, joined, _atTick(60), lo, hi), "new liquidity pays the reversal"
+        );
+        assertLt(impact, EdgeMath.impactCredit(11 * LIQ, _atTick(60), joined, lo, hi), "no credit for unseen impact");
+        assertEq(hook.sleeve(0).anchoredLiquidity, 0, "the mark makes it ordinary liquidity");
+        assertEq(hook.sleeve(0).anchor, 0);
+    }
+
+    /// @notice Removal takes the newest liquidity first, and removing all of it drops the anchor.
+    function test_removalTakesAnchoredLiquidityFirst() public {
+        _swapTo(_atTick(60), ARB_TIP);
+        hook.modifySleeveLiquidity(1, int256(uint256(LIQ)));
+        hook.modifySleeveLiquidity(1, -int256(uint256(LIQ / 2)));
+        assertEq(hook.sleeve(1).anchoredLiquidity, LIQ / 2);
+        assertEq(hook.sleeve(1).liquidity, LIQ + LIQ / 2);
+        hook.modifySleeveLiquidity(1, -int256(uint256(LIQ)));
+        assertEq(hook.sleeve(1).anchoredLiquidity, 0);
+        assertEq(hook.sleeve(1).anchor, 0, "nothing left to anchor");
+        assertEq(hook.sleeve(1).liquidity, LIQ / 2);
+    }
+
+    /// @notice With a protocol fee switched on, the hook still matches the PoolManager's own LP fee growth.
+    function test_feeAttributionMatchesPoolManagerWithProtocolFee() public {
+        manager.setProtocolFeeController(address(this));
+        manager.setProtocolFee(key, (uint24(700) << 12) | 1000); // 0.07% one way, 0.1% the other
+        test_feeAttributionMatchesPoolManager();
+    }
+
     // ------------------------------------------------------------------------------------------------------------
     // Gas (run with `forge test --match-test test_gas -vv`; `--gas-report` isolates calls and drops tx.gasprice)
     // ------------------------------------------------------------------------------------------------------------
@@ -454,22 +505,41 @@ contract UkiyoHookTest is Test {
         uint256 arbFees;
         uint256 impact;
         uint256 loss;
+        uint128 liquidity;
+        uint128 anchored;
+        uint160 anchor;
     }
 
     /// @dev Reference-model state, kept in storage to stay clear of the stack limit.
     Ref[2] internal ref;
     uint160 internal refMark;
     bool internal refPending;
+    uint16[2] internal refProtocolFee; // [zeroForOne, oneForZero]
 
-    /// @notice Random blocks of random swaps; every ledger field must equal a straightforward reference replay.
+    /// @notice Random blocks of random swaps, with liquidity added and removed at random points and a random protocol
+    ///         fee; every ledger field must equal a straightforward reference replay.
     function testFuzz_ledgersMatchReferenceReplay(uint256 seed) public {
-        refMark = _price(); // sleeves were opened (anchored) at the initial price
+        // setUp added both sleeves' liquidity before the pool's first mark: all of it anchored at the initial price
+        for (uint256 i; i < 2; ++i) {
+            ref[i].liquidity = LIQ;
+            ref[i].anchored = LIQ;
+            ref[i].anchor = _price();
+        }
+        if (seed % 3 == 0) {
+            // casting to 'uint16' is safe because both values are at most 1000
+            // forge-lint: disable-next-line(unsafe-typecast)
+            refProtocolFee = [uint16((seed >> 8) % 1001), uint16((seed >> 24) % 1001)];
+            manager.setProtocolFeeController(address(this));
+            manager.setProtocolFee(key, (uint24(refProtocolFee[1]) << 12) | refProtocolFee[0]);
+        }
         uint256 blocks = 2 + seed % 5;
         for (uint256 b; b < blocks; ++b) {
             _nextBlock();
             uint256 swaps = 1 + uint256(keccak256(abi.encode(seed, b))) % 3;
             for (uint256 k; k < swaps; ++k) {
-                _refSwap(uint256(keccak256(abi.encode(seed, b, k))), k == 0);
+                uint256 r = uint256(keccak256(abi.encode(seed, b, k)));
+                if ((r >> 200) % 4 == 0) _refLiquidity(r);
+                _refSwap(r, k == 0);
             }
         }
         for (uint256 i; i < 2; ++i) {
@@ -478,6 +548,30 @@ contract UkiyoHookTest is Test {
             assertEq(l.arbFees, ref[i].arbFees, "arbFees");
             assertEq(l.userImpact, ref[i].impact, "userImpact");
             assertEq(l.arbLoss, ref[i].loss, "arbLoss");
+            assertEq(hook.sleeve(i).liquidity, ref[i].liquidity, "liquidity");
+        }
+    }
+
+    /// @dev Add or remove a random amount of one sleeve's liquidity, in the pool and in the reference model.
+    function _refLiquidity(uint256 r) internal {
+        uint256 i = (r >> 202) % 2;
+        Ref storage m = ref[i];
+        bool add = m.liquidity == 0 || (r >> 204) % 2 == 0;
+        // casting to 'uint128' is safe because the value is at most LIQ or the sleeve's liquidity
+        // forge-lint: disable-next-line(unsafe-typecast)
+        uint128 amount = uint128(1 + (r >> 64) % (add ? LIQ : m.liquidity));
+        if (add) {
+            hook.modifySleeveLiquidity(i, int256(uint256(amount)));
+            m.liquidity += amount;
+            m.anchored += amount;
+            m.anchor = _price();
+        } else {
+            hook.modifySleeveLiquidity(i, -int256(uint256(amount)));
+            m.liquidity -= amount;
+            if (m.anchored != 0) {
+                m.anchored = m.anchored > amount ? m.anchored - amount : 0;
+                if (m.anchored == 0) m.anchor = 0;
+            }
         }
     }
 
@@ -494,20 +588,34 @@ contract UkiyoHookTest is Test {
         // The previous marked block closed at `before`: credit its impact first, as the hook does.
         if (firstInBlock && refPending) {
             for (uint256 i; i < 2; ++i) {
+                Ref storage m = ref[i];
+                if (m.liquidity == 0) continue;
                 (uint160 lo, uint160 hi) = _bounds(i);
-                ref[i].impact += EdgeMath.impactCredit(LIQ, refMark, before, lo, hi);
+                if (m.liquidity > m.anchored) {
+                    m.impact += EdgeMath.impactCredit(m.liquidity - m.anchored, refMark, before, lo, hi);
+                }
+                if (m.anchored != 0) m.impact += EdgeMath.impactCredit(m.anchored, m.anchor, before, lo, hi);
             }
         }
 
         _swapTo(target, arb ? ARB_TIP : USER_TIP);
 
+        (uint256 num, uint256 den) = EdgeMath.lpFeeRate(FEE, refProtocolFee[target < before ? 0 : 1]);
         for (uint256 i; i < 2; ++i) {
+            Ref storage m = ref[i];
             (uint160 lo, uint160 hi) = _bounds(i);
-            uint256 fee = EdgeMath.swapFee(LIQ, before, target, lo, hi, FEE, target);
-            if (arb) ref[i].arbFees += fee;
-            else ref[i].userFees += fee;
+            uint256 fee = m.liquidity == 0 ? 0 : EdgeMath.swapFee(m.liquidity, before, target, lo, hi, num, den);
+            if (arb) m.arbFees += fee;
+            else m.userFees += fee;
             if (firstInBlock) {
-                ref[i].loss += EdgeMath.rebalancingLoss(LIQ, refMark, target, lo, hi);
+                if (m.liquidity > m.anchored && refMark != 0) {
+                    m.loss += EdgeMath.rebalancingLoss(m.liquidity - m.anchored, refMark, target, lo, hi);
+                }
+                if (m.liquidity != 0 && m.anchored != 0) {
+                    m.loss += EdgeMath.rebalancingLoss(m.anchored, m.anchor, target, lo, hi);
+                }
+                m.anchored = 0;
+                m.anchor = 0;
             }
         }
         if (firstInBlock) {

@@ -9,6 +9,7 @@ import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IUnlockCallback} from "@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol";
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {LPFeeLibrary} from "@uniswap/v4-core/src/libraries/LPFeeLibrary.sol";
+import {ProtocolFeeLibrary} from "@uniswap/v4-core/src/libraries/ProtocolFeeLibrary.sol";
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
@@ -51,9 +52,12 @@ import {EdgeMath} from "./libraries/EdgeMath.sol";
 ///        - user fees       += the sleeve's LP fee on every swap classified as user flow
 ///        - arbitrage fees   are tracked too, for transparency, and never count toward Edge
 ///
-///      Known approximations, all bounded to one block for one sleeve: liquidity and range changes take effect from
-///      the moment they happen, so the block in which a sleeve changes is measured with its new shape. LP fees are
-///      computed from the price path and assume no protocol fee.
+///      Liquidity added between marks is anchored at the price it joins at and measured from there until the next
+///      mark, so no liquidity is credited for impact, or charged for moves, from before it existed. LP fees are
+///      computed from the price path, net of any protocol fee the pool pays.
+///
+///      Known approximation, bounded to one block for one sleeve: liquidity removed between marks is neither credited
+///      nor charged for that block's move up to its removal.
 contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     using StateLibrary for IPoolManager;
     using PoolIdLibrary for PoolKey;
@@ -68,13 +72,16 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @param tickLower Lower tick of the position.
     /// @param tickUpper Upper tick of the position.
     /// @param liquidity Current liquidity of the position.
-    /// @param anchor Square-root price at which the sleeve last changed shape, or 0. While set, it replaces the global
-    ///        post-arbitrage mark for this sleeve, so a new range is never charged for moves that happened before it.
+    /// @param anchoredLiquidity The part of `liquidity` added since the last mark. It is measured from `anchor` instead
+    ///        of the global post-arbitrage mark, so liquidity is never credited or charged for price moves that happened
+    ///        before it existed. Cleared by the next mark, from which on it is ordinary liquidity.
+    /// @param anchor Square-root price at which `anchoredLiquidity` was added, or 0.
     struct Sleeve {
         address curator;
         int24 tickLower;
         int24 tickUpper;
         uint128 liquidity;
+        uint128 anchoredLiquidity;
         uint160 anchor;
     }
 
@@ -324,14 +331,20 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         sleeveId = _sleeves.length;
         _sleeves.push(
             Sleeve({
-                curator: curator, tickLower: tickLower, tickUpper: tickUpper, liquidity: 0, anchor: _currentSqrtPrice()
+                curator: curator,
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                liquidity: 0,
+                anchoredLiquidity: 0,
+                anchor: 0
             })
         );
         emit SleeveOpened(sleeveId, curator, tickLower, tickUpper);
     }
 
     /// @notice Move an empty sleeve to a new range.
-    /// @dev The range can only change while the sleeve is empty, so no position is ever orphaned in the PoolManager.
+    /// @dev The range can only change while the sleeve is empty, so no position is ever orphaned in the PoolManager,
+    ///      and the liquidity added to the new range is anchored at the price it is added at.
     /// @param sleeveId Sleeve to move.
     /// @param tickLower New lower tick.
     /// @param tickUpper New upper tick.
@@ -344,7 +357,6 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         _checkRange(tickLower, tickUpper);
         s.tickLower = tickLower;
         s.tickUpper = tickUpper;
-        s.anchor = _currentSqrtPrice();
         emit SleeveRangeSet(sleeveId, tickLower, tickUpper);
     }
 
@@ -385,9 +397,27 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         _settleOrTake(poolKey.currency0, callerDelta.amount0(), call.counterparty);
         _settleOrTake(poolKey.currency1, callerDelta.amount1(), call.counterparty);
 
-        uint128 after_ = call.liquidityDelta >= 0
-            ? s.liquidity + SafeCast.toUint128(SafeCast.toUint256(call.liquidityDelta))
-            : s.liquidity - SafeCast.toUint128(SafeCast.toUint256(-call.liquidityDelta));
+        uint128 after_;
+        if (call.liquidityDelta > 0) {
+            uint128 added = SafeCast.toUint128(SafeCast.toUint256(call.liquidityDelta));
+            after_ = s.liquidity + added;
+            // New liquidity is measured from the price it joins at. Liquidity added earlier in the same interval at
+            // another price moves to this anchor too: its move in between is then neither credited nor charged, so
+            // no liquidity is ever credited with impact from before it existed.
+            s.anchoredLiquidity += added;
+            s.anchor = _currentSqrtPrice();
+        } else if (call.liquidityDelta < 0) {
+            uint128 removed = SafeCast.toUint128(SafeCast.toUint256(-call.liquidityDelta));
+            after_ = s.liquidity - removed;
+            // The newest liquidity leaves first; whatever stays keeps its own reference price.
+            uint128 anchored = s.anchoredLiquidity;
+            if (anchored != 0) {
+                s.anchoredLiquidity = anchored > removed ? anchored - removed : 0;
+                if (anchored <= removed) s.anchor = 0;
+            }
+        } else {
+            after_ = s.liquidity;
+        }
         s.liquidity = after_;
         // the only external callee is the PoolManager, which is trusted and holds its own lock
         // forge-lint: disable-next-line(reentrancy-events)
@@ -509,13 +539,20 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
 
     /// @dev Attribute this swap's LP fees to each sleeve; on a block's first swap, record s* and charge the
     ///      arbitrage loss since the previous mark.
-    function _afterSwap(address, PoolKey calldata key, SwapParams calldata, BalanceDelta, bytes calldata)
+    function _afterSwap(address, PoolKey calldata key, SwapParams calldata params, BalanceDelta, bytes calldata)
         internal
         override
         returns (bytes4, int128)
     {
-        uint160 sqrtAfter = _currentSqrtPrice();
-        _attributeFees(_sqrtPriceBeforeSwap, sqrtAfter, key.fee, _swapIsArbitrage);
+        (uint160 sqrtAfter,, uint24 protocolFees,) = poolManager.getSlot0(key.toId());
+        // The protocol fee can only change between swaps, so the one in slot0 now is the one this swap paid.
+        (uint256 num, uint256 den) = EdgeMath.lpFeeRate(
+            key.fee,
+            params.zeroForOne
+                ? ProtocolFeeLibrary.getZeroForOneFee(protocolFees)
+                : ProtocolFeeLibrary.getOneForZeroFee(protocolFees)
+        );
+        _attributeFees(_sqrtPriceBeforeSwap, sqrtAfter, num, den, _swapIsArbitrage);
 
         if (_swapIsFirstInBlock) {
             _chargeArbitrageLoss(sqrtAfter);
@@ -533,45 +570,60 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     // Accounting internals
     // ---------------------------------------------------------------------------------------------------------------
 
-    /// @dev Credit each sleeve with the net user displacement of `lastMarkedBlock`: from its post-arbitrage mark
-    ///      (or the sleeve's anchor, if it changed shape after that mark) to the block's close.
+    /// @dev Credit each sleeve with the net user displacement of `lastMarkedBlock`, up to the block's close: from the
+    ///      block's post-arbitrage mark for liquidity that was there at the mark, and from the anchor for liquidity
+    ///      added after it. Each part rounds down, so the sum does too.
     function _creditImpact(uint160 sqrtClose) internal {
         uint256 n = _sleeves.length;
+        uint160 mark = lastPostMark;
         for (uint256 i; i < n; ++i) {
             Sleeve storage s = _sleeves[i];
-            if (s.liquidity == 0) continue;
-            uint160 from = s.anchor != 0 ? s.anchor : lastPostMark;
+            uint128 l = s.liquidity;
+            if (l == 0) continue;
+            uint128 anchored = s.anchoredLiquidity;
             (uint160 lo, uint160 hi) = _bounds(s);
-            uint256 credit = EdgeMath.impactCredit(s.liquidity, from, sqrtClose, lo, hi);
+            uint256 credit;
+            if (l > anchored) credit = EdgeMath.impactCredit(l - anchored, mark, sqrtClose, lo, hi);
+            if (anchored != 0) credit += EdgeMath.impactCredit(anchored, s.anchor, sqrtClose, lo, hi);
             if (credit != 0) _ledgers[i].userImpact += credit;
         }
     }
 
-    /// @dev Charge each sleeve the rebalancing loss between consecutive post-arbitrage marks, then clear anchors.
-    ///      A sleeve with an anchor is charged from the anchor instead (the price at which it opened or re-ranged).
-    ///      Before the pool's first mark there is no global reference, so only anchored sleeves are charged.
+    /// @dev Charge each sleeve the rebalancing loss up to the new post-arbitrage mark: from the previous mark for
+    ///      liquidity that was there at it, and from the anchor for liquidity added since. Then clear the anchors: from
+    ///      this mark on, all liquidity is measured from it. Before the pool's first mark there is no previous mark, so
+    ///      only anchored liquidity is charged. Each part rounds up, so the sum does too.
     function _chargeArbitrageLoss(uint160 sqrtPost) internal {
         uint256 n = _sleeves.length;
+        uint160 mark = lastPostMark;
         for (uint256 i; i < n; ++i) {
             Sleeve storage s = _sleeves[i];
-            uint160 from = s.anchor != 0 ? s.anchor : lastPostMark;
-            if (s.anchor != 0) s.anchor = 0;
-            if (from == 0 || s.liquidity == 0) continue;
+            uint128 l = s.liquidity;
+            uint128 anchored = s.anchoredLiquidity;
+            uint160 anchor = s.anchor;
+            if (anchor != 0) {
+                s.anchor = 0;
+                s.anchoredLiquidity = 0;
+            }
+            if (l == 0) continue;
             (uint160 lo, uint160 hi) = _bounds(s);
-            uint256 loss = EdgeMath.rebalancingLoss(s.liquidity, from, sqrtPost, lo, hi);
+            uint256 loss;
+            if (l > anchored && mark != 0) loss = EdgeMath.rebalancingLoss(l - anchored, mark, sqrtPost, lo, hi);
+            if (anchored != 0) loss += EdgeMath.rebalancingLoss(anchored, anchor, sqrtPost, lo, hi);
             if (loss != 0) _ledgers[i].arbLoss += loss;
         }
     }
 
     /// @dev Split one swap's LP fee across sleeves from the price path and book it as user or arbitrage fee.
-    function _attributeFees(uint160 sqrtBefore, uint160 sqrtAfter, uint24 feePips, bool arb) internal {
-        if (sqrtBefore == sqrtAfter) return;
+    ///      `num / den` is the LPs' fee per unit of net input (`EdgeMath.lpFeeRate`).
+    function _attributeFees(uint160 sqrtBefore, uint160 sqrtAfter, uint256 num, uint256 den, bool arb) internal {
+        if (sqrtBefore == sqrtAfter || num == 0) return;
         uint256 n = _sleeves.length;
         for (uint256 i; i < n; ++i) {
             Sleeve storage s = _sleeves[i];
             if (s.liquidity == 0) continue;
             (uint160 lo, uint160 hi) = _bounds(s);
-            uint256 fee = EdgeMath.swapFee(s.liquidity, sqrtBefore, sqrtAfter, lo, hi, feePips, sqrtAfter);
+            uint256 fee = EdgeMath.swapFee(s.liquidity, sqrtBefore, sqrtAfter, lo, hi, num, den);
             if (fee == 0) continue;
             if (arb) _ledgers[i].arbFees += fee;
             else _ledgers[i].userFees += fee;

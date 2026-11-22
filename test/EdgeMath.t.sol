@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 import {Test} from "forge-std/Test.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import {SqrtPriceMath} from "@uniswap/v4-core/src/libraries/SqrtPriceMath.sol";
+import {ProtocolFeeLibrary} from "@uniswap/v4-core/src/libraries/ProtocolFeeLibrary.sol";
 import {FullMath} from "@uniswap/v4-core/src/libraries/FullMath.sol";
 
 import {EdgeMath} from "../src/libraries/EdgeMath.sol";
@@ -140,7 +141,7 @@ contract EdgeMathTest is Test {
         (uint160 lo, uint160 hi) = c.s0 <= c.s1 ? (c.s0, c.s1) : (c.s1, c.s0);
         uint256 net1 = SqrtPriceMath.getAmount1Delta(lo, hi, c.l, false);
         uint256 expected = FullMath.mulDiv(net1, fee, 1e6 - fee);
-        uint256 got = EdgeMath.swapFee(c.l, lo, hi, c.lo, c.hi, fee, hi);
+        uint256 got = EdgeMath.swapFee(c.l, lo, hi, c.lo, c.hi, fee, 1e6 - fee);
         assertApproxEqAbs(got, expected, 1);
     }
 
@@ -155,7 +156,7 @@ contract EdgeMathTest is Test {
         uint256 net0 = SqrtPriceMath.getAmount0Delta(lo, hi, c.l, false);
         uint256 fee0 = FullMath.mulDiv(net0, fee, 1e6 - fee);
         uint256 expected = EdgeMath.token0ToToken1(fee0, lo);
-        uint256 got = EdgeMath.swapFee(c.l, hi, lo, c.lo, c.hi, fee, lo);
+        uint256 got = EdgeMath.swapFee(c.l, hi, lo, c.lo, c.hi, fee, 1e6 - fee);
         // net0 may differ by 1 wei of token0 from SqrtPriceMath's rounding; value that wei at the mark.
         assertApproxEqAbs(got, expected, EdgeMath.token0ToToken1(2, lo) + 1);
     }
@@ -163,7 +164,34 @@ contract EdgeMathTest is Test {
     function test_swapFee_zeroFeeTier() public pure {
         uint160 a = TickMath.getSqrtPriceAtTick(-600);
         uint160 b = TickMath.getSqrtPriceAtTick(600);
-        assertEq(EdgeMath.swapFee(1e18, a, b, a, b, 0, b), 0);
+        (uint256 num, uint256 den) = EdgeMath.lpFeeRate(0, 0);
+        assertEq(EdgeMath.swapFee(1e18, a, b, a, b, num, den), 0);
+    }
+
+    /// @notice With no protocol fee the LP fee rate is the familiar f / (1 - f).
+    function testFuzz_lpFeeRate_noProtocolFee(uint24 fee) public pure {
+        fee = uint24(bound(fee, 0, 999_999));
+        (uint256 num, uint256 den) = EdgeMath.lpFeeRate(fee, 0);
+        assertEq(num, fee);
+        assertEq(den, 1e6 - fee);
+    }
+
+    /// @notice With a protocol fee, the LPs' and the protocol's cut of a gross input add up to v4's total swap fee, and
+    ///         the protocol's cut is exactly `protocolFee` of the gross (as in `Pool.swap`).
+    function testFuzz_lpFeeRate_withProtocolFee(uint24 fee, uint16 protocolFee) public pure {
+        fee = uint24(bound(fee, 0, 100_000));
+        protocolFee = uint16(bound(protocolFee, 1, ProtocolFeeLibrary.MAX_PROTOCOL_FEE));
+        (uint256 num, uint256 den) = EdgeMath.lpFeeRate(fee, protocolFee);
+        uint256 total = ProtocolFeeLibrary.calculateSwapFee(protocolFee, fee);
+        assertEq(num + protocolFee, total, "LP part plus protocol part is the total fee");
+        assertEq(den, 1e6 - total, "net input is the gross minus the total fee");
+        assertLe(num, fee, "a protocol fee never raises the LPs' cut");
+    }
+
+    /// @notice A pool whose LP fee is zero pays its LPs nothing, protocol fee or not.
+    function test_lpFeeRate_zeroLpFee() public pure {
+        (uint256 num,) = EdgeMath.lpFeeRate(0, 1000);
+        assertEq(num, 0);
     }
 
     // ------------------------------------------------------------------------------------------------------------

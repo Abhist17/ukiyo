@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {FullMath} from "@uniswap/v4-core/src/libraries/FullMath.sol";
+import {ProtocolFeeLibrary} from "@uniswap/v4-core/src/libraries/ProtocolFeeLibrary.sol";
 
 /// @title EdgeMath
 /// @author Abhist Kamle
@@ -88,38 +89,59 @@ library EdgeMath {
         credit = FullMath.mulDiv(l, FullMath.mulDiv(d, d, c0), Q96);
     }
 
+    /// @notice The LPs' fee per unit of a swap's net input, as `numerator / denominator`.
+    /// @dev Mirrors Uniswap v4's `Pool.swap`. The total fee is `swapFee` of the gross input, where
+    ///      `swapFee = protocolFee + lpFee - protocolFee * lpFee / 1e6` (`ProtocolFeeLibrary.calculateSwapFee`), and the
+    ///      protocol keeps `protocolFee` of the gross input; the net input is the gross minus the total fee. So
+    ///      `lp fee = net * (swapFee - protocolFee) / (1e6 - swapFee)`. With no protocol fee this is `f / (1 - f)`.
+    /// @param lpFee The pool's LP fee in hundredths of a basis point.
+    /// @param protocolFee The protocol fee for the swap's direction, in hundredths of a basis point (at most 1000).
+    /// @return numerator The LPs' part of the fee rate, in pips.
+    /// @return denominator The net input's part of the gross input, in pips.
+    function lpFeeRate(uint24 lpFee, uint16 protocolFee)
+        internal
+        pure
+        returns (uint256 numerator, uint256 denominator)
+    {
+        uint256 total = protocolFee == 0 ? lpFee : ProtocolFeeLibrary.calculateSwapFee(protocolFee, lpFee);
+        if (total >= PIPS) return (0, 1); // a 100% fee leaves no net input to earn on
+        return (total - protocolFee, PIPS - total);
+    }
+
     /// @notice LP fee a sleeve earns from one swap that moves the price from `s0` to `s1`, valued in token1.
     /// @dev The sleeve's share of the swap's input is exact from the price path:
     ///        price up   (token1 in): net1 = l * (c1 - c0)
     ///        price down (token0 in): net0 = l * (1/c1 - 1/c0)
-    ///      Uniswap v4 charges the fee on the gross input, so fee = net * f / (1 - f) with f = feePips / 1e6.
-    ///      A token0 fee is valued at `sMark`, the pool price after the swap. Assumes no protocol fee.
-    ///      Rounds DOWN.
+    ///      and its fee is `net * numerator / denominator` from `lpFeeRate`, which accounts for any protocol fee.
+    ///      A token0 fee is valued at `s1`, the pool price after the swap. Rounds DOWN.
     /// @param l Sleeve liquidity.
     /// @param s0 Square-root price before the swap (Q64.96).
     /// @param s1 Square-root price after the swap (Q64.96).
     /// @param lower Lower square-root price bound of the sleeve (Q64.96).
     /// @param upper Upper square-root price bound of the sleeve (Q64.96).
-    /// @param feePips The pool's LP fee in hundredths of a basis point.
-    /// @param sMark Square-root price used to value a token0 fee in token1 (Q64.96).
+    /// @param numerator LP fee rate numerator from `lpFeeRate`.
+    /// @param denominator LP fee rate denominator from `lpFeeRate`.
     /// @return fee The sleeve's fee in raw token1 units, rounded down.
-    function swapFee(uint128 l, uint160 s0, uint160 s1, uint160 lower, uint160 upper, uint24 feePips, uint160 sMark)
-        internal
-        pure
-        returns (uint256 fee)
-    {
-        if (feePips == 0) return 0;
+    function swapFee(
+        uint128 l,
+        uint160 s0,
+        uint160 s1,
+        uint160 lower,
+        uint160 upper,
+        uint256 numerator,
+        uint256 denominator
+    ) internal pure returns (uint256 fee) {
+        if (numerator == 0) return 0;
         uint160 c0 = clip(s0, lower, upper);
         uint160 c1 = clip(s1, lower, upper);
         if (c0 == c1) return 0;
-        uint256 grossUp = PIPS - feePips;
         if (c1 > c0) {
             uint256 net1 = FullMath.mulDiv(l, c1 - c0, Q96);
-            fee = FullMath.mulDiv(net1, feePips, grossUp);
+            fee = FullMath.mulDiv(net1, numerator, denominator);
         } else {
             // l * (c0 - c1) * 2^96 / (c0 * c1)
             uint256 net0 = FullMath.mulDiv(FullMath.mulDiv(l, c0 - c1, c1), Q96, c0);
-            fee = token0ToToken1(FullMath.mulDiv(net0, feePips, grossUp), sMark);
+            fee = token0ToToken1(FullMath.mulDiv(net0, numerator, denominator), s1);
         }
     }
 

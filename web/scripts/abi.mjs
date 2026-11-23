@@ -7,6 +7,7 @@ const WANT = {
   hookAbi: "UkiyoHook.sol/UkiyoHook.json",
   vaultAbi: "UkiyoVault.sol/UkiyoVault.json",
   factoryAbi: "UkiyoFactory.sol/UkiyoFactory.json",
+  skillRouterAbi: "UkiyoSkillRouter.sol/UkiyoSkillRouter.json",
   tokenAbi: "MockERC20.sol/MockERC20.json",
   routerAbi: "PoolSwapTest.sol/PoolSwapTest.json",
 };

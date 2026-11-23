@@ -46,6 +46,8 @@ What each actor can and cannot do to the hook ([`UkiyoHook`](src/UkiyoHook.sol))
 | Someone fills the hook's eight sleeve slots | Each launch posts a permanent bond of at least `minLaunchBond` | **Open in part.** Slots are finite; a well-funded actor can still fill them, at a cost locked for good |
 | A curator on a losing streak keeps trading depositors' capital | Probation: an Edge-index drawdown past `probationBps` blocks rebalancing for three epochs (`test_probationStopsALosingCurator`; invariant `invariant_probationBounded`) | The vault holds its range while on probation; it does not exit |
 | The curator withdraws its whole bond | Withdrawals stop at `minBond` (`test_minBondCannotBeWithdrawn`) | None known |
+| The skill router keeps or misroutes deposits | It never holds capital: slices are escrowed in the depositor's name (`requestDepositFor`), refused slices and rounding dust are returned in the same transaction, and only the deployment's own and factory-launched vaults are eligible (`test_routerReturnsRefusedSlices`, `test_routerRejectsBadLists`) | None known |
+| A curator games the skill test to attract routed deposits | Weights use the same Edge as everything else, capped at t = 10, and nothing goes to a curator on probation | Inherits Edge's residual risks (the classifier, cross-block self-trades) |
 | A lucky streak is read as skill | `edgeTStat`: the t-statistic of per-epoch Edge returns, rounded down, with skill only at t ≥ 2 | A t-test assumes epochs are roughly independent |
 
 ### Vault funds

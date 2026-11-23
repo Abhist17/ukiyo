@@ -23,6 +23,8 @@ export interface Deployment {
   curator: Address;
   /** UkiyoFactory, through which anyone can launch a further vault (absent on older deployments). */
   factory?: Address;
+  /** UkiyoSkillRouter: one deposit split across curators by their skill tests (absent on older deployments). */
+  skillRouter?: Address;
   vaults: { address: Address; sleeveId: number; name: string; symbol: string; style: string }[];
 }
 

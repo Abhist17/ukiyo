@@ -19,11 +19,13 @@ import {PoolSwapTest} from "@uniswap/v4-core/src/test/PoolSwapTest.sol";
 import {UkiyoHook} from "../src/UkiyoHook.sol";
 import {UkiyoVault} from "../src/UkiyoVault.sol";
 import {UkiyoFactory} from "../src/UkiyoFactory.sol";
+import {UkiyoSkillRouter} from "../src/UkiyoSkillRouter.sol";
 
 /// @title DeployUkiyo
 /// @notice Deploys the full Ukiyo demo: two faucet test tokens (tBTC, tUSD), the hook at a mined address, a 5 bps
 ///         hook-exclusive pool at the BTC price the replay starts from, one sleeve and one curator vault per strategy,
-///         seed deposits, a swap router, and the factory through which anyone can launch a further vault. Writes every address to `web/src/deployments/<chainId>.json`, which the
+///         seed deposits, a swap router, the factory through which anyone can launch a further vault, and the skill
+///         router that splits a deposit across curators by their skill tests. Writes every address to `web/src/deployments/<chainId>.json`, which the
 ///         site and the replay bot read.
 /// @dev On a chain with a canonical v4 PoolManager (Unichain Sepolia, 1301) it uses that one; on anvil it deploys the
 ///      canonical bytecode. Environment (all optional):
@@ -64,6 +66,7 @@ contract DeployUkiyo is Script {
         UkiyoHook hook;
         PoolSwapTest router;
         UkiyoFactory factory;
+        UkiyoSkillRouter skillRouter;
         PoolKey key;
         UkiyoVault[] vaults;
     }
@@ -135,6 +138,12 @@ contract DeployUkiyo is Script {
         // Anyone can launch a further curator vault through the factory, on at least the demo's epoch length.
         d.factory = new UkiyoFactory(d.hook, c.epochLength, c.launchBond, 2000);
         d.hook.setLauncher(address(d.factory));
+        // One deposit split across the demo's and any launched curators by their skill tests.
+        address[] memory core = new address[](d.vaults.length);
+        for (uint256 i; i < core.length; ++i) {
+            core[i] = address(d.vaults[i]);
+        }
+        d.skillRouter = new UkiyoSkillRouter(d.factory, core);
         vm.stopBroadcast();
 
         _write(d, strategies, c);
@@ -256,6 +265,7 @@ contract DeployUkiyo is Script {
         vm.serializeAddress(o, "hook", address(d.hook));
         vm.serializeAddress(o, "router", address(d.router));
         vm.serializeAddress(o, "factory", address(d.factory));
+        vm.serializeAddress(o, "skillRouter", address(d.skillRouter));
         vm.serializeUint(o, "launchBond", c.launchBond);
         vm.serializeUint(o, "probationBps", c.probationBps);
         vm.serializeAddress(o, "token0", Currency.unwrap(d.key.currency0));

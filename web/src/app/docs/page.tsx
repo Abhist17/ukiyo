@@ -70,7 +70,7 @@ console.log("Edge", formatEther(edge), "= user fees", formatEther(l.userFees),
 
 const LOCAL = `
 git clone --recurse-submodules ${REPO} && cd ukiyo
-forge test                                   # 86 tests + 5 invariants
+forge test                                   # 91 tests + 5 invariants
 anvil --block-time 2                         # in another terminal
 EPOCH=120 forge script script/DeployUkiyo.s.sol --rpc-url http://127.0.0.1:8545 --broadcast \\
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80   # anvil's public dev key
@@ -181,6 +181,7 @@ export default function Docs() {
               <li><b>Skill test</b>: <code>edgeTStat()</code> is the t-statistic of the per-epoch Edge returns, and <code>hasSkill()</code> is true at t &ge; 2, when the Edge is statistically clear of zero rather than a few lucky epochs.</li>
               <li><b>Probation</b>: if the Edge index falls <code>probationBps</code> below its peak, the curator cannot rebalance for three epochs. <code>minBond</code> is bond the curator can never withdraw.</li>
               <li><b>Open launches</b>: <code>UkiyoFactory.launch</code> deploys a genuine vault, opens and hands over its sleeve, and posts the bond, for anyone. It enforces a minimum epoch, probation and a permanent bond.</li>
+              <li><b>Invest by skill</b>: <code>UkiyoSkillRouter.deposit</code> splits one deposit across curators in proportion to their skill tests (capped, nothing to a curator on probation, even while no one has shown skill), escrowing each slice in the depositor&apos;s name with <code>requestDepositFor</code>.</li>
             </ul>
           </section>
 

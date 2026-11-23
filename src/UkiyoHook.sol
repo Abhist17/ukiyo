@@ -138,6 +138,10 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @notice Post-arbitrage mark s* of `lastMarkedBlock` (Q64.96 square-root price).
     uint160 public lastPostMark;
 
+    /// @notice The post-arbitrage mark of the marked block before `lastMarkedBlock`. Together with `lastPostMark` it
+    ///         gives `referenceSqrtPrice`, a price no single transaction can move.
+    uint160 public prevPostMark;
+
     /// @notice True while the user-impact term of `lastMarkedBlock` is still to be credited.
     bool public impactPending;
 
@@ -496,6 +500,16 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         return SafeCast.toInt256(l.userFees + l.userImpact) - SafeCast.toInt256(l.arbLoss);
     }
 
+    /// @notice A recent post-arbitrage mark that the current transaction cannot have set: the mark of the latest
+    ///         marked block before this one. Vaults check the spot price against it before adding liquidity, so nobody
+    ///         can push the price, add a vault's capital at it and push back in one transaction.
+    /// @dev While this block is marked its mark may be the caller's own swap, so the one before is used (for the pool's
+    ///      first mark, the price before it). Before any swap at all, spot: nobody has moved it.
+    function referenceSqrtPrice() external view returns (uint160) {
+        uint160 r = lastMarkedBlock == block.number ? prevPostMark : lastPostMark;
+        return r != 0 ? r : _currentSqrtPrice();
+    }
+
     /// @notice The bound pool's current square-root price (Q64.96), or 0 before initialization.
     function sqrtPriceX96() external view returns (uint160) {
         return _currentSqrtPrice();
@@ -601,6 +615,10 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
 
         if (_swapIsFirstInBlock) {
             _chargeArbitrageLoss(sqrtAfter);
+            // before the pool's first mark there is none to keep: the price before this swap stands in, so the
+            // reference price never comes from the block's own (possibly manipulating) first swap
+            uint160 last = lastPostMark;
+            prevPostMark = last != 0 ? last : _sqrtPriceBeforeSwap;
             lastPostMark = sqrtAfter;
             lastMarkedBlock = block.number;
             impactPending = true;

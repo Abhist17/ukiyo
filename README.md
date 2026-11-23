@@ -313,7 +313,7 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
-forge test                          # 91 tests + 5 stateful invariants: unit, fuzz, integration, differential
+forge test                          # 97 tests + 5 stateful invariants: unit, fuzz, integration, differential
 forge test --match-test test_gas -vv
 ```
 
@@ -343,11 +343,11 @@ python export_web.py                       # refresh the site's data after exper
 
 | Path | Gas |
 | --- | --- |
-| First swap of a block, two sleeves (mark, impact credit, loss charge, fee attribution), including the router and PoolManager | ~277k |
+| First swap of a block, two sleeves (mark, impact credit, loss charge, fee attribution), including the router and PoolManager | ~282k |
 | Later swap in the same block, two sleeves | ~177k |
 | `requestDeposit` (including the minimum-deposit check) | ~189k |
-| `settleEpoch` with a performance fee, one redemption and one deposit | ~710k |
-| `rebalance` (remove, move range, redeploy) | ~369k |
+| `settleEpoch` with a performance fee, one redemption and one deposit | ~717k |
+| `rebalance` (remove, move range, redeploy) | ~386k |
 
 The hook's per-swap work loops over the sleeves (at most 8), so a swap's cost grows with the sleeve count. Earlier
 versions of this table under-reported the first swap of a block: the test did not actually advance the block, so it
@@ -360,7 +360,7 @@ measured a later swap twice.
 | Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees`, and a curator benchmark built on it that separates skill from market direction |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Curators are paid a performance fee only on Edge above a high-water mark and bonded against LVR, so depositors pay for skill and are compensated for losses beyond what was promised; any curator vault can adopt the meter as its scoring and fee standard |
-| Functionality (15%) | 91 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 5 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
+| Functionality (15%) | 97 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 5 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 
@@ -383,6 +383,12 @@ No partner integrations.
 - [ ] Demo video
 
 ### Known limitations
+
+- Marks treat every block's first swap as arbitrage, so a tipped push that the next block's first swap reverts charges
+  every in-range sleeve for both moves although its LPs earned fees. Edge errs low, never high, but someone willing to
+  pay the fees can make a rival's Edge read worse than it is (see `THREAT_MODEL.md`).
+- A curator can remove and re-add its liquidity between a block's user flow and the next arbitrage to re-anchor it,
+  lowering one block's booked loss; bounded per block but repeatable.
 
 - Liquidity removed between two marks is neither credited nor charged for that block's move up to its removal (bounded
   to one block for one sleeve). Added liquidity has no such gap: the hook anchors it at the price it joins at, so it is

@@ -150,6 +150,11 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     ///         depositors have time to leave on their own terms.
     uint256 public constant PROBATION_EPOCHS = 3;
 
+    /// @notice Most the spot price may differ from the hook's reference price (`referenceSqrtPrice`) when the vault
+    ///         settles or rebalances, in bps of price. Adding a vault's capital at a price someone pushed off-market in
+    ///         the same transaction would hand that someone the difference when they push it back.
+    uint256 public constant MAX_PRICE_DEVIATION_BPS = 100;
+
     /// @notice Most the pool price may move because of the vault's own rebalancing swap, in bps of price.
     uint256 public constant MAX_REBALANCE_MOVE_BPS = 100;
 
@@ -242,7 +247,8 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     uint256 public bondWithdrawal;
 
     mapping(uint256 epoch => address[]) internal _depositors;
-    mapping(uint256 epoch => mapping(address user => bool)) internal _isDepositor;
+    /// @dev 1 + the user's index in `_depositors[epoch]`, or 0 when it has no request that epoch.
+    mapping(uint256 epoch => mapping(address user => uint256)) internal _depositorSlot;
 
     // ---------------------------------------------------------------------------------------------------------------
     // Events and errors
@@ -326,6 +332,16 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @notice `unlockCallback` was called by something other than the PoolManager answering this vault's own swap.
     error NotOwnSwap();
 
+    /// @notice The spot price is too far from the hook's reference price to add liquidity safely; try a later block.
+    error PriceOffMark(uint160 spot, uint160 referencePrice);
+
+    /// @notice The epoch is not shorter than the hook's threshold-raise delay, so depositors could not leave before a
+    ///         raised arbitrage threshold applied.
+    error EpochTooLong(uint256 epochLength, uint256 limit);
+
+    /// @notice The receiver is the zero address.
+    error ZeroReceiver();
+
     /// @notice The curator is on probation until epoch `until` and cannot move the range.
     error OnProbation(uint256 until);
 
@@ -355,6 +371,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
             revert AboveCap(terms_.performanceFeeBps, MAX_PERFORMANCE_FEE_BPS);
         }
         if (terms_.probationBps >= 10_000) revert AboveCap(terms_.probationBps, 9999);
+        // a raise of the arbitrage threshold waits this long, so every depositor must be able to leave sooner
+        uint256 delay = hook_.THRESHOLD_RAISE_DELAY();
+        if (terms_.epochLength >= delay) revert EpochTooLong(terms_.epochLength, delay);
         if (!hook_.poolBound()) revert PoolNotBound();
         // the hooks field is the hook itself
         // forge-lint: disable-next-line(unused-return)
@@ -399,7 +418,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @param amount0 token0 to escrow, paid by the caller.
     /// @param amount1 token1 to escrow, paid by the caller.
     function requestDepositFor(address receiver, uint256 amount0, uint256 amount1) external nonReentrant {
-        if (receiver == address(0)) revert ZeroAmount();
+        if (receiver == address(0)) revert ZeroReceiver();
         _requestDeposit(receiver, amount0, amount1);
     }
 
@@ -407,14 +426,15 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     function _requestDeposit(address receiver, uint256 amount0, uint256 amount1) internal {
         if (amount0 == 0 && amount1 == 0) revert ZeroAmount();
         uint256 e = epoch;
-        if (!_isDepositor[e][receiver]) {
+        if (_depositorSlot[e][receiver] == 0) {
             if (_depositors[e].length >= MAX_DEPOSITORS_PER_EPOCH) revert EpochFull();
             (uint256 h0, uint256 h1) = holdings();
-            if (h0 + h1 != 0 && amount0 * 10_000 < h0 * MIN_DEPOSIT_BPS && amount1 * 10_000 < h1 * MIN_DEPOSIT_BPS) {
-                revert DepositTooSmall();
-            }
-            _isDepositor[e][receiver] = true;
+            // the minimum must be met in a token the vault actually holds: dust of a token it has none of is no deposit
+            bool enough = (h0 != 0 && amount0 * 10_000 >= h0 * MIN_DEPOSIT_BPS)
+                || (h1 != 0 && amount1 * 10_000 >= h1 * MIN_DEPOSIT_BPS);
+            if (h0 + h1 != 0 && !enough) revert DepositTooSmall();
             _depositors[e].push(receiver);
+            _depositorSlot[e][receiver] = _depositors[e].length;
         }
         Amounts storage d = pendingDeposit[e][receiver];
         d.amount0 += amount0;
@@ -434,6 +454,8 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         delete pendingDeposit[e][msg.sender];
         reserved.amount0 -= d.amount0;
         reserved.amount1 -= d.amount1;
+        // free the slot, so requesting and cancelling cannot fill the epoch's queue for nothing
+        _freeSlot(e, msg.sender);
         _pay(msg.sender, d.amount0, d.amount1);
         emit DepositCancelled(e, msg.sender, d.amount0, d.amount1);
     }
@@ -487,6 +509,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         // Epochs are days long; the few seconds a sequencer can skew a timestamp do not matter.
         // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp < endsAt) revert EpochNotOver(endsAt);
+        _checkPrice();
         uint256 e = epoch;
         uint256 started = epochStart;
         // Requests made from here on belong to the next epoch.
@@ -510,7 +533,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
 
         uint256 burned = _settleRedemptions(e, liq);
         uint256 minted = _settleDeposits(e);
-        _deployIdle();
+        _deployIdle(false);
         _payBondWithdrawal();
         lvrBudgetBps = nextLvrBudgetBps;
 
@@ -562,13 +585,14 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     function rebalance(int24 tickLower, int24 tickUpper) external nonReentrant {
         _onlyCurator();
         _notOnProbation();
+        _checkPrice();
         // The hook is trusted and this function is nonReentrant (`_status` is the guard's own lock).
         // forge-lint: disable-start(reentrancy-events)
         // forge-lint: disable-start(reentrancy-no-eth)
         uint128 liq = _liquidity();
         if (liq != 0) hook.modifySleeveLiquidity(sleeveId, -int256(uint256(liq)));
         hook.setSleeveRange(sleeveId, tickLower, tickUpper);
-        _deployIdle();
+        _deployIdle(true);
         emit Rebalanced(tickLower, tickUpper, _liquidity());
         // forge-lint: disable-end(reentrancy-no-eth)
         // forge-lint: disable-end(reentrancy-events)
@@ -590,6 +614,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     {
         _onlyCurator();
         _notOnProbation();
+        _checkPrice();
         if (amountIn == 0) revert ZeroAmount();
         // The hook and the PoolManager are trusted and this function is nonReentrant.
         // forge-lint: disable-start(reentrancy-events)
@@ -614,7 +639,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
             poolManager.unlock(abi.encode(zeroForOne, amountIn, limit));
             _swapping = false;
         }
-        _deployIdle();
+        _deployIdle(true);
         emit Rebalanced(tickLower, tickUpper, _liquidity());
         // forge-lint: disable-end(reentrancy-no-eth)
         // forge-lint: disable-end(reentrancy-events)
@@ -661,12 +686,12 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         return (i0 + p0, i1 + p1);
     }
 
-    /// @notice The vault's capital in token1, with the position valued at the hook's post-arbitrage mark rather than the
-    ///         spot price, so it cannot be moved within one transaction. Excludes reserved tokens and the bond.
+    /// @notice The vault's capital in token1, with the position valued at the hook's reference price (a recent
+    ///         post-arbitrage mark the current transaction cannot have set) rather than spot, so it cannot be moved
+    ///         within one transaction. Excludes reserved tokens and the bond.
     function valueAtMark() public view returns (uint256) {
         (uint256 i0, uint256 i1) = _idle();
-        uint160 m = hook.lastPostMark();
-        if (m == 0) m = hook.sqrtPriceX96();
+        uint160 m = hook.referenceSqrtPrice();
         (uint256 p0, uint256 p1) = _positionAt(m);
         uint256 a0 = i0 + p0;
         return i1 + p1 + Math.mulDiv(Math.mulDiv(a0, m, 1 << 96), m, 1 << 96);
@@ -675,8 +700,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @notice Is the curator's Edge skill or luck? The t-statistic of its per-epoch Edge returns, scaled by 1e18:
     ///         `mean / (standard deviation / sqrt(epochs))`. Large and positive means the Edge is consistently above
     ///         zero; near zero means a few lucky epochs could explain it. 0 until two epochs are recorded.
-    /// @dev The spread rounds up and the result rounds toward negative infinity, so skill is never overstated. If every
-    ///      epoch returned exactly the same, the spread is zero and the sign alone decides (an extreme value).
+    /// @dev The spread rounds up, so a positive t is never overstated (a negative t may read a hair closer to zero).
+    ///      The last division rounds toward negative infinity. If every epoch returned exactly the same, the spread is
+    ///      zero and the sign alone decides (an extreme value).
     function edgeTStat() public view returns (int256) {
         uint256 n = edgeEpochs;
         if (n < 2) return 0;
@@ -691,7 +717,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         uint256 sd = Math.sqrt(nVar * EPS_SCALE, Math.Rounding.Ceil);
         int256 t = SafeCast.toInt256(Math.mulDiv(absSum, EPS_SCALE, sd));
         if (sum >= 0) return t;
-        return Math.mulDiv(absSum, EPS_SCALE, sd) * sd == absSum * EPS_SCALE ? -t : -t - 1;
+        return mulmod(absSum, EPS_SCALE, sd) == 0 ? -t : -t - 1;
     }
 
     /// @notice Whether the curator's Edge is statistically clear of zero: `edgeTStat() >= SKILL_T`.
@@ -957,15 +983,53 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         used1 = Math.mulDiv(shares, b.h1, b.supply, Math.Rounding.Ceil);
     }
 
-    /// @dev Add as much liquidity as the idle tokens allow at the current range and price.
-    function _deployIdle() internal {
+    /// @dev Add as much liquidity as the idle tokens allow at the current range and price. Mid-epoch (`capped`), never
+    ///      more than the capital the epoch started with: the epoch's Edge return divides by that capital, so tokens
+    ///      sent to the vault mid-epoch must not earn Edge before the next settlement counts them. They stay idle.
+    function _deployIdle(bool capped) internal {
         (uint256 i0, uint256 i1) = _idle();
         if (i0 == 0 && i1 == 0) return;
         (uint160 lo, uint160 hi) = _bounds();
         uint128 l = LiquidityAmounts.getLiquidityForAmounts(hook.sqrtPriceX96(), lo, hi, i0, i1);
+        if (capped && l != 0) {
+            uint256 cap = epochStartValue;
+            uint160 m = hook.referenceSqrtPrice();
+            uint256 value = _valueOf(l, m, lo, hi);
+            if (value > cap) l = SafeCast.toUint128(Math.mulDiv(l, cap, value));
+        }
         // callers are nonReentrant; `_status` is the guard's own lock
         // forge-lint: disable-next-line(reentrancy-no-eth)
         if (l != 0) hook.modifySleeveLiquidity(sleeveId, int256(uint256(l)));
+    }
+
+    /// @dev token1 value of liquidity `l` over `[lo, hi]` at square-root price `p`; rounds down.
+    function _valueOf(uint128 l, uint160 p, uint160 lo, uint160 hi) internal pure returns (uint256) {
+        uint256 a0 = 0;
+        uint256 a1 = 0;
+        if (p < hi) a0 = SqrtPriceMath.getAmount0Delta(p > lo ? p : lo, hi, l, false);
+        if (p > lo) a1 = SqrtPriceMath.getAmount1Delta(lo, p < hi ? p : hi, l, false);
+        return a1 + Math.mulDiv(Math.mulDiv(a0, p, 1 << 96), p, 1 << 96);
+    }
+
+    /// @dev Remove `user` from the epoch's depositor list (swap with the last entry and pop).
+    function _freeSlot(uint256 e, address user) internal {
+        uint256 slot = _depositorSlot[e][user];
+        if (slot == 0) return;
+        address[] storage list = _depositors[e];
+        address last = list[list.length - 1];
+        list[slot - 1] = last;
+        _depositorSlot[e][last] = slot;
+        list.pop();
+        delete _depositorSlot[e][user];
+    }
+
+    /// @dev Revert unless spot is within `MAX_PRICE_DEVIATION_BPS` of the hook's reference price. The comparison is on
+    ///      square-root prices, where half the bps bound the same price move.
+    function _checkPrice() internal view {
+        uint160 spot = hook.sqrtPriceX96();
+        uint160 ref = hook.referenceSqrtPrice();
+        uint256 diff = spot > ref ? spot - ref : ref - spot;
+        if (diff * 20_000 > uint256(ref) * MAX_PRICE_DEVIATION_BPS) revert PriceOffMark(spot, ref);
     }
 
     /// @dev Tokens on hand that belong to the vault's capital: everything but users' reserved tokens and the bond.

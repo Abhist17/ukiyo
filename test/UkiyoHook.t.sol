@@ -409,6 +409,19 @@ contract UkiyoHookTest is Test {
         assertEq(hook.sleeve(0).anchor, 0, "anchor is consumed by the next mark");
     }
 
+    /// @notice The reference price is a mark the current transaction cannot have set: within a marked block, the
+    ///         block before's; in a new block before any swap, the latest mark.
+    function test_referencePriceIsAMarkThisTransactionCannotSet() public {
+        _swapTo(_atTick(60), ARB_TIP);
+        uint160 first = hook.lastPostMark();
+        _nextBlock();
+        assertEq(hook.referenceSqrtPrice(), first, "new block, no swap yet: the latest mark");
+        _swapTo(_atTick(900), ARB_TIP); // this block's mark, which a manipulator could have set
+        assertEq(hook.lastPostMark(), _atTick(900));
+        assertEq(hook.prevPostMark(), first);
+        assertEq(hook.referenceSqrtPrice(), first, "within the block: the mark before it");
+    }
+
     /// @notice Liquidity added after users moved the price is not credited for that move. Before anchoring, a vault
     ///         settling a large deposit right after user flow had its whole new liquidity credited with the block's
     ///         impact, overstating Edge.

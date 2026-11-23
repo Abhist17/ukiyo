@@ -1017,6 +1017,118 @@ contract UkiyoVaultTest is Test {
     }
 
     // ------------------------------------------------------------------------------------------------------------
+    // Manipulation and griefing (from the review)
+    // ------------------------------------------------------------------------------------------------------------
+
+    /// @notice The attack: push the price, settle so the batch's capital is added at it, push back. Settling and
+    ///         rebalancing refuse a spot price this transaction could have moved, and work again once it is back.
+    function test_settleAndRebalanceRefuseAManipulatedPrice() public {
+        _backgroundLiquidity(1e21);
+        _deposit(alice, 100e18, 100e18);
+        _settle();
+        _deposit(bob, 100e18, 100e18); // the batch an attacker would want added at a bad price
+
+        vm.warp(vault.epochEndsAt());
+        vm.roll(vm.getBlockNumber() + 1);
+        uint160 fair = hook.sqrtPriceX96();
+        _arb(false, 30e18); // the attacker's push leads the block, so it is this block's own mark
+        assertGt(hook.sqrtPriceX96(), fair);
+        assertEq(hook.referenceSqrtPrice(), fair, "the reference is the mark before this block");
+        bytes memory offMark = abi.encodeWithSelector(UkiyoVault.PriceOffMark.selector, hook.sqrtPriceX96(), fair);
+        vm.expectRevert(offMark);
+        vault.settleEpoch();
+        vm.prank(curator);
+        vm.expectRevert(offMark);
+        vault.rebalance(-500, 500);
+
+        // pushed back within the block. The next block's reference is still the pushed mark, so settling waits one
+        // more block, after which the fair price is both spot and reference.
+        _arb(true, 30e18 + 1e17);
+        vm.roll(vm.getBlockNumber() + 1);
+        _arb(true, 1);
+        vm.roll(vm.getBlockNumber() + 1);
+        vault.settleEpoch();
+        assertGt(vault.balanceOf(bob), 0);
+    }
+
+    /// @notice Cancelling frees the slot, so request-and-cancel loops cannot fill the epoch's queue for nothing.
+    function test_cancelFreesTheDepositSlot() public {
+        uint256 max = vault.MAX_DEPOSITORS_PER_EPOCH();
+        for (uint256 i; i < max; ++i) {
+            address u = address(uint160(0x1000 + i));
+            token0.mint(u, 1e18);
+            vm.startPrank(u);
+            token0.approve(address(vault), 1e18);
+            vault.requestDeposit(1e18, 0);
+            vm.stopPrank();
+        }
+        vm.prank(bob);
+        vm.expectRevert(UkiyoVault.EpochFull.selector);
+        vault.requestDeposit(1e18, 1e18);
+
+        vm.prank(address(uint160(0x1000)));
+        vault.cancelDeposit();
+        assertEq(vault.depositorCount(0), max - 1, "the slot is free again");
+        vm.prank(bob);
+        vault.requestDeposit(1e18, 1e18);
+        assertEq(vault.depositorCount(0), max);
+    }
+
+    /// @notice The minimum deposit must be met in a token the vault holds: dust of a token it has none of is refused.
+    function test_minimumIsMetInAHeldToken() public {
+        hook.openSleeve(curator, 1000, 2000); // entirely above the price: the position holds token0 only
+        UkiyoVault v = new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(EPOCH, 0, 0, 0), "A", "A");
+        hook.setSleeveManager(1, address(v));
+        vm.startPrank(alice);
+        token0.approve(address(v), type(uint256).max);
+        token1.approve(address(v), type(uint256).max);
+        v.requestDeposit(100e18, 0);
+        vm.stopPrank();
+        _settleVault(v);
+        (uint256 h0, uint256 h1) = v.holdings();
+        assertGt(h0, 0);
+        assertEq(h1, 0);
+        vm.startPrank(bob);
+        token1.approve(address(v), type(uint256).max);
+        vm.expectRevert(UkiyoVault.DepositTooSmall.selector);
+        v.requestDeposit(0, 1);
+        vm.stopPrank();
+    }
+
+    /// @notice Tokens sent to the vault mid-epoch stay idle through a rebalance, so they cannot earn Edge that the
+    ///         epoch's return would then divide by the smaller starting capital.
+    function test_midEpochRebalanceDeploysNoMoreThanTheEpochsCapital() public {
+        _deposit(alice, 100e18, 100e18);
+        _settle();
+        uint256 capital = vault.epochStartValue();
+        token1.mint(address(vault), 10_000e18); // a "donation" a curator could make to inflate its Edge return
+        vm.prank(curator);
+        vault.rebalance(-1000, 1000);
+        (uint256 p0, uint256 p1) = hook.sleeveAmounts(0);
+        uint160 m = hook.referenceSqrtPrice();
+        uint256 deployed = p1 + EdgeMathLike.toToken1(p0, m);
+        assertLe(deployed, capital + capital / 1e9 + 2, "deployed value stays within the epoch's capital");
+        (, uint256 i1) = _idleOf(vault);
+        assertGe(i1, 9000e18, "the donation waits, idle, for the next settlement");
+    }
+
+    /// @dev The vault's idle tokens (balance minus reserved and bond).
+    function _idleOf(UkiyoVault v) internal view returns (uint256 i0, uint256 i1) {
+        (uint256 r0, uint256 r1) = v.reserved();
+        i0 = token0.balanceOf(address(v)) - r0;
+        i1 = token1.balanceOf(address(v)) - r1 - v.bond();
+    }
+
+    /// @notice A vault's epoch must be shorter than the delay on raising the arbitrage threshold, so depositors can
+    ///         always leave before a raise applies.
+    function test_epochMustBeShorterThanTheThresholdDelay() public {
+        uint256 delay = hook.THRESHOLD_RAISE_DELAY();
+        hook.openSleeve(curator, -1000, 1000);
+        vm.expectRevert(abi.encodeWithSelector(UkiyoVault.EpochTooLong.selector, delay, delay));
+        new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(delay, 0, 0, 0), "L", "L");
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
     // Gas
     // ------------------------------------------------------------------------------------------------------------
 
@@ -1120,5 +1232,12 @@ contract UkiyoVaultTest is Test {
         (uint256 r0, uint256 r1) = vault.refunds(user);
         if (r0 + r1 != 0) vault.claimRefund();
         vm.stopPrank();
+    }
+}
+
+/// @dev token0 valued in token1 at a square-root price, as the vault does.
+library EdgeMathLike {
+    function toToken1(uint256 a0, uint160 p) internal pure returns (uint256) {
+        return Math.mulDiv(Math.mulDiv(a0, p, 1 << 96), p, 1 << 96);
     }
 }

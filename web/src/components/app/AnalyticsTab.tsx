@@ -63,7 +63,7 @@ function EdgeChart({ live }: { live: Live }) {
           <text x={W - pad.r} y={H - 6} textAnchor="end">now · {b1}</text>
         </g>
         {series.map((s, i) => (
-          <path key={i} fill="none" stroke={`var(--s${i + 1})`} strokeWidth="2" strokeLinejoin="round"
+          <path key={i} fill="none" stroke={`var(--s${(i % 6) + 1})`} strokeWidth="2" strokeLinejoin="round"
             d={s.map((p, k) => `${k ? "L" : "M"}${x(Number(p.block)).toFixed(1)} ${y(p.edge).toFixed(1)}`).join(" ")} />
         ))}
         {hi !== null && <line x1={x(hi)} x2={x(hi)} y1={pad.t} y2={H - pad.b} stroke="var(--ink-2)" strokeOpacity="0.4" />}
@@ -73,7 +73,7 @@ function EdgeChart({ live }: { live: Live }) {
           <div className="t-head">Block #{hi}</div>
           {live.vaults.map((v, i) => (
             <div className="t-row" key={v.address}>
-              <span className="chip" style={{ background: `var(--s${i + 1})` }} />
+              <span className="chip" style={{ background: `var(--s${(i % 6) + 1})` }} />
               {v.name}
               <span className="num">{usd(at(series[i], hi))}</span>
             </div>
@@ -98,7 +98,7 @@ export function AnalyticsTab({ live }: { live: Live }) {
           <h2>Edge over time</h2>
           <div className="legend-inline">
             {live.vaults.map((v, i) => (
-              <span key={v.address}><span className="chip" style={{ background: `var(--s${i + 1})` }} />{v.name}</span>
+              <span key={v.address}><span className="chip" style={{ background: `var(--s${(i % 6) + 1})` }} />{v.name}</span>
             ))}
           </div>
         </div>
@@ -126,7 +126,7 @@ export function AnalyticsTab({ live }: { live: Live }) {
           {live.vaults.map((v, i) => (
             <div className="decomp" key={v.address}>
               <div className="decomp-name">
-                <span className="chip" style={{ background: `var(--s${i + 1})` }} />
+                <span className="chip" style={{ background: `var(--s${(i % 6) + 1})` }} />
                 <b>{v.name}</b>
                 <span className={`num ${v.edge >= 0 ? "pos" : "neg"}`}>{usd(v.edge)}</span>
               </div>
@@ -170,7 +170,7 @@ export function AnalyticsTab({ live }: { live: Live }) {
               <tbody>
                 {live.vaults.map((v, i) => (
                   <tr key={v.address}>
-                    <td className="l"><span className="chip" style={{ background: `var(--s${i + 1})` }} /> {v.name}</td>
+                    <td className="l"><span className="chip" style={{ background: `var(--s${(i % 6) + 1})` }} /> {v.name}</td>
                     <td className="num">{usd(acct.data?.[i].feesPaid ?? 0)}</td>
                     <td className="num neg">{usd(acct.data?.[i].penalties ?? 0)}</td>
                     <td className="num">{usd(v.bond)}</td>

@@ -103,7 +103,7 @@ export function PortfolioTab({ live }: { live: Live }) {
                   <tr key={r.v.address}>
                     <td className="l">
                       <div className="who">
-                        <span className="chip" style={{ background: `var(--s${r.v.i + 1})` }} />
+                        <span className="chip" style={{ background: `var(--s${(r.v.i % 6) + 1})` }} />
                         <div><b>{r.v.name}</b><span>{r.v.symbol} · epoch {r.v.epoch}</span></div>
                       </div>
                     </td>

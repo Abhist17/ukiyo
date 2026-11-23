@@ -16,7 +16,7 @@ function RangeBar({ v, price }: { v: VaultLive; price: number }) {
   const inRange = price >= a && price < b;
   return (
     <div className="range" title={`${usd(a)} – ${usd(b)}`}>
-      <div className="range-band" style={{ left: `${x(a)}%`, width: `${Math.max(1.5, x(b) - x(a))}%`, background: `var(--s${v.i + 1})` }} />
+      <div className="range-band" style={{ left: `${x(a)}%`, width: `${Math.max(1.5, x(b) - x(a))}%`, background: `var(--s${(v.i % 6) + 1})` }} />
       <div className="range-now" />
       <span className={`range-tag ${inRange ? "in" : "out"}`}>{inRange ? "In range" : "Out of range"}</span>
     </div>
@@ -26,6 +26,18 @@ function RangeBar({ v, price }: { v: VaultLive; price: number }) {
 /** Edge return as a signed percentage, or a dash before any epoch with capital has settled. */
 const pct = (v: VaultLive) =>
   v.edgeIndexed ? `${v.edgeReturn >= 0 ? "+" : ""}${(v.edgeReturn * 100).toFixed(v.edgeReturn !== 0 && Math.abs(v.edgeReturn) < 0.001 ? 4 : 2)}%` : "—";
+
+/** The skill test under a vault's Edge return: its t-statistic, and whether that clears 2 (skill) or not yet. */
+function Skill({ v }: { v: VaultLive }) {
+  if (v.edgeEpochs < 2) return <span className="skill" title="The skill test needs two settled epochs">testing…</span>;
+  const t = Math.abs(v.tStat) >= 99 ? (v.tStat > 0 ? "> 99" : "< −99") : v.tStat.toFixed(1);
+  return (
+    <span className={`skill ${v.hasSkill ? "yes" : ""}`}
+      title={`t-statistic of ${v.edgeEpochs} epochs' Edge returns. At 2 or more, the Edge is statistically clear of zero; below, a few lucky epochs could explain it.`}>
+      t {t} · {v.hasSkill ? "skill" : v.tStat <= -2 ? "losing" : "could be luck"}
+    </span>
+  );
+}
 
 /** Curator vaults ranked live by Edge return, with the selected vault's deposit and redeem panel beside them. */
 export function VaultsTab({ live }: { live: Live }) {
@@ -111,15 +123,22 @@ export function VaultsTab({ live }: { live: Live }) {
                     </td>
                     <td className="l">
                       <div className="who">
-                        <span className="chip" style={{ background: `var(--s${v.i + 1})` }} />
+                        <span className="chip" style={{ background: `var(--s${(v.i % 6) + 1})` }} />
                         <div>
-                          <b>{v.name}</b>
+                          <b>
+                            {v.name}
+                            {v.onProbation && <em className="tag warn" title="Its Edge index fell past the probation drawdown: it cannot rebalance for a few epochs">probation</em>}
+                            {v.launched && <em className="tag" title="Launched by its curator through the factory">open launch</em>}
+                          </b>
                           <span>{v.style}</span>
                         </div>
                       </div>
                     </td>
                     {by === "fees" && <td className="num strong">{usd(feesOf(v))}</td>}
-                    <td className={`num ${by === "return" ? "strong" : ""} ${!v.edgeIndexed ? "" : v.edgeReturn >= 0 ? "pos" : "neg"}`}>{pct(v)}</td>
+                    <td className={`num ${by === "return" ? "strong" : ""} ${!v.edgeIndexed ? "" : v.edgeReturn >= 0 ? "pos" : "neg"}`}>
+                      {pct(v)}
+                      <Skill v={v} />
+                    </td>
                     <td className={`num ${by === "edge" ? "strong" : ""} ${v.edge >= 0 ? "pos" : "neg"}`}>{usd(v.edge)}</td>
                     <td className="num">{usd(v.userFees)}</td>
                     <td className="num">{usd(v.userImpact)}</td>

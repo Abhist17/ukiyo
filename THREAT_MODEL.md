@@ -14,11 +14,11 @@ What each actor can and cannot do to the hook ([`UkiyoHook`](src/UkiyoHook.sol))
 
 | Actor | Can | Cannot |
 | --- | --- | --- |
-| Hook owner | Open sleeves (≤ 8), hand each to a manager once, lower `priorityFeeThreshold` at once or queue a raise (2-day delay) | Touch a sleeve after hand-over (`setSleeveManager` is one-way), move any vault's tokens |
+| Hook owner | Open sleeves (≤ 8), hand each to a manager once, name the launcher (factory), lower `priorityFeeThreshold` at once or queue a raise (2-day delay) | Touch a sleeve after hand-over (`setSleeveManager` is one-way), move any vault's tokens |
 | Curator | Move its sleeve's range (`rebalance`, or `rebalanceWithSwap` with a swap bounded to a 1% price move), post and withdraw its bond, set its LVR budget | Take depositors' tokens (removed liquidity always returns to the vault), withdraw bond before the next settlement, change the budget for the current epoch, raise the fee above its immutable value |
 | Depositor | Request deposits and redemptions, cancel an unsettled deposit, claim payouts and refunds, settle a finished epoch | Enter or leave mid-epoch, claim more than its pro-rata share |
 | Swapper or arbitrageur | Trade in the pool, choose its priority fee | Add or remove liquidity (the pool is hook-exclusive; `beforeAddLiquidity` and `beforeRemoveLiquidity` reject everyone but the hook) |
-| Anyone | Call `settleEpoch` once an epoch is over | Settle early |
+| Anyone | Call `settleEpoch` once an epoch is over; launch a vault through the factory with a bond; add to any curator's bond | Settle early; launch a vault without the factory's depositor protections; touch another curator's sleeve |
 
 ## Threats and mitigations
 
@@ -36,6 +36,17 @@ What each actor can and cannot do to the hook ([`UkiyoHook`](src/UkiyoHook.sol))
 | A curator uses `rebalanceWithSwap` to push the price and hurt other sleeves' Edge | The swap's price limit caps the move at 1%, and the vault pays the swap's fee and impact itself | A manager swap that leads a block becomes the mark, so others are charged for that move; bounded and costly |
 | A protocol fee switched on later makes fees overstated | Fee attribution reads the pool's protocol fee for each swap's direction and books only the LPs' part, exactly as `Pool.swap` splits it (`test_feeAttributionMatchesPoolManagerWithProtocolFee`) | None known |
 | Rounding overstates Edge | Losses round up, credits and fees round down; `edgePerShare` floors | None known |
+
+### Open launches
+
+| Threat | Mitigation | Residual risk |
+| --- | --- | --- |
+| A launch installs a fake vault that skips the depositor protections | The factory deploys only code hashing to `UkiyoVault`'s creation code, and checks epoch length, probation and bond (`test_launchRejectsOtherCode`, `test_launchEnforcesDepositorProtections`) | None known |
+| The launcher (factory) takes over existing sleeves | `launchSleeve` only opens a new sleeve and hands over that one; the hand-over is one-way | The owner chooses the launcher |
+| Someone fills the hook's eight sleeve slots | Each launch posts a permanent bond of at least `minLaunchBond` | **Open in part.** Slots are finite; a well-funded actor can still fill them, at a cost locked for good |
+| A curator on a losing streak keeps trading depositors' capital | Probation: an Edge-index drawdown past `probationBps` blocks rebalancing for three epochs (`test_probationStopsALosingCurator`; invariant `invariant_probationBounded`) | The vault holds its range while on probation; it does not exit |
+| The curator withdraws its whole bond | Withdrawals stop at `minBond` (`test_minBondCannotBeWithdrawn`) | None known |
+| A lucky streak is read as skill | `edgeTStat`: the t-statistic of per-epoch Edge returns, rounded down, with skill only at t ≥ 2 | A t-test assumes epochs are roughly independent |
 
 ### Vault funds
 

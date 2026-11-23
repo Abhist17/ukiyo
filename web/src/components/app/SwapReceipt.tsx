@@ -79,9 +79,9 @@ export function SwapReceipt({ receipt, intent, live, onClose }: { receipt: Trans
         <div className="receipt-split">
           {active.map(({ v, l }) => (
             <div key={v.address}>
-              <span className="chip" style={{ background: `var(--s${v.i + 1})` }} />
+              <span className="chip" style={{ background: `var(--s${(v.i % 6) + 1})` }} />
               <span>{v.name}</span>
-              <div className="track"><div style={{ width: `${(l / totalL) * 100}%`, background: `var(--s${v.i + 1})` }} /></div>
+              <div className="track"><div style={{ width: `${(l / totalL) * 100}%`, background: `var(--s${(v.i % 6) + 1})` }} /></div>
               <b className="num">+{usd(feeUsd * (l / totalL), 2)}</b>
             </div>
           ))}

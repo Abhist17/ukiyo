@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "wagmi";
 import { encodeAbiParameters, keccak256, parseAbiItem, type Address } from "viem";
-import { hookAbi, vaultAbi } from "./abi";
+import { factoryAbi, hookAbi, vaultAbi } from "./abi";
 import { CHAIN, DEP, POOL_KEY, num, priceOf, split } from "./chain";
 import { useVaultLogs } from "./logs";
 
@@ -26,6 +26,17 @@ export interface VaultLive {
   edgeReturn: number;
   /** Whether any epoch with capital has settled yet, so `edgeReturn` means something. */
   edgeIndexed: boolean;
+  /** t-statistic of the per-epoch Edge returns: is the Edge skill or luck? 0 until two epochs. */
+  tStat: number;
+  /** Epochs the skill test has seen. */
+  edgeEpochs: number;
+  /** t ≥ 2: the Edge is statistically clear of zero. */
+  hasSkill: boolean;
+  /** The curator's Edge index fell past its probation drawdown: it cannot rebalance for now. */
+  onProbation: boolean;
+  /** Launched by a curator through the factory rather than set up with the demo. */
+  launched: boolean;
+  curator: Address;
   btc: number;
   usd: number;
   tvl: number;
@@ -98,10 +109,29 @@ export function useLive() {
         pc!.readContract({ address: hook, abi: hookAbi, functionName: "priorityFeeThreshold" }),
       ]);
       const price = priceOf(sqrtP);
+      // the demo's vaults, then any a curator launched through the factory
+      const metas: { address: Address; sleeveId: number; name: string; symbol: string; style: string; launched: boolean }[] =
+        d.vaults.map((v) => ({ ...v, launched: false }));
+      if (d.factory) {
+        const n = await pc!.readContract({ address: d.factory, abi: factoryAbi, functionName: "vaultCount" });
+        const launched = await Promise.all(
+          Array.from({ length: Number(n) }, async (_, k) => {
+            const address = await pc!.readContract({ address: d.factory!, abi: factoryAbi, functionName: "vaults", args: [BigInt(k)] });
+            const [name, symbol, id, cur] = await Promise.all([
+              pc!.readContract({ address, abi: vaultAbi, functionName: "name" }),
+              pc!.readContract({ address, abi: vaultAbi, functionName: "symbol" }),
+              pc!.readContract({ address, abi: vaultAbi, functionName: "sleeveId" }),
+              pc!.readContract({ address, abi: vaultAbi, functionName: "curator" }),
+            ]);
+            return { address, sleeveId: Number(id), name, symbol, style: `Launched by ${cur.slice(0, 6)}…${cur.slice(-4)}`, launched: true };
+          }),
+        );
+        metas.push(...launched);
+      }
       const vaults = await Promise.all(
-        d.vaults.map(async (v, i): Promise<VaultLive> => {
+        metas.map(async (v, i): Promise<VaultLive> => {
           const id = BigInt(v.sleeveId);
-          const [s, l, e, h, supply, epoch, ends, startEdge, fee, bond, budget, eps, hwm, curShares, idx, idxTime] = await Promise.all([
+          const [s, l, e, h, supply, epoch, ends, startEdge, fee, bond, budget, eps, hwm, idx, idxTime, t, nEpochs, prob, cur] = await Promise.all([
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "sleeve", args: [id] }),
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "ledger", args: [id] }),
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "edge", args: [id] }),
@@ -115,10 +145,16 @@ export function useLive() {
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "lvrBudgetBps" }),
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgePerShare" }),
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "highWaterMark" }),
-            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "balanceOf", args: [d.curator] }),
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgeIndex" }),
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgeIndexTime" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgeTStat" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgeEpochs" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "onProbation" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "curator" }),
           ]);
+          const curShares = await pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "balanceOf", args: [cur] });
+          // the statistic is unbounded when every epoch returned exactly the same; clamp it for display
+          const tNum = Math.max(-99, Math.min(99, Number(t) / 1e18));
           const [btc, usdAmt] = split(h[0], h[1]);
           const edge = num(e);
           const tvl = num(btc) * price + num(usdAmt);
@@ -138,6 +174,12 @@ export function useLive() {
             edge,
             edgeReturn: Number(idx) / 1e18 - 1,
             edgeIndexed: idxTime > 0n,
+            tStat: tNum,
+            edgeEpochs: Number(nEpochs),
+            hasSkill: t >= 2n * 10n ** 18n,
+            onProbation: prob,
+            launched: v.launched,
+            curator: cur,
             btc: num(btc),
             usd: num(usdAmt),
             tvl,

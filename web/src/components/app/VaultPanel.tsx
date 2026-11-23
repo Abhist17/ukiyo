@@ -124,7 +124,7 @@ export function VaultPanel({ v, live }: { v: VaultLive; live: Live }) {
     <aside className="panel side">
       <div className="panel-head">
         <div className="who">
-          <span className="chip" style={{ background: `var(--s${v.i + 1})` }} />
+          <span className="chip" style={{ background: `var(--s${(v.i % 6) + 1})` }} />
           <div>
             <b>{v.name}</b>
             <span>{v.symbol} · epoch {v.epoch}</span>

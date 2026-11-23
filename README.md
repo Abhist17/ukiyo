@@ -92,7 +92,8 @@ never count as user flow.
 | File | Role |
 | --- | --- |
 | [`src/UkiyoHook.sol`](src/UkiyoHook.sol) | The meter: hook-exclusive pool, sleeves (≤ 8), per-block marks, priority-fee classifier, per-sleeve ledgers, `edge(sleeveId)` |
-| [`src/UkiyoVault.sol`](src/UkiyoVault.sol) | One curator vault per sleeve: two-token deposits, ERC-20 shares, entries and exits settled at epoch boundaries, curator rebalancing, performance fee on Edge above a high-water mark, LVR bond |
+| [`src/UkiyoVault.sol`](src/UkiyoVault.sol) | One curator vault per sleeve: two-token deposits, ERC-20 shares, entries and exits settled at epoch boundaries, curator rebalancing, performance fee on Edge above a high-water mark, LVR bond, Edge index, skill test, probation |
+| [`src/UkiyoFactory.sol`](src/UkiyoFactory.sol) | Open launches: anyone deploys a genuine vault, opens and hands over its sleeve, and posts a permanent bond, in one call |
 | [`src/libraries/EdgeMath.sol`](src/libraries/EdgeMath.sol) | Closed forms: rebalancing loss, impact credit, per-sleeve swap fee, clipping |
 | [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) | Demo deployment: test tokens, mined hook address, 5 bps pool, four bonded curator vaults, swap router |
 | [`web/scripts/bot.mts`](web/scripts/bot.mts) | Replay bot: BTC/USD 2024 through the pool, priority-fee arbitrage, user flow, live curators, epoch settlement |
@@ -125,6 +126,14 @@ back in. Removals pay the caller, so an owner who could re-point the manager cou
   it, valued at the post-arbitrage mark. It is a share price that counts only skill, so a small vault and a large one
   with the same strategy score the same (`test_edgeIndexIsSizeNeutral`), and the app ranks curators by it.
   `edgeIndexTime` counts the seconds it covers, for annualizing.
+- **Skill or luck.** A positive Edge index can still be a few lucky epochs. Each settlement also records the epoch's
+  return in a running sum and sum of squares, and `edgeTStat()` reads the t-statistic of the curator's returns: mean
+  over its standard error. `hasSkill()` is true at t ≥ 2, when the Edge is statistically clear of zero. The spread
+  rounds up and the statistic rounds down, so skill is never overstated (`test_consistentEdgeIsSkill`,
+  `test_mixedRecordIsNotSkill`).
+- **Probation.** If a vault's Edge index falls `probationBps` below its peak, the curator cannot move the range for
+  three epochs: the vault holds still while depositors decide whether to stay (`test_probationStopsALosingCurator`).
+- **Permanent bond.** `minBond` is bond the curator can never withdraw; penalties can still take it.
 - **Epochs.** Entries and exits settle in batches at the boundary, so the share price is fixed within an epoch. The
   Edge recorded for an epoch belongs to exactly the shares that held it, and no one can enter just before fees are
   collected and leave right after.
@@ -145,6 +154,22 @@ back in. Removals pay the caller, so an owner who could re-point the manager cou
 
 A curator is paid only for Edge (never for fee volume or a rising market) and pays depositors back when arbitrage
 loss beats what users paid by more than it promised.
+
+
+### Open launches
+
+Anyone can become a curator through [`UkiyoFactory`](src/UkiyoFactory.sol), without the hook owner. One `launch` call
+deploys a vault, opens its sleeve and hands the sleeve to the vault (the hook's `launchSleeve`, open to the owner and
+the one launcher it names), and posts the curator's bond. The factory only launches vaults that protect depositors:
+
+| Term | Rule |
+| --- | --- |
+| Code | Must hash to `type(UkiyoVault).creationCode`. The vault's creation code is too large for a factory to embed under the 24 KB limit, so the caller passes it and the factory checks it |
+| Epochs | At least `minEpochLength` |
+| Probation | Between 0.01% and `maxProbationBps` of the Edge index |
+| Bond | At least `minLaunchBond` tUSD, kept for the vault's life. It also prices the hook's eight sleeve slots, so they cannot be filled for free |
+
+The app's **Launch** tab does this from a wallet, and launched vaults appear on the scoreboard beside the demo's.
 
 ## App and demo
 
@@ -276,7 +301,7 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
-forge test                          # 76 tests + 4 stateful invariants: unit, fuzz, integration, differential
+forge test                          # 86 tests + 5 stateful invariants: unit, fuzz, integration, differential
 forge test --match-test test_gas -vv
 ```
 
@@ -299,7 +324,7 @@ python export_web.py                       # refresh the site's data after exper
 | --- | --- |
 | `EdgeMath.t.sol` | The closed-form loss equals the exact holding-vs-position gap from Uniswap's amount math (1,024 fuzz runs); fee attribution matches `SqrtPriceMath`; credits never exceed losses |
 | `UkiyoHook.t.sol` | Against the canonical PoolManager bytecode: pool binding, hook-only liquidity, access control, classification, fee attribution matching the PoolManager's own fee growth, marks, loss, impact, round-trip immunity, anchors on range change and on added liquidity, fee attribution with a protocol fee switched on, `sleeveAmounts` equal to a full withdrawal to the wei, and a differential fuzz test where every ledger field equals an independent replay of random blocks of swaps, liquidity changes and protocol fees |
-| `UkiyoVault.t.sol` | On a 5 bps pool: one-time hand-over that locks the owner out, epoch gating, first-mint shares and dead shares, proportional deposits with refunds, pro-rata redemptions, fees reaching shareholders, per-epoch Edge snapshots, curator-only rebalancing, the depositor cap, the performance fee (a share of positive Edge, nothing on losses, losses earned back before any fee), the LVR bond (overshoot paid to depositors, capped at the bond, budgets deferred one epoch, withdrawals only after the penalty), the Edge index (exact per-epoch compounding, size-neutral across a 1× and a 10× vault), and fuzz tests that a deposit-redeem round trip never pays out more than went in and that the vault always holds what it owes plus the bond |
+| `UkiyoVault.t.sol` | On a 5 bps pool: one-time hand-over that locks the owner out, epoch gating, first-mint shares and dead shares, proportional deposits with refunds, pro-rata redemptions, fees reaching shareholders, per-epoch Edge snapshots, curator-only rebalancing, the depositor cap, the performance fee (a share of positive Edge, nothing on losses, losses earned back before any fee), the LVR bond (overshoot paid to depositors, capped at the bond, budgets deferred one epoch, withdrawals only after the penalty), the Edge index (exact per-epoch compounding, size-neutral across a 1× and a 10× vault), the skill test against the textbook t-statistic, probation and its release, the permanent bond, open launches end to end with fake code and weak terms rejected, and fuzz tests that a deposit-redeem round trip never pays out more than went in and that the vault always holds what it owes plus the bond |
 | `invariant/UkiyoVault.invariant.t.sol` | Stateful: random sequences of deposits, cancels, redemptions, claims, user and arbitrage swaps, settlements, rebalances (with and without a swap) and bond moves, by four depositors and the curator. After every step the vault holds all it owes (escrows, refunds, payouts, bond), every share sits with a known holder, escrowed redemption shares are all there, and the high-water mark never goes negative |
 
 ### Gas (measured inside one test transaction, `forge test --match-test test_gas -vv`)
@@ -309,7 +334,7 @@ python export_web.py                       # refresh the site's data after exper
 | First swap of a block, two sleeves (mark, impact credit, loss charge, fee attribution), including the router and PoolManager | ~277k |
 | Later swap in the same block, two sleeves | ~177k |
 | `requestDeposit` (including the minimum-deposit check) | ~189k |
-| `settleEpoch` with a performance fee, one redemption and one deposit | ~638k |
+| `settleEpoch` with a performance fee, one redemption and one deposit | ~710k |
 | `rebalance` (remove, move range, redeploy) | ~369k |
 
 The hook's per-swap work loops over the sleeves (at most 8), so a swap's cost grows with the sleeve count. Earlier
@@ -323,7 +348,7 @@ measured a later swap twice.
 | Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees`, and a curator benchmark built on it that separates skill from market direction |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Curators are paid a performance fee only on Edge above a high-water mark and bonded against LVR, so depositors pay for skill and are compensated for losses beyond what was promised; any curator vault can adopt the meter as its scoring and fee standard |
-| Functionality (15%) | 76 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 4 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
+| Functionality (15%) | 86 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 5 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 

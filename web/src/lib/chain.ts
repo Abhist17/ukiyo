@@ -21,6 +21,8 @@ export interface Deployment {
   epochLength: number;
   startPrice: number;
   curator: Address;
+  /** UkiyoFactory, through which anyone can launch a further vault (absent on older deployments). */
+  factory?: Address;
   vaults: { address: Address; sleeveId: number; name: string; symbol: string; style: string }[];
 }
 

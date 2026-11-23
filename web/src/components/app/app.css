@@ -1171,3 +1171,41 @@ table.acct {
   color: var(--muted);
   font-family: var(--mono);
 }
+
+/* Skill test under a vault's Edge return, and status tags beside its name */
+.vt .skill {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.vt .skill.yes {
+  color: var(--good);
+}
+.who .tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  vertical-align: 1px;
+}
+.who .tag.warn {
+  border-color: color-mix(in srgb, var(--bad) 45%, transparent);
+  color: var(--bad);
+}
+
+.launch-terms {
+  margin: 12px 0 16px;
+  padding-left: 18px;
+}
+.launch-terms li {
+  margin: 4px 0;
+}

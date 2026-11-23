@@ -64,7 +64,7 @@ export function LiquidityChart({ live }: { live: Live }) {
                 base -= h;
                 return (
                   <rect key={i} x={pad.l + k * bw + 1} y={base} width={Math.max(1, bw - 2)} height={Math.max(0, h - 1)}
-                    rx="1.5" fill={`var(--s${i + 1})`} />
+                    rx="1.5" fill={`var(--s${(i % 6) + 1})`} />
                 );
               })}
             </g>
@@ -85,7 +85,7 @@ export function LiquidityChart({ live }: { live: Live }) {
           {stacks[hover].map((l, i) =>
             l ? (
               <div className="t-row" key={i}>
-                <span className="chip" style={{ background: `var(--s${i + 1})` }} />
+                <span className="chip" style={{ background: `var(--s${(i % 6) + 1})` }} />
                 {live.vaults[i].name}
                 <span className="num">{((l / max) * 100).toFixed(0)}%</span>
               </div>

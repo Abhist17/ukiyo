@@ -13,6 +13,7 @@ import { TradeTab } from "./TradeTab";
 import { AnalyticsTab } from "./AnalyticsTab";
 import { FaucetTab } from "./FaucetTab";
 import { PortfolioTab } from "./PortfolioTab";
+import { LaunchTab } from "./LaunchTab";
 import { Ticker } from "./Ticker";
 import "./app.css";
 
@@ -21,6 +22,7 @@ const TABS = [
   { id: "trade", label: "Trade" },
   { id: "analytics", label: "Analytics" },
   { id: "portfolio", label: "Portfolio" },
+  { id: "launch", label: "Launch" },
   { id: "faucet", label: "Faucet" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
@@ -70,6 +72,7 @@ function Body({ tab }: { tab: Tab }) {
   if (tab === "analytics") return <AnalyticsTab live={live} />;
   if (tab === "faucet") return <FaucetTab />;
   if (tab === "portfolio") return <PortfolioTab live={live} />;
+  if (tab === "launch") return <LaunchTab live={live} />;
   return <VaultsTab live={live} />;
 }
 

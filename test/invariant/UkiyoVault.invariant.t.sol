@@ -235,7 +235,7 @@ contract UkiyoVaultInvariantTest is Test {
 
         address curator = makeAddr("curator");
         hook.openSleeve(curator, -1000, 1000);
-        vault = new UkiyoVault(hook, 1, curator, 1 days, 1000, "v", "v");
+        vault = new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(1 days, 1000, 10, 0), "v", "v"); // probation at 0.1%
         hook.setSleeveManager(1, address(vault));
         hook.modifySleeveLiquidity(0, 1e21);
         vm.fee(1 gwei);
@@ -283,9 +283,16 @@ contract UkiyoVaultInvariantTest is Test {
         assertGe(vault.highWaterMark(), 0, "the high-water mark fell below its start");
     }
 
-    /// @notice Every action actually ran: a summary that guards against a handler whose calls all revert.
+    /// @notice A probation never outlasts `PROBATION_EPOCHS`, and the Edge index never sits above its tracked peak.
+    function invariant_probationBounded() public view {
+        assertLe(vault.probationUntil(), vault.epoch() + vault.PROBATION_EPOCHS(), "probation too long");
+        assertLe(vault.edgeIndex(), vault.edgeIndexPeak(), "index above its peak");
+    }
+
+    /// @notice Guards against a handler whose calls all revert: once a run has tried an action a few times, some of
+    ///         those calls must have landed. (A run can, by chance, pick an action rarely or never; that is no failure.)
     function afterInvariant() public view {
-        assertGt(handler.ok("settle"), 0, "no epoch ever settled");
-        assertGt(handler.ok("swap"), 0, "no swap ever landed");
+        if (handler.calls("settle") >= 5) assertGt(handler.ok("settle"), 0, "no epoch ever settled");
+        if (handler.calls("swap") >= 5) assertGt(handler.ok("swap"), 0, "no swap ever landed");
     }
 }

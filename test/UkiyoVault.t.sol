@@ -17,6 +17,7 @@ import {PoolSwapTest} from "@uniswap/v4-core/src/test/PoolSwapTest.sol";
 
 import {UkiyoHook} from "../src/UkiyoHook.sol";
 import {UkiyoVault} from "../src/UkiyoVault.sol";
+import {UkiyoFactory} from "../src/UkiyoFactory.sol";
 
 /// @notice Curator vault tests against the canonical PoolManager bytecode, on a 5 bps pool.
 contract UkiyoVaultTest is Test {
@@ -72,7 +73,7 @@ contract UkiyoVaultTest is Test {
         manager.initialize(key, SQRT_PRICE_1_1);
 
         hook.openSleeve(curator, -1000, 1000); // about +-10%
-        vault = new UkiyoVault(hook, 0, curator, EPOCH, FEE_BPS, "Ukiyo curator vault", "uCV");
+        vault = new UkiyoVault(hook, 0, curator, UkiyoVault.Terms(EPOCH, FEE_BPS, 0, 0), "Ukiyo curator vault", "uCV");
         hook.setSleeveManager(0, address(vault));
 
         _fund(alice);
@@ -218,7 +219,7 @@ contract UkiyoVaultTest is Test {
 
     function test_constructorChecks() public {
         vm.expectRevert(UkiyoVault.ZeroCurator.selector);
-        new UkiyoVault(hook, 0, address(0), EPOCH, 0, "x", "x");
+        new UkiyoVault(hook, 0, address(0), UkiyoVault.Terms(EPOCH, 0, 0, 0), "x", "x");
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -520,7 +521,7 @@ contract UkiyoVaultTest is Test {
 
     function test_constructorCapsTheFee() public {
         vm.expectRevert(abi.encodeWithSelector(UkiyoVault.AboveCap.selector, 2001, 2000));
-        new UkiyoVault(hook, 0, curator, EPOCH, 2001, "x", "x");
+        new UkiyoVault(hook, 0, curator, UkiyoVault.Terms(EPOCH, 2001, 0, 0), "x", "x");
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -582,10 +583,13 @@ contract UkiyoVaultTest is Test {
         _assertSolvent();
     }
 
-    function test_onlyCuratorManagesTheBond() public {
+    /// @notice Anyone may add to the bond (a backer, or the factory's launch bond), but only the curator manages it.
+    function test_anyoneFundsTheBondOnlyCuratorManagesIt() public {
+        token1.mint(stranger, 5e18);
         vm.startPrank(stranger);
-        vm.expectRevert(UkiyoVault.NotCurator.selector);
-        vault.postBond(1);
+        token1.approve(address(vault), 5e18);
+        vault.postBond(5e18);
+        assertEq(vault.bond(), 5e18, "a backer's bond counts");
         vm.expectRevert(UkiyoVault.NotCurator.selector);
         vault.requestBondWithdrawal(1);
         vm.expectRevert(UkiyoVault.NotCurator.selector);
@@ -637,7 +641,7 @@ contract UkiyoVaultTest is Test {
     ///         the same index: the index ranks skill, not size.
     function test_edgeIndexIsSizeNeutral() public {
         hook.openSleeve(curator, -1000, 1000);
-        UkiyoVault big = new UkiyoVault(hook, 1, curator, EPOCH, FEE_BPS, "Big", "BIG");
+        UkiyoVault big = new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(EPOCH, FEE_BPS, 0, 0), "Big", "BIG");
         hook.setSleeveManager(1, address(big));
         vm.startPrank(alice);
         token0.approve(address(big), type(uint256).max);
@@ -730,6 +734,164 @@ contract UkiyoVaultTest is Test {
         assertLt(vault.edgeTStat(), vault.SKILL_T());
         assertFalse(vault.hasSkill());
         assertApproxEqRel(vault.edgeTStat(), _referenceT(r), 1e12);
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Probation and the minimum bond
+    // ------------------------------------------------------------------------------------------------------------
+
+    /// @dev A second vault on a new sleeve with the given terms, alice approved for it.
+    function _vaultWith(uint256 probationBps, uint256 minBond) internal returns (UkiyoVault v) {
+        hook.openSleeve(curator, -1000, 1000);
+        uint256 id = hook.sleeveCount() - 1;
+        v = new UkiyoVault(hook, id, curator, UkiyoVault.Terms(EPOCH, FEE_BPS, probationBps, minBond), "P", "P");
+        hook.setSleeveManager(id, address(v));
+        vm.startPrank(alice);
+        token0.approve(address(v), type(uint256).max);
+        token1.approve(address(v), type(uint256).max);
+        vm.stopPrank();
+    }
+
+    /// @dev End the epoch and settle `v`.
+    function _settleVault(UkiyoVault v) internal {
+        vm.warp(v.epochEndsAt());
+        vm.roll(vm.getBlockNumber() + 1);
+        v.settleEpoch();
+    }
+
+    /// @notice A curator whose Edge index falls past its probation drawdown cannot move the range for
+    ///         `PROBATION_EPOCHS` epochs, then can again.
+    function test_probationStopsALosingCurator() public {
+        UkiyoVault v = _vaultWith(1, 0); // a 0.01% drawdown
+        vm.prank(alice);
+        v.requestDeposit(100e18, 100e18);
+        _settleVault(v);
+        assertFalse(v.onProbation());
+
+        for (uint256 i; i < 3; ++i) {
+            _losingEpoch(); // about -0.6 bp each
+        }
+        _settleVault(v);
+        assertTrue(v.onProbation(), "on probation after the drawdown");
+        uint256 until = v.probationUntil();
+        assertEq(until, v.epoch() + v.PROBATION_EPOCHS());
+        assertEq(v.edgeIndexPeak(), v.edgeIndex(), "peak resets to where probation began");
+        vm.startPrank(curator);
+        vm.expectRevert(abi.encodeWithSelector(UkiyoVault.OnProbation.selector, until));
+        v.rebalance(-500, 500);
+        vm.expectRevert(abi.encodeWithSelector(UkiyoVault.OnProbation.selector, until));
+        v.rebalanceWithSwap(-500, 500, true, 1);
+        vm.stopPrank();
+
+        for (uint256 i; i < v.PROBATION_EPOCHS(); ++i) {
+            _settleVault(v); // quiet epochs: no further drawdown
+        }
+        assertFalse(v.onProbation(), "probation is served");
+        vm.prank(curator);
+        v.rebalance(-500, 500);
+    }
+
+    /// @notice With probation off, the same losing epoch leaves the curator free.
+    function test_noProbationWhenOff() public {
+        _deposit(alice, 100e18, 100e18);
+        _settle();
+        _losingEpoch();
+        _settle();
+        assertLt(vault.edgeIndex(), 1e18);
+        assertFalse(vault.onProbation());
+    }
+
+    /// @notice The curator can withdraw bond only down to `minBond`; the rest stays for the vault's life.
+    function test_minBondCannotBeWithdrawn() public {
+        UkiyoVault v = _vaultWith(0, 10e18);
+        token1.mint(curator, 15e18);
+        vm.startPrank(curator);
+        token1.approve(address(v), 15e18);
+        v.postBond(15e18);
+        v.requestBondWithdrawal(15e18);
+        vm.stopPrank();
+        uint256 before = token1.balanceOf(curator);
+        _settleVault(v);
+        assertEq(token1.balanceOf(curator) - before, 5e18, "only the part above the minimum");
+        assertEq(v.bond(), 10e18);
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Open launches through the factory
+    // ------------------------------------------------------------------------------------------------------------
+
+    function _factory() internal returns (UkiyoFactory f) {
+        f = new UkiyoFactory(hook, EPOCH, 1000e18, 2000);
+        hook.setLauncher(address(f));
+        vm.startPrank(alice);
+        token1.approve(address(f), type(uint256).max);
+        vm.stopPrank();
+    }
+
+    function _terms() internal pure returns (UkiyoVault.Terms memory) {
+        return UkiyoVault.Terms({epochLength: EPOCH, performanceFeeBps: 1000, probationBps: 500, minBond: 1000e18});
+    }
+
+    /// @notice Anyone can launch a vault in one call: sleeve opened and handed over, launch bond posted, and the vault
+    ///         takes deposits and earns like any other.
+    function test_anyoneCanLaunchAVault() public {
+        UkiyoFactory f = _factory();
+        vm.prank(alice);
+        UkiyoVault v = f.launch(type(UkiyoVault).creationCode, -500, 500, _terms(), "Alice", "ALC");
+
+        assertEq(hook.sleeveManager(1), address(v), "the new sleeve is the vault's");
+        assertTrue(hook.isSleeveManager(address(v)), "its own swaps are arbitrage");
+        assertEq(hook.sleeve(1).curator, alice);
+        assertEq(v.curator(), alice);
+        assertEq(v.bond(), 1000e18, "launch bond posted");
+        assertEq(v.minBond(), 1000e18);
+        assertEq(v.probationBps(), 500);
+        assertTrue(f.isLaunched(address(v)));
+        assertEq(f.vaultCount(), 1);
+
+        vm.startPrank(alice);
+        token0.approve(address(v), type(uint256).max);
+        token1.approve(address(v), type(uint256).max);
+        v.requestDeposit(10e18, 10e18);
+        vm.stopPrank();
+        _settleVault(v);
+        assertGt(hook.sleeve(1).liquidity, 0, "deposits go to work");
+    }
+
+    /// @notice The factory deploys only genuine vault code.
+    function test_launchRejectsOtherCode() public {
+        UkiyoFactory f = _factory();
+        bytes memory fake = abi.encodePacked(type(UkiyoVault).creationCode, hex"00");
+        vm.prank(alice);
+        vm.expectRevert(UkiyoFactory.NotUkiyoVaultCode.selector);
+        f.launch(fake, -500, 500, _terms(), "X", "X");
+    }
+
+    /// @notice Every launched vault offers depositors the factory's minimum protections.
+    function test_launchEnforcesDepositorProtections() public {
+        UkiyoFactory f = _factory();
+        bytes memory code = type(UkiyoVault).creationCode;
+        UkiyoVault.Terms[4] memory bad = [_terms(), _terms(), _terms(), _terms()];
+        bad[0].epochLength = EPOCH - 1; // epochs too short
+        bad[1].minBond = 999e18; // bond too small
+        bad[2].probationBps = 0; // no probation
+        bad[3].probationBps = 2001; // probation too loose
+        vm.startPrank(alice);
+        for (uint256 i; i < bad.length; ++i) {
+            vm.expectRevert(UkiyoFactory.BadTerms.selector);
+            f.launch(code, -500, 500, bad[i], "X", "X");
+        }
+        vm.stopPrank();
+    }
+
+    /// @notice Only the owner or its launcher can launch sleeves, and only the owner picks the launcher.
+    function test_onlyOwnerOrLauncherLaunchesSleeves() public {
+        vm.startPrank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(UkiyoHook.NotLauncher.selector, stranger));
+        hook.launchSleeve(stranger, -500, 500, stranger);
+        vm.expectRevert();
+        hook.setLauncher(stranger);
+        vm.stopPrank();
     }
 
     // ------------------------------------------------------------------------------------------------------------

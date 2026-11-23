@@ -18,11 +18,12 @@ import {PoolSwapTest} from "@uniswap/v4-core/src/test/PoolSwapTest.sol";
 
 import {UkiyoHook} from "../src/UkiyoHook.sol";
 import {UkiyoVault} from "../src/UkiyoVault.sol";
+import {UkiyoFactory} from "../src/UkiyoFactory.sol";
 
 /// @title DeployUkiyo
 /// @notice Deploys the full Ukiyo demo: two faucet test tokens (tBTC, tUSD), the hook at a mined address, a 5 bps
 ///         hook-exclusive pool at the BTC price the replay starts from, one sleeve and one curator vault per strategy,
-///         seed deposits, and a swap router. Writes every address to `web/src/deployments/<chainId>.json`, which the
+///         seed deposits, a swap router, and the factory through which anyone can launch a further vault. Writes every address to `web/src/deployments/<chainId>.json`, which the
 ///         site and the replay bot read.
 /// @dev On a chain with a canonical v4 PoolManager (Unichain Sepolia, 1301) it uses that one; on anvil it deploys the
 ///      canonical bytecode. Environment (all optional):
@@ -32,6 +33,8 @@ import {UkiyoVault} from "../src/UkiyoVault.sol";
 ///        PERF_FEE_BPS  performance fee on Edge above the high-water mark               default 1000 (10%)
 ///        LVR_BUDGET_BPS  each demo curator's LVR budget per epoch                      default 25
 ///        START_PRICE  tUSD per tBTC                                                    default 42,268 (1 Jan 2024)
+///        PROBATION_BPS  Edge-index drawdown that puts a demo curator on probation      default 300 (3%)
+///        LAUNCH_BOND  permanent bond the factory requires of a new curator, in tUSD     default 5,000
 contract DeployUkiyo is Script {
     /// @dev forge's CREATE2 deployer proxy, the `deployer` HookMiner must mine against.
     address internal constant CREATE2_DEPLOYER = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
@@ -60,6 +63,7 @@ contract DeployUkiyo is Script {
         MockERC20 usd;
         UkiyoHook hook;
         PoolSwapTest router;
+        UkiyoFactory factory;
         PoolKey key;
         UkiyoVault[] vaults;
     }
@@ -71,6 +75,8 @@ contract DeployUkiyo is Script {
         uint256 startPrice;
         uint256 performanceFeeBps;
         uint256 lvrBudgetBps;
+        uint256 probationBps;
+        uint256 launchBond;
         address curator;
         address deployer;
     }
@@ -83,6 +89,8 @@ contract DeployUkiyo is Script {
             startPrice: vm.envOr("START_PRICE", uint256(42_268)),
             performanceFeeBps: vm.envOr("PERF_FEE_BPS", uint256(1000)),
             lvrBudgetBps: vm.envOr("LVR_BUDGET_BPS", uint256(25)),
+            probationBps: vm.envOr("PROBATION_BPS", uint256(300)),
+            launchBond: vm.envOr("LAUNCH_BOND", uint256(5000 ether)),
             curator: vm.envOr("CURATOR", msg.sender),
             deployer: msg.sender
         });
@@ -124,6 +132,9 @@ contract DeployUkiyo is Script {
         }
 
         d.router = new PoolSwapTest(IPoolManager(d.manager));
+        // Anyone can launch a further curator vault through the factory, on at least the demo's epoch length.
+        d.factory = new UkiyoFactory(d.hook, c.epochLength, c.launchBond, 2000);
+        d.hook.setLauncher(address(d.factory));
         vm.stopBroadcast();
 
         _write(d, strategies, c);
@@ -139,9 +150,21 @@ contract DeployUkiyo is Script {
         uint256 seedUsd = seedBtc * c.startPrice;
         d.btc.mint(c.deployer, seedBtc);
         d.usd.mint(c.deployer, seedUsd);
-        uint256 id = d.hook.openSleeve(c.curator, _floor(tick - s.halfWidth), _ceil(tick + s.halfWidth));
-        v = new UkiyoVault(d.hook, id, c.curator, c.epochLength, c.performanceFeeBps, s.name, s.symbol);
-        d.hook.setSleeveManager(id, address(v));
+        uint256 id = d.hook.sleeveCount();
+        v = new UkiyoVault(
+            d.hook,
+            id,
+            c.curator,
+            UkiyoVault.Terms({
+                epochLength: c.epochLength,
+                performanceFeeBps: c.performanceFeeBps,
+                probationBps: c.probationBps,
+                minBond: 0
+            }),
+            s.name,
+            s.symbol
+        );
+        d.hook.launchSleeve(c.curator, _floor(tick - s.halfWidth), _ceil(tick + s.halfWidth), address(v));
         d.btc.approve(address(v), type(uint256).max);
         d.usd.approve(address(v), type(uint256).max);
         (uint256 a0, uint256 a1) = btcIs0 ? (seedBtc, seedUsd) : (seedUsd, seedBtc);
@@ -232,6 +255,9 @@ contract DeployUkiyo is Script {
         vm.serializeAddress(o, "poolManager", d.manager);
         vm.serializeAddress(o, "hook", address(d.hook));
         vm.serializeAddress(o, "router", address(d.router));
+        vm.serializeAddress(o, "factory", address(d.factory));
+        vm.serializeUint(o, "launchBond", c.launchBond);
+        vm.serializeUint(o, "probationBps", c.probationBps);
         vm.serializeAddress(o, "token0", Currency.unwrap(d.key.currency0));
         vm.serializeAddress(o, "token1", Currency.unwrap(d.key.currency1));
         vm.serializeAddress(o, "btc", address(d.btc));

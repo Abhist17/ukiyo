@@ -258,6 +258,11 @@ async function curate(h: number, tick: number, price: number) {
       const want = Math.max(60, Math.round((3 * sd) / 1e-4));
       if (outside || Math.abs(want - halfNow) / halfNow > 0.3) half = want;
     }
+    if (half && (await pc.readContract({ address: v.address, abi: vaultAbi, functionName: "onProbation" }))) {
+      // the vault stopped this curator after a drawdown of its Edge index: it holds still until probation is served
+      console.log(`  ${v.name} wants to rebalance but is on probation`);
+      half = 0;
+    }
     if (half) {
       // Recentre around the price. If the vault holds mostly one token (the price ran through its range), swap the
       // excess toward a 50/50 value mix first with rebalanceWithSwap: the vault's swap is capped at a 1% price move

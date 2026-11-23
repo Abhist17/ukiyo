@@ -47,6 +47,9 @@ import {UkiyoHook} from "./UkiyoHook.sol";
 ///          vault, capped at the bond. Bond withdrawals wait for the next settlement, after any penalty.
 ///      Both are valued at the hook's post-arbitrage mark, never the spot price of the settling transaction.
 ///
+///      Probation: a curator whose `edgeIndex` falls `probationBps` below its peak cannot move the range for
+///      `PROBATION_EPOCHS` epochs; the vault holds still while depositors decide.
+///
 ///      Ranking: `edgeIndex` compounds each epoch's Edge over the capital that earned it, so curators are compared on
 ///      skill per dollar, not on size.
 ///
@@ -62,6 +65,18 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     // ---------------------------------------------------------------------------------------------------------------
     // Types
     // ---------------------------------------------------------------------------------------------------------------
+
+    /// @notice A vault's terms, fixed at construction: what depositors sign up to.
+    /// @param epochLength Minimum epoch length in seconds.
+    /// @param performanceFeeBps Performance fee in bps of Edge above the high-water mark, at most 20%.
+    /// @param probationBps Drawdown of `edgeIndex` from its peak, in bps, that puts the curator on probation; 0 never.
+    /// @param minBond token1 bond the curator can never withdraw below (penalties still take from it).
+    struct Terms {
+        uint256 epochLength;
+        uint256 performanceFeeBps;
+        uint256 probationBps;
+        uint256 minBond;
+    }
 
     /// @notice A pair of token amounts.
     /// @param amount0 Amount of token0.
@@ -124,6 +139,16 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
 
     /// @notice Performance fee, in bps of Edge earned above the high-water mark.
     uint256 public immutable performanceFeeBps;
+
+    /// @notice Drawdown of `edgeIndex` from its peak, in bps, that puts the curator on probation; 0 if never.
+    uint256 public immutable probationBps;
+
+    /// @notice Bond the curator must keep posted: withdrawals never take the bond below it.
+    uint256 public immutable minBond;
+
+    /// @notice Epochs a probation lasts. During them the curator cannot move the range, so the vault holds still and
+    ///         depositors have time to leave on their own terms.
+    uint256 public constant PROBATION_EPOCHS = 3;
 
     /// @notice Most the pool price may move because of the vault's own rebalancing swap, in bps of price.
     uint256 public constant MAX_REBALANCE_MOVE_BPS = 100;
@@ -189,6 +214,12 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @notice The vault's capital (`valueAtMark`) when the current epoch started: what this epoch's Edge is earned on.
     uint256 public epochStartValue;
 
+    /// @notice Highest `edgeIndex` since the last probation began; probation is measured as a drawdown from it.
+    uint256 public edgeIndexPeak = EPS_SCALE;
+
+    /// @notice The curator is on probation while `epoch` is below this.
+    uint256 public probationUntil;
+
     /// @notice Epochs whose Edge return has been recorded (those that started with capital).
     uint256 public edgeEpochs;
 
@@ -237,6 +268,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
 
     /// @notice An epoch's Edge return, `edgeDelta / epochStartValue` scaled by 1e18, moved `edgeIndex` to `index`.
     event EdgeIndexUpdated(uint256 indexed epoch, int256 returnWad, uint256 index);
+
+    /// @notice The Edge index fell `probationBps` below its peak: the curator cannot rebalance before epoch `until`.
+    event Probation(uint256 indexed epoch, uint256 index, uint256 peak, uint256 until);
 
     /// @notice The curator moved the sleeve to a new range.
     event Rebalanced(int24 tickLower, int24 tickUpper, uint128 liquidity);
@@ -292,6 +326,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @notice `unlockCallback` was called by something other than the PoolManager answering this vault's own swap.
     error NotOwnSwap();
 
+    /// @notice The curator is on probation until epoch `until` and cannot move the range.
+    error OnProbation(uint256 until);
+
     /// @notice A fee or budget is above its cap.
     error AboveCap(uint256 bps, uint256 cap);
 
@@ -300,25 +337,24 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     // ---------------------------------------------------------------------------------------------------------------
 
     /// @param hook_ The Ukiyo hook; its pool must be initialized.
-    /// @param sleeveId_ The sleeve to manage. The hook owner must then hand it over with `setSleeveManager`.
+    /// @param sleeveId_ The sleeve to manage. The hook owner (or its launcher, `UkiyoFactory`) then hands it over.
     /// @param curator_ The address that runs the sleeve's range.
-    /// @param epochLength_ Minimum epoch length in seconds.
-    /// @param performanceFeeBps_ Performance fee in bps of Edge above the high-water mark, at most 20%.
+    /// @param terms_ Epoch length, performance fee, probation drawdown and minimum bond (see `Terms`).
     /// @param name_ Share token name.
     /// @param symbol_ Share token symbol.
     constructor(
         UkiyoHook hook_,
         uint256 sleeveId_,
         address curator_,
-        uint256 epochLength_,
-        uint256 performanceFeeBps_,
+        Terms memory terms_,
         string memory name_,
         string memory symbol_
     ) ERC20(name_, symbol_) {
         if (curator_ == address(0)) revert ZeroCurator();
-        if (performanceFeeBps_ > MAX_PERFORMANCE_FEE_BPS) {
-            revert AboveCap(performanceFeeBps_, MAX_PERFORMANCE_FEE_BPS);
+        if (terms_.performanceFeeBps > MAX_PERFORMANCE_FEE_BPS) {
+            revert AboveCap(terms_.performanceFeeBps, MAX_PERFORMANCE_FEE_BPS);
         }
+        if (terms_.probationBps >= 10_000) revert AboveCap(terms_.probationBps, 9999);
         if (!hook_.poolBound()) revert PoolNotBound();
         // the hooks field is the hook itself
         // forge-lint: disable-next-line(unused-return)
@@ -329,8 +365,10 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         token0 = IERC20(Currency.unwrap(c0));
         token1 = IERC20(Currency.unwrap(c1));
         curator = curator_;
-        epochLength = epochLength_;
-        performanceFeeBps = performanceFeeBps_;
+        epochLength = terms_.epochLength;
+        performanceFeeBps = terms_.performanceFeeBps;
+        probationBps = terms_.probationBps;
+        minBond = terms_.minBond;
         poolManager = hook_.poolManager();
         _fee = fee;
         _tickSpacing = spacing;
@@ -473,10 +511,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     // ---------------------------------------------------------------------------------------------------------------
 
     /// @notice Post token1 as bond against the LVR budget. It never counts as depositors' capital unless a penalty moves
-    ///         it in.
+    ///         it in. Anyone may add to it (a backer, or the factory posting the launch bond); it belongs to the curator.
     /// @param amount token1 to add to the bond.
     function postBond(uint256 amount) external nonReentrant {
-        _onlyCurator();
         if (amount == 0) revert ZeroAmount();
         bond += amount;
         token1.safeTransferFrom(msg.sender, address(this), amount);
@@ -484,7 +521,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     }
 
     /// @notice Ask for bond back. It is paid at the next settlement, after that epoch's penalty, so a curator cannot
-    ///         pull the bond out from under an epoch that is going badly.
+    ///         pull the bond out from under an epoch that is going badly, and never below `minBond`.
     /// @param amount token1 to withdraw; replaces any earlier request.
     function requestBondWithdrawal(uint256 amount) external {
         _onlyCurator();
@@ -508,6 +545,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @param tickUpper New upper tick.
     function rebalance(int24 tickLower, int24 tickUpper) external nonReentrant {
         _onlyCurator();
+        _notOnProbation();
         // The hook is trusted and this function is nonReentrant (`_status` is the guard's own lock).
         // forge-lint: disable-start(reentrancy-events)
         // forge-lint: disable-start(reentrancy-no-eth)
@@ -535,6 +573,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         nonReentrant
     {
         _onlyCurator();
+        _notOnProbation();
         if (amountIn == 0) revert ZeroAmount();
         // The hook and the PoolManager are trusted and this function is nonReentrant.
         // forge-lint: disable-start(reentrancy-events)
@@ -716,6 +755,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         uint256 index = growth <= 0 ? 0 : Math.mulDiv(edgeIndex, SafeCast.toUint256(growth), EPS_SCALE);
         edgeIndex = index;
         edgeIndexTime += elapsed;
+        _checkProbation(e, index);
         edgeEpochs += 1;
         edgeReturnSum += r;
         uint256 ar = SafeCast.toUint256(r < 0 ? -r : r);
@@ -725,9 +765,28 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         emit EdgeIndexUpdated(e, r, index);
     }
 
-    /// @dev Pay the curator the bond withdrawal it asked for, as far as the bond still covers it.
+    /// @dev Track the index's peak, and start a probation if the index has fallen `probationBps` below it. The peak
+    ///      resets when probation starts, so a further drawdown of the same size extends it.
+    function _checkProbation(uint256 e, uint256 index) internal {
+        uint256 peak = edgeIndexPeak;
+        if (index > peak) {
+            edgeIndexPeak = index;
+            return;
+        }
+        uint256 bps = probationBps;
+        if (bps == 0 || index * 10_000 >= peak * (10_000 - bps)) return;
+        uint256 until = e + 1 + PROBATION_EPOCHS;
+        probationUntil = until;
+        edgeIndexPeak = index;
+        // the only external calls before this are the hook's views; callers are nonReentrant
+        // forge-lint: disable-next-line(reentrancy-events)
+        emit Probation(e, index, peak, until);
+    }
+
+    /// @dev Pay the curator the bond withdrawal it asked for, as far as the bond above `minBond` covers it.
     function _payBondWithdrawal() internal {
-        uint256 amount = Math.min(bondWithdrawal, bond);
+        uint256 b = bond;
+        uint256 amount = Math.min(bondWithdrawal, b > minBond ? b - minBond : 0);
         bondWithdrawal = 0;
         if (amount == 0) return;
         bond -= amount;
@@ -744,6 +803,17 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         (uint160 lo, uint160 hi) = _bounds();
         if (p < hi) amount0 = SqrtPriceMath.getAmount0Delta(p > lo ? p : lo, hi, l, false);
         if (p > lo) amount1 = SqrtPriceMath.getAmount1Delta(lo, p < hi ? p : hi, l, false);
+    }
+
+    /// @notice Whether the curator is on probation and cannot move the range this epoch.
+    function onProbation() public view returns (bool) {
+        return epoch < probationUntil;
+    }
+
+    /// @dev Reverts while the curator is on probation.
+    function _notOnProbation() internal view {
+        uint256 until = probationUntil;
+        if (epoch < until) revert OnProbation(until);
     }
 
     /// @dev Reverts unless the caller is the curator.

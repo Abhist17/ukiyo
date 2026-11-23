@@ -151,6 +151,10 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     ///         its own sleeve with that swap's fee and price impact, inflating its Edge and its performance fee.
     mapping(address account => bool) public isSleeveManager;
 
+    /// @notice Contract allowed to open a sleeve and hand it to a new vault in one step (`launchSleeve`), so curators
+    ///         can launch without the owner: the `UkiyoFactory`. Zero while unset.
+    address public launcher;
+
     Sleeve[] internal _sleeves;
     mapping(uint256 sleeveId => Ledger) internal _ledgers;
 
@@ -188,6 +192,9 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @notice A raise of the threshold was queued; it can be applied from `applicableAt`.
     event PriorityFeeThresholdQueued(uint256 threshold, uint256 applicableAt);
 
+    /// @notice Emitted when the owner sets the launcher.
+    event LauncherSet(address indexed launcher);
+
     /// @notice Emitted when a sleeve is handed to its manager for good.
     event SleeveManagerSet(uint256 indexed sleeveId, address indexed manager);
 
@@ -220,6 +227,9 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
 
     /// @notice The caller may not move this sleeve's liquidity or range.
     error NotSleeveController(uint256 sleeveId, address caller);
+
+    /// @notice Only the owner or the launcher may do this.
+    error NotLauncher(address caller);
 
     /// @notice No raise of the threshold is queued.
     error NoPendingThreshold();
@@ -296,6 +306,36 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @param manager Contract that will control the sleeve.
     function setSleeveManager(uint256 sleeveId, address manager) external onlyOwner {
         _sleeve(sleeveId);
+        _setSleeveManager(sleeveId, manager);
+    }
+
+    /// @notice Let `launcher_` open sleeves and hand them to new vaults (`launchSleeve`). It can never touch an existing
+    ///         sleeve: the hand-over is one-way, and a launch only hands over the sleeve it just opened.
+    /// @param launcher_ The factory, or zero to turn permissionless launches off.
+    // zero is how the owner turns launches off
+    // forge-lint: disable-next-line(missing-zero-check)
+    function setLauncher(address launcher_) external onlyOwner {
+        launcher = launcher_;
+        emit LauncherSet(launcher_);
+    }
+
+    /// @notice Open a sleeve and hand it to its manager at once. For the owner and the launcher (`UkiyoFactory`).
+    /// @param curator Address credited with the sleeve's Edge.
+    /// @param tickLower Lower tick, a multiple of the pool's tick spacing.
+    /// @param tickUpper Upper tick, a multiple of the pool's tick spacing.
+    /// @param manager The vault that will control the sleeve.
+    /// @return sleeveId Index of the new sleeve.
+    function launchSleeve(address curator, int24 tickLower, int24 tickUpper, address manager)
+        external
+        returns (uint256 sleeveId)
+    {
+        if (msg.sender != owner() && msg.sender != launcher) revert NotLauncher(msg.sender);
+        sleeveId = _openSleeve(curator, tickLower, tickUpper);
+        _setSleeveManager(sleeveId, manager);
+    }
+
+    /// @dev Record `manager` as the sleeve's manager, once.
+    function _setSleeveManager(uint256 sleeveId, address manager) internal {
         if (manager == address(0) || sleeveManager[sleeveId] != address(0)) revert InvalidSleeveManager(sleeveId);
         sleeveManager[sleeveId] = manager;
         isSleeveManager[manager] = true;
@@ -325,6 +365,11 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         onlyOwner
         returns (uint256 sleeveId)
     {
+        sleeveId = _openSleeve(curator, tickLower, tickUpper);
+    }
+
+    /// @dev Open an empty sleeve; see `openSleeve`.
+    function _openSleeve(address curator, int24 tickLower, int24 tickUpper) internal returns (uint256 sleeveId) {
         if (!poolBound) revert PoolNotBound();
         if (_sleeves.length >= MAX_SLEEVES) revert TooManySleeves();
         _checkRange(tickLower, tickUpper);

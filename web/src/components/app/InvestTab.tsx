@@ -82,13 +82,13 @@ export function InvestTab({ live }: { live: Live }) {
         You hold every vault&apos;s shares yourself; the router never keeps the money.
       </p>
 
-      <div className="split">
+      <div className="skill-split">
         {live.vaults.map((v, i) => {
           const bps = weights ? Number(weights[i]) : 0;
           return (
-            <div className="split-row" key={v.address}>
+            <div className="skill-split-row" key={v.address}>
               <span className="chip" style={{ background: `var(--s${(v.i % 6) + 1})` }} />
-              <span className="split-name">
+              <span className="skill-split-name">
                 {v.name}
                 <em>{v.onProbation ? "on probation" : v.edgeEpochs < 2 ? "no record yet" : `t ${v.tStat.toFixed(1)}`}</em>
               </span>

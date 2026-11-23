@@ -1211,41 +1211,41 @@ table.acct {
 }
 
 /* Invest by skill: each curator's slice of a deposit */
-.split {
+.skill-split {
   display: grid;
   gap: 8px;
   margin: 14px 0 18px;
 }
-.split-row {
+.skill-split-row {
   display: grid;
   grid-template-columns: 10px minmax(0, 1.3fr) minmax(0, 1fr) 52px;
   align-items: center;
   gap: 10px;
   font-size: 13px;
 }
-.split-name {
+.skill-split-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.split-name em {
+.skill-split-name em {
   margin-left: 6px;
   font-style: normal;
   color: var(--muted);
   font-size: 11.5px;
 }
-.split-row .track {
+.skill-split-row .track {
   height: 6px;
   border-radius: 999px;
   background: var(--card-2);
   overflow: hidden;
 }
-.split-row .track span {
+.skill-split-row .track span {
   display: block;
   height: 100%;
   border-radius: 999px;
 }
-.split-row b {
+.skill-split-row b {
   text-align: right;
 }

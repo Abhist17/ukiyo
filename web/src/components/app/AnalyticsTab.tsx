@@ -20,7 +20,7 @@ function useWidth(): [React.RefObject<HTMLDivElement | null>, number] {
 
 /** Cumulative Edge per vault at each settled epoch, ending at the live value. */
 function EdgeChart({ live }: { live: Live }) {
-  const { data } = useEdgeHistory();
+  const { data } = useEdgeHistory(live.vaults);
   const [ref, W] = useWidth();
   const [hi, setHi] = useState<number | null>(null);
   const H = 260;
@@ -87,7 +87,7 @@ function EdgeChart({ live }: { live: Live }) {
 /** Pool-level analytics: Edge over time, how each Edge is built, and how flow splits between arbitrage and users. */
 export function AnalyticsTab({ live }: { live: Live }) {
   const tape = useTape();
-  const acct = useAccountability();
+  const acct = useAccountability(live.vaults);
   const rows = tape.data ?? [];
   const maxAbs = Math.max(1, ...live.vaults.map((v) => Math.max(v.userFees + v.userImpact, v.arbLoss, v.arbFees)));
 
@@ -171,8 +171,8 @@ export function AnalyticsTab({ live }: { live: Live }) {
                 {live.vaults.map((v, i) => (
                   <tr key={v.address}>
                     <td className="l"><span className="chip" style={{ background: `var(--s${(i % 6) + 1})` }} /> {v.name}</td>
-                    <td className="num">{usd(acct.data?.[i].feesPaid ?? 0)}</td>
-                    <td className="num neg">{usd(acct.data?.[i].penalties ?? 0)}</td>
+                    <td className="num">{usd(acct.data?.[i]?.feesPaid ?? 0)}</td>
+                    <td className="num neg">{usd(acct.data?.[i]?.penalties ?? 0)}</td>
                     <td className="num">{usd(v.bond)}</td>
                   </tr>
                 ))}

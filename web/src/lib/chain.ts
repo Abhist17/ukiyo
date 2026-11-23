@@ -88,9 +88,18 @@ export const join = (btc: bigint, usd: bigint): [bigint, bigint] => (BTC_IS_0 ? 
 /** 18-decimal amount to a JS number. */
 export const num = (v: bigint) => Number(formatEther(v));
 
+/**
+ * Dollars. Below $100 the cents are kept, so a young scoreboard reads "$3.42" rather than "$0"; below a cent it reads
+ * "<$0.01"; and an amount that rounds to zero never carries a minus sign.
+ */
 export function usd(v: number, digits = 0): string {
-  const s = Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-  return (v < 0 ? "−$" : "$") + s;
+  const a = Math.abs(v);
+  if (a === 0 || !Number.isFinite(a)) return "$0";
+  const d = digits === 0 && a < 100 ? 2 : digits;
+  const step = 10 ** -d;
+  const sign = v < 0 ? "−" : "";
+  if (a < step / 2) return sign + "<$" + step.toFixed(d);
+  return sign + "$" + a.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
 export function compactUsd(v: number): string {

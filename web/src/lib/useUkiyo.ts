@@ -285,12 +285,12 @@ export function useTape(lookback = 900n) { // the public RPC serves at most 1,00
   });
 }
 
-/** Cumulative Edge per vault at every settled epoch, from EpochSettled logs. */
-export function useEdgeHistory() {
+/** Cumulative Edge per vault at every settled epoch, from EpochSettled logs, in the order of `vaults`. */
+export function useEdgeHistory(vaults: { address: Address }[]) {
   const q = useVaultLogs();
   const d = DEP;
   if (!q.data || !d) return { data: undefined };
-  const data = d.vaults.map((v) => {
+  const data = vaults.map((v) => {
     let run = 0;
     return [{ block: BigInt(d.deployBlock), edge: 0 }].concat(
       q.data.logs
@@ -301,12 +301,13 @@ export function useEdgeHistory() {
   return { data };
 }
 
-/** What each curator has been paid in performance fees and has paid back in bond penalties, from vault events. */
-export function useAccountability() {
+/** What each curator has been paid in performance fees and has paid back in bond penalties, from vault events, in the
+ *  order of `vaults`. */
+export function useAccountability(vaults: { address: Address }[]) {
   const q = useVaultLogs();
   const d = DEP;
   if (!q.data || !d) return { data: undefined };
-  const data = d.vaults.map((v) => {
+  const data = vaults.map((v) => {
     const mine = q.data.logs.filter((l) => l.vault.toLowerCase() === v.address.toLowerCase());
     const fees = mine.filter((l) => l.name === "PerformanceFee");
     const pens = mine.filter((l) => l.name === "BondPenalty");

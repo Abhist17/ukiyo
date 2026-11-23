@@ -29,12 +29,12 @@ const pct = (v: VaultLive) =>
 
 /** The skill test under a vault's Edge return: its t-statistic, and whether that clears 2 (skill) or not yet. */
 function Skill({ v }: { v: VaultLive }) {
-  if (v.edgeEpochs < 2) return <span className="skill" title="The skill test needs two settled epochs">testing…</span>;
+  if (v.edgeEpochs < 2) return <span className="skill" title="The skill test needs two settled epochs with capital">new</span>;
   const t = Math.abs(v.tStat) >= 99 ? (v.tStat > 0 ? "> 99" : "< −99") : v.tStat.toFixed(1);
   return (
     <span className={`skill ${v.hasSkill ? "yes" : ""}`}
       title={`t-statistic of ${v.edgeEpochs} epochs' Edge returns. At 2 or more, the Edge is statistically clear of zero; below, a few lucky epochs could explain it.`}>
-      t {t} · {v.hasSkill ? "skill" : v.tStat <= -2 ? "losing" : "could be luck"}
+      t {t} · {v.hasSkill ? "skill" : v.tStat <= -2 ? "losing" : "luck?"}
     </span>
   );
 }

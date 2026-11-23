@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "wagmi";
 import { parseAbi, type Address } from "viem";
+import { factoryAbi } from "./abi";
 import { CHAIN, DEP } from "./chain";
 
 /** Most blocks one eth_getLogs may span on the public Unichain Sepolia RPC (it rejects wider ranges). */
@@ -33,8 +34,21 @@ let syncing: Promise<void> | undefined;
 
 type Client = NonNullable<ReturnType<typeof usePublicClient>>;
 
+/** The demo's vaults plus every vault launched through the factory so far (at most 8 sleeves, so 8 speculative reads). */
+async function vaultAddresses(pc: Client): Promise<Address[]> {
+  const launched = DEP!.factory
+    ? await Promise.all(
+        Array.from({ length: 8 }, (_, k) =>
+          pc.readContract({ address: DEP!.factory!, abi: factoryAbi, functionName: "vaults", args: [BigInt(k)] }).catch(() => null),
+        ),
+      )
+    : [];
+  return [...DEP!.vaults.map((v) => v.address), ...launched.filter((a): a is Address => !!a)];
+}
+
 async function sync(pc: Client) {
-  const latest = await pc.getBlockNumber();
+  // found before the block range is fixed, so a vault launched in that range is already in the filter
+  const [vaults, latest] = await Promise.all([vaultAddresses(pc), pc.getBlockNumber()]);
   const ranges: [bigint, bigint][] = [];
   for (let f = cache.to + 1n; f <= latest; f += MAX_SPAN) ranges.push([f, f + MAX_SPAN - 1n > latest ? latest : f + MAX_SPAN - 1n]);
   const out: VaultLog[][] = new Array(ranges.length);
@@ -42,7 +56,7 @@ async function sync(pc: Client) {
     await Promise.all(
       ranges.slice(i, i + PARALLEL).map(async ([from, to], k) => {
         const logs = await pc.getLogs({
-          address: [DEP!.hook, ...DEP!.vaults.map((v) => v.address)],
+          address: [DEP!.hook, ...vaults],
           events: VAULT_EVENTS,
           fromBlock: from,
           toBlock: to,

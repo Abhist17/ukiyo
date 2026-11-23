@@ -232,23 +232,23 @@ recomputing anything, so the site and the backtest always agree.
 
 ## Live deployment: Unichain Sepolia
 
-Deployed at block 68,610,518 with [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) (transactions in
+Deployed at block 68,614,039 with [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) (transactions in
 [`broadcast/`](broadcast/DeployUkiyo.s.sol/1301/run-latest.json)). The replay bot keeps it trading; the app reads it
 straight from the public RPC. The test tokens sit at fixed CREATE2 addresses, so they carry over between deployments.
 
 | Contract | Address |
 | --- | --- |
-| Hook (`UkiyoHook`) | [`0xA961d67e893Ee121B99dF7b9F5993B5783046AC0`](https://sepolia.uniscan.xyz/address/0xA961d67e893Ee121B99dF7b9F5993B5783046AC0) |
-| Factory (`UkiyoFactory`) | [`0x6E414420D1c8BecC5E68e8c06Fa50755968DD87E`](https://sepolia.uniscan.xyz/address/0x6E414420D1c8BecC5E68e8c06Fa50755968DD87E) |
-| Skill router (`UkiyoSkillRouter`) | [`0xd1955d923f62551465401d97676A815Fb643295f`](https://sepolia.uniscan.xyz/address/0xd1955d923f62551465401d97676A815Fb643295f) |
+| Hook (`UkiyoHook`) | [`0x47afBF40Dc3B348467902815eb21639D269cAac0`](https://sepolia.uniscan.xyz/address/0x47afBF40Dc3B348467902815eb21639D269cAac0) |
+| Factory (`UkiyoFactory`) | [`0xF84cB2286495a9C2b444941dd36947F95758C198`](https://sepolia.uniscan.xyz/address/0xF84cB2286495a9C2b444941dd36947F95758C198) |
+| Skill router (`UkiyoSkillRouter`) | [`0x29a9cf8C6Af8a6Aa332cd818AC50FCc074E0aF7B`](https://sepolia.uniscan.xyz/address/0x29a9cf8C6Af8a6Aa332cd818AC50FCc074E0aF7B) |
 | PoolManager (canonical v4) | [`0x00B036B58a818B1BC34d502D3fE730Db729e62AC`](https://sepolia.uniscan.xyz/address/0x00B036B58a818B1BC34d502D3fE730Db729e62AC) |
-| Swap router (`PoolSwapTest`) | [`0x1C2eE5a2B9fEe18372DdC2cFD4C5cEd0b7cFF44c`](https://sepolia.uniscan.xyz/address/0x1C2eE5a2B9fEe18372DdC2cFD4C5cEd0b7cFF44c) |
+| Swap router (`PoolSwapTest`) | [`0x5245C33FF548A0174002F4D593DE1E9760051220`](https://sepolia.uniscan.xyz/address/0x5245C33FF548A0174002F4D593DE1E9760051220) |
 | tBTC (test token, token0) | [`0xe4134d0bA75d9cc0a22dac01a11f589559434148`](https://sepolia.uniscan.xyz/address/0xe4134d0bA75d9cc0a22dac01a11f589559434148) |
 | tUSD (test token, token1) | [`0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db`](https://sepolia.uniscan.xyz/address/0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db) |
-| Vault: Passive Wide (`ukWIDE`) | [`0x54287427ed88afaE540aEa0fC7f7fbDE5FfE7603`](https://sepolia.uniscan.xyz/address/0x54287427ed88afaE540aEa0fC7f7fbDE5FfE7603) |
-| Vault: Passive Mid (`ukMID`) | [`0x51d08AB4Bfa461E7E86fa6Fd83fAe7b0103C23E8`](https://sepolia.uniscan.xyz/address/0x51d08AB4Bfa461E7E86fa6Fd83fAe7b0103C23E8) |
-| Vault: Tight Chaser (`ukTIGHT`) | [`0x167528B5e7a20146671f5fac219C2cD47713dD79`](https://sepolia.uniscan.xyz/address/0x167528B5e7a20146671f5fac219C2cD47713dD79) |
-| Vault: Vol Adaptive (`ukVOL`) | [`0xd09D21e546E76109025B4d2cb8EF1E5f95456162`](https://sepolia.uniscan.xyz/address/0xd09D21e546E76109025B4d2cb8EF1E5f95456162) |
+| Vault: Passive Wide (`ukWIDE`) | [`0xeEb5677bDC07dcF3a3d901E6d801059f5961Bb74`](https://sepolia.uniscan.xyz/address/0xeEb5677bDC07dcF3a3d901E6d801059f5961Bb74) |
+| Vault: Passive Mid (`ukMID`) | [`0x9FB567cFBaAbEE8C6582Aa29e9Cd9A297279aB51`](https://sepolia.uniscan.xyz/address/0x9FB567cFBaAbEE8C6582Aa29e9Cd9A297279aB51) |
+| Vault: Tight Chaser (`ukTIGHT`) | [`0xe27fc6A41f9070F99B3934Fc9B969C88487644F4`](https://sepolia.uniscan.xyz/address/0xe27fc6A41f9070F99B3934Fc9B969C88487644F4) |
+| Vault: Vol Adaptive (`ukVOL`) | [`0x78d018DF2626Abbb13e9078ec539BE410ED5c17d`](https://sepolia.uniscan.xyz/address/0x78d018DF2626Abbb13e9078ec539BE410ED5c17d) |
 
 Demo settings: 5 bps pool, classifier threshold 0.002 gwei, 10-minute epochs, 10% performance fee, curator bonds of
 $10K–$50K with a 25 bps per-epoch LVR budget. Test tokens only.

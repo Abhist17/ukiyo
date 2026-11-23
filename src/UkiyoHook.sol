@@ -205,6 +205,9 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @notice The hook is already bound to a pool.
     error PoolAlreadyBound();
 
+    /// @notice Only the owner may initialize the hook's pool.
+    error NotOwnerInitialize(address sender);
+
     /// @notice The pool uses a dynamic fee; Ukiyo's fee attribution needs a static LP fee.
     error DynamicFeeNotSupported();
 
@@ -536,8 +539,11 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     // Hook callbacks
     // ---------------------------------------------------------------------------------------------------------------
 
-    /// @dev Bind the hook to the first pool initialized with it and refuse dynamic-fee pools.
-    function _beforeInitialize(address, PoolKey calldata key, uint160) internal override returns (bytes4) {
+    /// @dev Bind the hook to the first pool initialized with it and refuse dynamic-fee pools. Only the owner may
+    ///      initialize: deploying the hook and initializing its pool are separate transactions, and otherwise anyone
+    ///      could initialize a pool of their own with the fresh hook in between and leave it bound to that.
+    function _beforeInitialize(address sender, PoolKey calldata key, uint160) internal override returns (bytes4) {
+        if (sender != owner()) revert NotOwnerInitialize(sender);
         if (poolBound) revert PoolAlreadyBound();
         if (LPFeeLibrary.isDynamicFee(key.fee)) revert DynamicFeeNotSupported();
         poolKey = key;

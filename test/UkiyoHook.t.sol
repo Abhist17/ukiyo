@@ -148,6 +148,17 @@ contract UkiyoHookTest is Test {
         manager.initialize(_key(hook, 500), SQRT_PRICE_1_1);
     }
 
+    /// @notice A fresh hook cannot be bound to someone else's pool between its deployment and its initialization.
+    function test_onlyOwnerInitializesThePool() public {
+        UkiyoHook other = _deployHook(0x6666);
+        vm.prank(stranger);
+        vm.expectRevert();
+        manager.initialize(_key(other, FEE), SQRT_PRICE_1_1);
+        assertFalse(other.poolBound(), "still unbound, so the owner can initialize it");
+        manager.initialize(_key(other, FEE), SQRT_PRICE_1_1);
+        assertTrue(other.poolBound());
+    }
+
     function test_refusesDynamicFeePools() public {
         UkiyoHook other = _deployHook(0x5555);
         vm.expectRevert();

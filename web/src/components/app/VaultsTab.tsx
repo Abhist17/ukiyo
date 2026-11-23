@@ -23,17 +23,23 @@ function RangeBar({ v, price }: { v: VaultLive; price: number }) {
   );
 }
 
-/** Curator vaults ranked live by Edge, with the selected vault's deposit and redeem panel beside them. */
+/** Edge return as a signed percentage, or a dash before any epoch with capital has settled. */
+const pct = (v: VaultLive) =>
+  v.edgeIndexed ? `${v.edgeReturn >= 0 ? "+" : ""}${(v.edgeReturn * 100).toFixed(v.edgeReturn !== 0 && Math.abs(v.edgeReturn) < 0.001 ? 4 : 2)}%` : "—";
+
+/** Curator vaults ranked live by Edge return, with the selected vault's deposit and redeem panel beside them. */
 export function VaultsTab({ live }: { live: Live }) {
   const [sel, setSel] = useState(0);
-  const [by, setBy] = useState<"edge" | "fees">("edge");
+  const [by, setBy] = useState<"return" | "edge" | "fees">("return");
   // what most dashboards rank by: every fee the sleeve earned, arbitrage fees included
   const feesOf = (v: VaultLive) => v.userFees + v.arbFees;
-  const score = (v: VaultLive) => (by === "edge" ? v.edge : feesOf(v));
+  const score = (v: VaultLive) => (by === "return" ? v.edgeReturn : by === "edge" ? v.edge : feesOf(v));
   const ranked = [...live.vaults].sort((a, b) => score(b) - score(a));
-  const edgeRank = new Map([...live.vaults].sort((a, b) => b.edge - a.edge).map((v, k) => [v.i, k + 1]));
+  const byReturn = [...live.vaults].sort((a, b) => b.edgeReturn - a.edgeReturn);
+  const edgeRank = new Map(byReturn.map((v, k) => [v.i, k + 1]));
   const feeTop = [...live.vaults].sort((a, b) => feesOf(b) - feesOf(a))[0];
-  const edgeTop = [...live.vaults].sort((a, b) => b.edge - a.edge)[0];
+  const edgeTop = byReturn[0];
+  const heading = by === "return" ? "Edge return" : by === "edge" ? "Edge in dollars" : "fee income";
   const fees = live.vaults.reduce((s, v) => s + v.userFees, 0);
   const arbLoss = live.vaults.reduce((s, v) => s + v.arbLoss, 0);
   const arbFees = live.vaults.reduce((s, v) => s + v.arbFees, 0);
@@ -69,9 +75,10 @@ export function VaultsTab({ live }: { live: Live }) {
         <div className="stack">
         <div className="panel">
           <div className="panel-head">
-            <h2>Curators, ranked by {by === "edge" ? "Edge" : "fee income"}</h2>
+            <h2>Curators, ranked by {heading}</h2>
             <div className="seg" role="group" aria-label="Rank by">
-              <button aria-pressed={by === "edge"} onClick={() => setBy("edge")}>Ukiyo Edge</button>
+              <button aria-pressed={by === "return"} onClick={() => setBy("return")} title="Edge over the capital that earned it, compounded each epoch">Edge return</button>
+              <button aria-pressed={by === "edge"} onClick={() => setBy("edge")}>Edge $</button>
               <button aria-pressed={by === "fees"} onClick={() => setBy("fees")}>Fee income</button>
             </div>
           </div>
@@ -81,9 +88,9 @@ export function VaultsTab({ live }: { live: Live }) {
                 <tr>
                   <th className="l">#</th>
                   <th className="l">Vault</th>
-                  <th>{by === "fees" ? "Fees earned" : "Edge"}</th>
-                  {by === "fees" && <th>Edge</th>}
-                  <th>Edge / TVL</th>
+                  {by === "fees" && <th>Fees earned</th>}
+                  <th title="Edge over the capital that earned it, compounded each epoch: skill per dollar">Edge return</th>
+                  <th>Edge</th>
                   <th>User fees</th>
                   <th>Impact</th>
                   <th>Arb loss</th>
@@ -98,8 +105,8 @@ export function VaultsTab({ live }: { live: Live }) {
                     onKeyDown={(e) => e.key === "Enter" && setSel(v.i)}>
                     <td className="l">
                       <span className={`rank ${r === 0 ? "first" : ""}`}>{r + 1}</span>
-                      {by === "fees" && edgeRank.get(v.i) !== r + 1 && (
-                        <span className="rank-was" title="Rank by Edge">Edge #{edgeRank.get(v.i)}</span>
+                      {by !== "return" && edgeRank.get(v.i) !== r + 1 && (
+                        <span className="rank-was" title="Rank by Edge return">Edge #{edgeRank.get(v.i)}</span>
                       )}
                     </td>
                     <td className="l">
@@ -112,8 +119,8 @@ export function VaultsTab({ live }: { live: Live }) {
                       </div>
                     </td>
                     {by === "fees" && <td className="num strong">{usd(feesOf(v))}</td>}
+                    <td className={`num ${by === "return" ? "strong" : ""} ${!v.edgeIndexed ? "" : v.edgeReturn >= 0 ? "pos" : "neg"}`}>{pct(v)}</td>
                     <td className={`num ${by === "edge" ? "strong" : ""} ${v.edge >= 0 ? "pos" : "neg"}`}>{usd(v.edge)}</td>
-                    <td className="num">{v.tvl ? `${((v.edge / v.tvl) * 1e4).toFixed(1)} bps` : "—"}</td>
                     <td className="num">{usd(v.userFees)}</td>
                     <td className="num">{usd(v.userImpact)}</td>
                     <td className="num neg">{usd(-v.arbLoss)}</td>
@@ -134,8 +141,14 @@ export function VaultsTab({ live }: { live: Live }) {
           </div>
           {by === "fees" && feeTop && edgeTop && feeTop.i !== edgeTop.i && (
             <p className="callout">
-              Fee income puts <b>{feeTop.name}</b> first. Edge, which subtracts what arbitrage took, puts{" "}
-              <b>{edgeTop.name}</b> first.
+              Fee income puts <b>{feeTop.name}</b> first. Edge return, which subtracts what arbitrage took and divides by
+              the capital at work, puts <b>{edgeTop.name}</b> first.
+            </p>
+          )}
+          {by === "edge" && (
+            <p className="callout">
+              Dollars of Edge grow with a vault&apos;s size. Edge return divides each epoch&apos;s Edge by the capital that
+              earned it, so a small vault and a large one with the same skill score the same.
             </p>
           )}
           <p className="fine">

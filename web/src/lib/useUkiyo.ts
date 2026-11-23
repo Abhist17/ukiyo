@@ -22,6 +22,10 @@ export interface VaultLive {
   arbLoss: number;
   arbFees: number;
   edge: number;
+  /** Compounded Edge over the capital that earned it, epoch by epoch (`edgeIndex` − 1): size-neutral skill. */
+  edgeReturn: number;
+  /** Whether any epoch with capital has settled yet, so `edgeReturn` means something. */
+  edgeIndexed: boolean;
   btc: number;
   usd: number;
   tvl: number;
@@ -97,7 +101,7 @@ export function useLive() {
       const vaults = await Promise.all(
         d.vaults.map(async (v, i): Promise<VaultLive> => {
           const id = BigInt(v.sleeveId);
-          const [s, l, e, h, supply, epoch, ends, startEdge, fee, bond, budget, eps, hwm, curShares] = await Promise.all([
+          const [s, l, e, h, supply, epoch, ends, startEdge, fee, bond, budget, eps, hwm, curShares, idx, idxTime] = await Promise.all([
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "sleeve", args: [id] }),
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "ledger", args: [id] }),
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "edge", args: [id] }),
@@ -112,6 +116,8 @@ export function useLive() {
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgePerShare" }),
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "highWaterMark" }),
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "balanceOf", args: [d.curator] }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgeIndex" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgeIndexTime" }),
           ]);
           const [btc, usdAmt] = split(h[0], h[1]);
           const edge = num(e);
@@ -130,6 +136,8 @@ export function useLive() {
             arbLoss: num(l.arbLoss),
             arbFees: num(l.arbFees),
             edge,
+            edgeReturn: Number(idx) / 1e18 - 1,
+            edgeIndexed: idxTime > 0n,
             btc: num(btc),
             usd: num(usdAmt),
             tvl,

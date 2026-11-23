@@ -70,7 +70,7 @@ console.log("Edge", formatEther(edge), "= user fees", formatEther(l.userFees),
 
 const LOCAL = `
 git clone --recurse-submodules ${REPO} && cd ukiyo
-forge test                                   # 73 tests + 4 invariants
+forge test                                   # 76 tests + 4 invariants
 anvil --block-time 2                         # in another terminal
 EPOCH=120 forge script script/DeployUkiyo.s.sol --rpc-url http://127.0.0.1:8545 --broadcast \\
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80   # anvil's public dev key
@@ -177,6 +177,7 @@ export default function Docs() {
               <li><b>Fee</b>: each settlement adds the epoch&apos;s Edge per share to <code>edgePerShare</code>. Above <code>highWaterMark</code>, the curator receives <code>performanceFeeBps</code> of the gain as new shares (10% in the demo, capped at 20%). Losses must be earned back first.</li>
               <li><b>Bond</b>: the curator posts token1 with <code>postBond</code> and promises a budget with <code>setLvrBudget</code> (bps of value per epoch). An epoch whose negative Edge exceeds the budget moves the overshoot from the bond into the vault, capped at the bond. Budget changes apply next epoch; withdrawals are paid only after the next settlement&apos;s penalty.</li>
               <li>Both use <code>valueAtMark()</code>: the position valued at the hook&apos;s post-arbitrage mark, never the spot price of the settling transaction.</li>
+              <li><b>Edge index</b>: each settlement multiplies <code>edgeIndex</code> (1e18 at launch) by 1 + the epoch&apos;s Edge over <code>epochStartValue</code>, the capital that earned it. It is a share price that counts only skill, so it ranks curators of any size on equal terms; the app ranks by it.</li>
             </ul>
           </section>
 

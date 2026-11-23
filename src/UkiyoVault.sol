@@ -47,6 +47,9 @@ import {UkiyoHook} from "./UkiyoHook.sol";
 ///          vault, capped at the bond. Bond withdrawals wait for the next settlement, after any penalty.
 ///      Both are valued at the hook's post-arbitrage mark, never the spot price of the settling transaction.
 ///
+///      Ranking: `edgeIndex` compounds each epoch's Edge over the capital that earned it, so curators are compared on
+///      skill per dollar, not on size.
+///
 ///      The curator controls the range only. Liquidity removed through the hook is always paid to this vault, and
 ///      the hook never lets anyone but this vault touch the sleeve once it is handed over, so the curator has no
 ///      path to depositors' tokens. The vault swaps only when its curator rebalances with `rebalanceWithSwap`, a bounded
@@ -170,6 +173,18 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @notice Highest `edgePerShare` a performance fee has been charged at. Fees are due only above it.
     int256 public highWaterMark;
 
+    /// @notice The curator's skill as a compounding index, 1e18 at launch. Each settled epoch multiplies it by
+    ///         `1 + Edge / capital`, the epoch's Edge over the capital that earned it. Like a share price that only
+    ///         counts Edge: it ignores the market's moves and the vault's size, so vaults of any size can be ranked by
+    ///         it. Capital changes only at settlement, so the return of each epoch is exact.
+    uint256 public edgeIndex = EPS_SCALE;
+
+    /// @notice Seconds of epochs that had capital and so moved `edgeIndex`, to annualize it.
+    uint256 public edgeIndexTime;
+
+    /// @notice The vault's capital (`valueAtMark`) when the current epoch started: what this epoch's Edge is earned on.
+    uint256 public epochStartValue;
+
     /// @notice token1 the curator has posted as bond. Not part of the vault's capital until a penalty moves it in.
     uint256 public bond;
 
@@ -206,6 +221,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     event EpochSettled(
         uint256 indexed epoch, int256 edgeDelta, uint256 sharesMinted, uint256 sharesBurned, uint128 liquidityAfter
     );
+
+    /// @notice An epoch's Edge return, `edgeDelta / epochStartValue` scaled by 1e18, moved `edgeIndex` to `index`.
+    event EdgeIndexUpdated(uint256 indexed epoch, int256 returnWad, uint256 index);
 
     /// @notice The curator moved the sleeve to a new range.
     event Rebalanced(int24 tickLower, int24 tickUpper, uint128 liquidity);
@@ -403,6 +421,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp < endsAt) revert EpochNotOver(endsAt);
         uint256 e = epoch;
+        uint256 started = epochStart;
         // Requests made from here on belong to the next epoch.
         epoch = e + 1;
         epochStart = block.timestamp;
@@ -420,6 +439,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         int256 edgeDelta = edgeNow - epochStartEdge;
         _applyBond(e, edgeDelta);
         _chargePerformanceFee(e, edgeDelta);
+        _updateEdgeIndex(e, edgeDelta, block.timestamp - started);
 
         uint256 burned = _settleRedemptions(e, liq);
         uint256 minted = _settleDeposits(e);
@@ -429,6 +449,8 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
 
         emit EpochSettled(e, edgeDelta, minted, burned, _liquidity());
         epochStartEdge = edgeNow;
+        // the next epoch's Edge is earned on the capital as it stands after this settlement
+        epochStartValue = valueAtMark();
         // forge-lint: disable-end(reentrancy-events)
         // forge-lint: disable-end(reentrancy-no-eth)
     }
@@ -638,6 +660,25 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         // the only external calls before this are the hook's views; callers are nonReentrant
         // forge-lint: disable-next-line(reentrancy-events)
         emit PerformanceFee(e, shares, fee);
+    }
+
+    /// @dev Compound the epoch's Edge return into `edgeIndex`. The return is floored and the product rounds down, so
+    ///      the index never overstates the curator. An epoch with no starting capital has no return and leaves it
+    ///      alone; a loss of all the capital takes it to zero.
+    function _updateEdgeIndex(uint256 e, int256 edgeDelta, uint256 elapsed) internal {
+        uint256 capital = epochStartValue;
+        if (capital == 0) return;
+        int256 scaled = edgeDelta * EPS_SCALE_SIGNED;
+        int256 c = SafeCast.toInt256(capital);
+        int256 r = scaled / c;
+        if (scaled < 0 && scaled % c != 0) r -= 1; // floor, not truncation toward zero
+        int256 growth = EPS_SCALE_SIGNED + r;
+        uint256 index = growth <= 0 ? 0 : Math.mulDiv(edgeIndex, SafeCast.toUint256(growth), EPS_SCALE);
+        edgeIndex = index;
+        edgeIndexTime += elapsed;
+        // the only external calls before this are the hook's views; callers are nonReentrant
+        // forge-lint: disable-next-line(reentrancy-events)
+        emit EdgeIndexUpdated(e, r, index);
     }
 
     /// @dev Pay the curator the bond withdrawal it asked for, as far as the bond still covers it.

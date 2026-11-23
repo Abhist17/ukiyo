@@ -596,6 +596,72 @@ contract UkiyoVaultTest is Test {
     }
 
     // ------------------------------------------------------------------------------------------------------------
+    // Edge index
+    // ------------------------------------------------------------------------------------------------------------
+
+    /// @notice An epoch that starts with no capital has no return: the index stays at 1 and its clock does not run.
+    function test_edgeIndexIgnoresEpochsWithoutCapital() public {
+        _deposit(alice, 100e18, 100e18);
+        _settle(); // the first epoch held only escrow
+        assertEq(vault.edgeIndex(), 1e18);
+        assertEq(vault.edgeIndexTime(), 0);
+        assertEq(vault.epochStartValue(), vault.valueAtMark(), "next epoch's capital snapshotted");
+        assertGt(vault.epochStartValue(), 0);
+    }
+
+    /// @notice Each epoch multiplies the index by 1 + Edge / starting capital, exactly, and losses pull it down.
+    function test_edgeIndexCompoundsEachEpochsReturn() public {
+        _deposit(alice, 100e18, 100e18);
+        _settle();
+
+        uint256 capital = vault.epochStartValue();
+        _winningEpoch();
+        int256 edgeUp = _epochEdge();
+        assertGt(edgeUp, 0);
+        _settle();
+        uint256 expected = 1e18 * uint256(1e18 + edgeUp * 1e18 / int256(capital)) / 1e18;
+        assertEq(vault.edgeIndex(), expected, "one epoch's return");
+        assertGt(vault.edgeIndex(), 1e18);
+        assertEq(vault.edgeIndexTime(), EPOCH);
+
+        uint256 before = vault.edgeIndex();
+        _losingEpoch();
+        assertLt(_epochEdge(), 0);
+        _settle();
+        assertLt(vault.edgeIndex(), before, "a losing epoch lowers the index");
+        assertEq(vault.edgeIndexTime(), 2 * EPOCH);
+    }
+
+    /// @notice Two curators with the same range and ten times different capital earn ten times different Edge but
+    ///         the same index: the index ranks skill, not size.
+    function test_edgeIndexIsSizeNeutral() public {
+        hook.openSleeve(curator, -1000, 1000);
+        UkiyoVault big = new UkiyoVault(hook, 1, curator, EPOCH, FEE_BPS, "Big", "BIG");
+        hook.setSleeveManager(1, address(big));
+        vm.startPrank(alice);
+        token0.approve(address(big), type(uint256).max);
+        token1.approve(address(big), type(uint256).max);
+        vault.requestDeposit(10e18, 10e18);
+        big.requestDeposit(100e18, 100e18);
+        vm.stopPrank();
+        vm.warp(vault.epochEndsAt());
+        vault.settleEpoch();
+        big.settleEpoch();
+
+        _winningEpoch();
+        _losingEpoch();
+        _winningEpoch();
+        vm.warp(vault.epochEndsAt());
+        vm.roll(vm.getBlockNumber() + 1);
+        vault.settleEpoch();
+        big.settleEpoch();
+
+        assertApproxEqRel(hook.edge(1), 10 * hook.edge(0), 1e15, "raw Edge scales with size");
+        assertApproxEqRel(big.edgeIndex(), vault.edgeIndex(), 1e12, "the index does not");
+        assertTrue(vault.edgeIndex() != 1e18, "the epoch moved the index");
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
     // Gas
     // ------------------------------------------------------------------------------------------------------------
 

@@ -94,6 +94,10 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @dev Fixed-point scale of `edgePerShare`.
     uint256 internal constant EPS_SCALE = 1e18;
 
+    /// @notice t-statistic (scaled by 1e18) at or above which `hasSkill` reports the curator's Edge as skill: about
+    ///         97.5% one-sided confidence that the mean epoch return is above zero.
+    int256 public constant SKILL_T = 2e18;
+
     /// @dev `EPS_SCALE` as a signed integer, for the signed per-share arithmetic.
     int256 internal constant EPS_SCALE_SIGNED = 1e18;
 
@@ -184,6 +188,15 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
 
     /// @notice The vault's capital (`valueAtMark`) when the current epoch started: what this epoch's Edge is earned on.
     uint256 public epochStartValue;
+
+    /// @notice Epochs whose Edge return has been recorded (those that started with capital).
+    uint256 public edgeEpochs;
+
+    /// @notice Sum of the recorded per-epoch Edge returns, each scaled by 1e18.
+    int256 public edgeReturnSum;
+
+    /// @notice Sum of their squares, scaled by 1e18 and each rounded up, so the spread is never understated.
+    uint256 public edgeReturnSqSum;
 
     /// @notice token1 the curator has posted as bond. Not part of the vault's capital until a penalty moves it in.
     uint256 public bond;
@@ -604,6 +617,33 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         return i1 + p1 + Math.mulDiv(Math.mulDiv(a0, m, 1 << 96), m, 1 << 96);
     }
 
+    /// @notice Is the curator's Edge skill or luck? The t-statistic of its per-epoch Edge returns, scaled by 1e18:
+    ///         `mean / (standard deviation / sqrt(epochs))`. Large and positive means the Edge is consistently above
+    ///         zero; near zero means a few lucky epochs could explain it. 0 until two epochs are recorded.
+    /// @dev The spread rounds up and the result rounds toward negative infinity, so skill is never overstated. If every
+    ///      epoch returned exactly the same, the spread is zero and the sign alone decides (an extreme value).
+    function edgeTStat() public view returns (int256) {
+        uint256 n = edgeEpochs;
+        if (n < 2) return 0;
+        int256 sum = edgeReturnSum;
+        uint256 absSum = SafeCast.toUint256(sum < 0 ? -sum : sum);
+        // n * sample variance = (n * sum of squares - sum^2) / (n - 1), all scaled by 1e18; the subtracted term rounds
+        // down, so the variance rounds up
+        uint256 sq = Math.mulDiv(absSum, absSum, EPS_SCALE);
+        uint256 total = n * edgeReturnSqSum;
+        uint256 nVar = total > sq ? Math.ceilDiv(total - sq, n - 1) : 0;
+        if (nVar == 0) return sum > 0 ? type(int256).max : sum < 0 ? type(int256).min : int256(0);
+        uint256 sd = Math.sqrt(nVar * EPS_SCALE, Math.Rounding.Ceil);
+        int256 t = SafeCast.toInt256(Math.mulDiv(absSum, EPS_SCALE, sd));
+        if (sum >= 0) return t;
+        return Math.mulDiv(absSum, EPS_SCALE, sd) * sd == absSum * EPS_SCALE ? -t : -t - 1;
+    }
+
+    /// @notice Whether the curator's Edge is statistically clear of zero: `edgeTStat() >= SKILL_T`.
+    function hasSkill() external view returns (bool) {
+        return edgeTStat() >= SKILL_T;
+    }
+
     /// @notice When the current epoch can be settled.
     function epochEndsAt() external view returns (uint256) {
         return epochStart + epochLength;
@@ -676,6 +716,10 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         uint256 index = growth <= 0 ? 0 : Math.mulDiv(edgeIndex, SafeCast.toUint256(growth), EPS_SCALE);
         edgeIndex = index;
         edgeIndexTime += elapsed;
+        edgeEpochs += 1;
+        edgeReturnSum += r;
+        uint256 ar = SafeCast.toUint256(r < 0 ? -r : r);
+        edgeReturnSqSum += Math.mulDiv(ar, ar, EPS_SCALE, Math.Rounding.Ceil);
         // the only external calls before this are the hook's views; callers are nonReentrant
         // forge-lint: disable-next-line(reentrancy-events)
         emit EdgeIndexUpdated(e, r, index);

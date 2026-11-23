@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {Test} from "forge-std/Test.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {MockERC20} from "solmate/src/test/utils/mocks/MockERC20.sol";
 import {V4PoolManagerDeployer} from "hookmate/artifacts/V4PoolManager.sol";
 
@@ -659,6 +660,76 @@ contract UkiyoVaultTest is Test {
         assertApproxEqRel(hook.edge(1), 10 * hook.edge(0), 1e15, "raw Edge scales with size");
         assertApproxEqRel(big.edgeIndex(), vault.edgeIndex(), 1e12, "the index does not");
         assertTrue(vault.edgeIndex() != 1e18, "the epoch moved the index");
+    }
+
+    /// @dev Settle and return the epoch's recorded Edge return (1e18 = 100%).
+    function _settleReturn() internal returns (int256) {
+        int256 before = vault.edgeReturnSum();
+        _settle();
+        return vault.edgeReturnSum() - before;
+    }
+
+    /// @dev Reference t-statistic from the raw returns, the textbook way: mean / (sample sd / sqrt(n)), in 1e18.
+    function _referenceT(int256[] memory r) internal pure returns (int256) {
+        int256 n = int256(r.length);
+        int256 sum;
+        for (uint256 i; i < r.length; ++i) {
+            sum += r[i];
+        }
+        int256 mean = sum / n;
+        uint256 ss;
+        for (uint256 i; i < r.length; ++i) {
+            int256 d = r[i] - mean;
+            ss += uint256(d * d);
+        }
+        uint256 sd = Math.sqrt(ss / uint256(n - 1)); // in 1e18 units, since r is
+        return mean * int256(Math.sqrt(uint256(n) * 1e36)) / int256(sd);
+    }
+
+    /// @notice Under two recorded epochs there is no spread to test against: the statistic is zero.
+    function test_skillNeedsTwoEpochs() public {
+        _deposit(alice, 100e18, 100e18);
+        _settle();
+        _winningEpoch();
+        _settle();
+        assertEq(vault.edgeEpochs(), 1);
+        assertEq(vault.edgeTStat(), 0);
+        assertFalse(vault.hasSkill());
+    }
+
+    /// @notice A curator that earns Edge every epoch is reported as skilled, and the on-chain statistic agrees with the
+    ///         textbook formula without ever exceeding it.
+    function test_consistentEdgeIsSkill() public {
+        _deposit(alice, 100e18, 100e18);
+        _settle();
+        int256[] memory r = new int256[](4);
+        for (uint256 i; i < 4; ++i) {
+            for (uint256 k; k <= i; ++k) {
+                _winningEpoch(); // epochs of different size, so the returns have a spread
+            }
+            r[i] = _settleReturn();
+            assertGt(r[i], 0);
+        }
+        int256 t = vault.edgeTStat();
+        int256 ref = _referenceT(r);
+        assertApproxEqRel(t, ref, 1e12, "matches the textbook t");
+        assertLe(t, ref + 1, "never above it");
+        assertTrue(vault.hasSkill());
+    }
+
+    /// @notice Winning and losing epochs in turn: a few good epochs do not make a skilled curator.
+    function test_mixedRecordIsNotSkill() public {
+        _deposit(alice, 100e18, 100e18);
+        _settle();
+        int256[] memory r = new int256[](4);
+        for (uint256 i; i < 4; ++i) {
+            if (i % 2 == 0) _winningEpoch();
+            else _losingEpoch();
+            r[i] = _settleReturn();
+        }
+        assertLt(vault.edgeTStat(), vault.SKILL_T());
+        assertFalse(vault.hasSkill());
+        assertApproxEqRel(vault.edgeTStat(), _referenceT(r), 1e12);
     }
 
     // ------------------------------------------------------------------------------------------------------------

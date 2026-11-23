@@ -389,25 +389,41 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @param amount0 token0 to escrow.
     /// @param amount1 token1 to escrow.
     function requestDeposit(uint256 amount0, uint256 amount1) external nonReentrant {
+        _requestDeposit(msg.sender, amount0, amount1);
+    }
+
+    /// @notice Escrow tokens from the caller to join the vault for `receiver`, who gets the shares, any refund, and
+    ///         the right to cancel. Lets a router (`UkiyoSkillRouter`) split one deposit across vaults while the
+    ///         depositor holds every share directly.
+    /// @param receiver The depositor credited with the request.
+    /// @param amount0 token0 to escrow, paid by the caller.
+    /// @param amount1 token1 to escrow, paid by the caller.
+    function requestDepositFor(address receiver, uint256 amount0, uint256 amount1) external nonReentrant {
+        if (receiver == address(0)) revert ZeroAmount();
+        _requestDeposit(receiver, amount0, amount1);
+    }
+
+    /// @dev Escrow `amount0`/`amount1` from the caller as `receiver`'s deposit request for the current epoch.
+    function _requestDeposit(address receiver, uint256 amount0, uint256 amount1) internal {
         if (amount0 == 0 && amount1 == 0) revert ZeroAmount();
         uint256 e = epoch;
-        if (!_isDepositor[e][msg.sender]) {
+        if (!_isDepositor[e][receiver]) {
             if (_depositors[e].length >= MAX_DEPOSITORS_PER_EPOCH) revert EpochFull();
             (uint256 h0, uint256 h1) = holdings();
             if (h0 + h1 != 0 && amount0 * 10_000 < h0 * MIN_DEPOSIT_BPS && amount1 * 10_000 < h1 * MIN_DEPOSIT_BPS) {
                 revert DepositTooSmall();
             }
-            _isDepositor[e][msg.sender] = true;
-            _depositors[e].push(msg.sender);
+            _isDepositor[e][receiver] = true;
+            _depositors[e].push(receiver);
         }
-        Amounts storage d = pendingDeposit[e][msg.sender];
+        Amounts storage d = pendingDeposit[e][receiver];
         d.amount0 += amount0;
         d.amount1 += amount1;
         reserved.amount0 += amount0;
         reserved.amount1 += amount1;
         if (amount0 != 0) token0.safeTransferFrom(msg.sender, address(this), amount0);
         if (amount1 != 0) token1.safeTransferFrom(msg.sender, address(this), amount1);
-        emit DepositRequested(e, msg.sender, amount0, amount1);
+        emit DepositRequested(e, receiver, amount0, amount1);
     }
 
     /// @notice Take back this epoch's escrowed deposit before it settles.

@@ -18,6 +18,7 @@ import {PoolSwapTest} from "@uniswap/v4-core/src/test/PoolSwapTest.sol";
 import {UkiyoHook} from "../src/UkiyoHook.sol";
 import {UkiyoVault} from "../src/UkiyoVault.sol";
 import {UkiyoFactory} from "../src/UkiyoFactory.sol";
+import {UkiyoSkillRouter} from "../src/UkiyoSkillRouter.sol";
 
 /// @notice Curator vault tests against the canonical PoolManager bytecode, on a 5 bps pool.
 contract UkiyoVaultTest is Test {
@@ -892,6 +893,127 @@ contract UkiyoVaultTest is Test {
         vm.expectRevert();
         hook.setLauncher(stranger);
         vm.stopPrank();
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Skill router
+    // ------------------------------------------------------------------------------------------------------------
+
+    /// @dev A router over the main vault and `other`, bob approved for it.
+    function _router(UkiyoVault other) internal returns (UkiyoSkillRouter r, UkiyoVault[] memory list) {
+        address[] memory core = new address[](2);
+        core[0] = address(vault);
+        core[1] = address(other);
+        r = new UkiyoSkillRouter(_factory(), core);
+        list = new UkiyoVault[](2);
+        list[0] = vault;
+        list[1] = other;
+        vm.startPrank(bob);
+        token0.approve(address(r), type(uint256).max);
+        token1.approve(address(r), type(uint256).max);
+        vm.stopPrank();
+    }
+
+    /// @notice With no track record anywhere, a deposit splits evenly, and every share and refund is the depositor's.
+    function test_routerSplitsEvenlyWithoutEvidence() public {
+        (UkiyoSkillRouter r, UkiyoVault[] memory list) = _router(_vaultWith(0, 0));
+        uint256[] memory w = r.weights(list);
+        assertEq(w[0], 5000);
+        assertEq(w[1], 5000);
+
+        vm.prank(bob);
+        r.deposit(list, 10e18, 10e18);
+        for (uint256 i; i < 2; ++i) {
+            (uint256 a0, uint256 a1) = list[i].pendingDeposit(0, bob);
+            assertEq(a0, 5e18, "half of token0, in bob's name");
+            assertEq(a1, 5e18);
+        }
+        assertEq(token0.balanceOf(address(r)) + token1.balanceOf(address(r)), 0, "the router keeps nothing");
+
+        vm.warp(vault.epochEndsAt());
+        vault.settleEpoch();
+        list[1].settleEpoch();
+        assertGt(vault.balanceOf(bob), 0, "bob holds the shares directly");
+        assertGt(list[1].balanceOf(bob), 0);
+    }
+
+    /// @notice Once curators have records, weights follow their skill tests: positive t-statistics, capped, in
+    ///         proportion; a curator whose t is not positive gets nothing.
+    function test_routerFollowsTheSkillTest() public {
+        UkiyoVault tight = _vaultWith(0, 0);
+        (UkiyoSkillRouter r, UkiyoVault[] memory list) = _router(tight);
+        vm.startPrank(alice);
+        vault.requestDeposit(100e18, 100e18);
+        tight.requestDeposit(100e18, 100e18);
+        vm.stopPrank();
+        vm.warp(vault.epochEndsAt());
+        vault.settleEpoch();
+        tight.settleEpoch();
+        for (uint256 i; i < 4; ++i) {
+            for (uint256 k; k <= i; ++k) {
+                _winningEpoch();
+            }
+            if (i == 3) _losingEpoch();
+            vm.warp(vault.epochEndsAt());
+            vm.roll(vm.getBlockNumber() + 1);
+            vault.settleEpoch();
+            tight.settleEpoch();
+        }
+
+        uint256[] memory w = r.weights(list);
+        uint256[2] memory score;
+        for (uint256 i; i < 2; ++i) {
+            int256 t = list[i].edgeTStat();
+            score[i] = t <= 0 ? 0 : Math.min(uint256(t), r.MAX_T());
+        }
+        assertGt(score[0] + score[1], 0, "some curator has shown skill");
+        assertEq(w[0] + w[1], 10_000);
+        assertApproxEqAbs(w[0], score[0] * 10_000 / (score[0] + score[1]), 1, "in proportion to the skill test");
+    }
+
+    /// @notice A curator on probation gets none of a new deposit.
+    function test_routerSkipsCuratorsOnProbation() public {
+        UkiyoVault shaky = _vaultWith(1, 0);
+        (UkiyoSkillRouter r, UkiyoVault[] memory list) = _router(shaky);
+        vm.prank(alice);
+        shaky.requestDeposit(100e18, 100e18);
+        _settleVault(shaky);
+        for (uint256 i; i < 3; ++i) {
+            _losingEpoch();
+        }
+        _settleVault(shaky);
+        assertTrue(shaky.onProbation());
+        uint256[] memory w = r.weights(list);
+        assertEq(w[1], 0, "nothing to the curator on probation");
+        assertEq(w[0], 10_000);
+    }
+
+    /// @notice A slice a vault refuses (here, below its minimum deposit) goes straight back to the depositor.
+    function test_routerReturnsRefusedSlices() public {
+        _deposit(alice, 100e18, 100e18);
+        _settle(); // the main vault now holds capital, so a dust slice is below its minimum
+        (UkiyoSkillRouter r, UkiyoVault[] memory list) = _router(_vaultWith(0, 0));
+        uint256 b0 = token0.balanceOf(bob);
+        vm.prank(bob);
+        (uint256[] memory a0,) = r.deposit(list, 1e12, 1e12);
+        assertEq(a0[0], 0, "the main vault refused its dust slice");
+        assertGt(a0[1], 0, "the empty vault took its slice");
+        assertEq(b0 - token0.balanceOf(bob), a0[1], "bob paid only for what was escrowed");
+        assertEq(token0.balanceOf(address(r)), 0);
+    }
+
+    /// @notice Only the deployment's own and factory-launched vaults, each listed once.
+    function test_routerRejectsBadLists() public {
+        (UkiyoSkillRouter r, UkiyoVault[] memory list) = _router(_vaultWith(0, 0));
+        hook.openSleeve(curator, -1000, 1000);
+        UkiyoVault stray = new UkiyoVault(hook, 3, curator, UkiyoVault.Terms(EPOCH, 0, 0, 0), "S", "S");
+        UkiyoVault[] memory bad = new UkiyoVault[](1);
+        bad[0] = stray;
+        vm.expectRevert(abi.encodeWithSelector(UkiyoSkillRouter.NotEligible.selector, address(stray)));
+        r.weights(bad);
+        list[1] = list[0];
+        vm.expectRevert(UkiyoSkillRouter.BadVaultList.selector);
+        r.weights(list);
     }
 
     // ------------------------------------------------------------------------------------------------------------

@@ -131,7 +131,7 @@ export function LaunchTab({ live }: { live: Live }) {
           <input value={symbol} onChange={(e) => setSymbol(e.target.value)} maxLength={10} />
         </label>
         <label className="field">
-          <span>Range, each side of the price <em>{usd(lo)} – {usd(hi)}</em></span>
+          <span>Range, % each side of the price <em>{usd(lo)} – {usd(hi)}</em></span>
           <input inputMode="decimal" value={width} onChange={(e) => setWidth(e.target.value)} />
         </label>
         <label className="field">

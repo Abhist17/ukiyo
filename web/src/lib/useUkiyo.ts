@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { usePublicClient } from "wagmi";
 import { encodeAbiParameters, keccak256, parseAbiItem, type Address } from "viem";
 import { factoryAbi, hookAbi, vaultAbi } from "./abi";
@@ -93,9 +94,38 @@ const SWAP_EVENT = parseAbiItem(
 );
 const CLASSIFIED_EVENT = parseAbiItem("event SwapClassified(uint256 indexed blockNumber, bool isArbitrage, uint256 priorityFeePerGas)");
 
+/** Where the last scoreboard read is kept, per deployment, so a reload shows it at once while it refreshes. */
+const LIVE_CACHE = DEP ? `ukiyo-live-${DEP.chainId}-${DEP.hook}` : "";
+
+/** The last scoreboard this browser read, or undefined (bigints are stored as {"$b": "…"}). */
+function cachedLive(): { data: Live; at: number } | undefined {
+  try {
+    const raw = LIVE_CACHE && typeof localStorage !== "undefined" ? localStorage.getItem(LIVE_CACHE) : null;
+    if (!raw) return undefined;
+    return JSON.parse(raw, (_, v) => (v && typeof v === "object" && "$b" in v ? BigInt(v.$b) : v));
+  } catch {
+    return undefined;
+  }
+}
+
+function saveLive(data: Live) {
+  try {
+    localStorage.setItem(LIVE_CACHE, JSON.stringify({ data, at: Date.now() }, (_, v) => (typeof v === "bigint" ? { $b: v.toString() } : v)));
+  } catch {
+    // storage full or blocked: the app works the same, just without the instant first paint
+  }
+}
+
 /** Hook, pool and vault state, refreshed every few seconds. */
 export function useLive() {
   const pc = usePublicClient({ chainId: CHAIN.id });
+  const qc = useQueryClient();
+  // Right after mount (not during render, which the static page was pre-rendered without), show the last read at
+  // once. It keeps its old timestamp, so the fresh read already under way replaces it.
+  useEffect(() => {
+    const c = cachedLive();
+    if (c && !qc.getQueryData(["live", CHAIN.id])) qc.setQueryData(["live", CHAIN.id], c.data, { updatedAt: c.at });
+  }, [qc]);
   return useQuery({
     queryKey: ["live", CHAIN.id],
     enabled: !!pc && !!DEP,
@@ -103,35 +133,31 @@ export function useLive() {
     queryFn: async (): Promise<Live> => {
       const d = DEP!;
       const hook = d.hook;
-      const [block, sqrtP, threshold] = await Promise.all([
+      // Round 1: the pool, and the factory's launched vaults read speculatively (the hook has at most 8 sleeves, and
+      // a missing index simply fails), so nothing waits on a count. The public RPC takes about a second per round
+      // trip, so the number of rounds, not of reads, sets how fast the app appears.
+      const launchedP = d.factory
+        ? Promise.all(
+            Array.from({ length: 8 }, (_, k) =>
+              pc!.readContract({ address: d.factory!, abi: factoryAbi, functionName: "vaults", args: [BigInt(k)] }).catch(() => null),
+            ),
+          )
+        : Promise.resolve([] as (Address | null)[]);
+      const [block, sqrtP, threshold, launchedAddrs] = await Promise.all([
         pc!.getBlock(),
         pc!.readContract({ address: hook, abi: hookAbi, functionName: "sqrtPriceX96" }),
         pc!.readContract({ address: hook, abi: hookAbi, functionName: "priorityFeeThreshold" }),
+        launchedP,
       ]);
       const price = priceOf(sqrtP);
-      // the demo's vaults, then any a curator launched through the factory
-      const metas: { address: Address; sleeveId: number; name: string; symbol: string; style: string; launched: boolean }[] =
-        d.vaults.map((v) => ({ ...v, launched: false }));
-      if (d.factory) {
-        const n = await pc!.readContract({ address: d.factory, abi: factoryAbi, functionName: "vaultCount" });
-        const launched = await Promise.all(
-          Array.from({ length: Number(n) }, async (_, k) => {
-            const address = await pc!.readContract({ address: d.factory!, abi: factoryAbi, functionName: "vaults", args: [BigInt(k)] });
-            const [name, symbol, id, cur] = await Promise.all([
-              pc!.readContract({ address, abi: vaultAbi, functionName: "name" }),
-              pc!.readContract({ address, abi: vaultAbi, functionName: "symbol" }),
-              pc!.readContract({ address, abi: vaultAbi, functionName: "sleeveId" }),
-              pc!.readContract({ address, abi: vaultAbi, functionName: "curator" }),
-            ]);
-            return { address, sleeveId: Number(id), name, symbol, style: `Launched by ${cur.slice(0, 6)}…${cur.slice(-4)}`, launched: true };
-          }),
-        );
-        metas.push(...launched);
-      }
-      const vaults = await Promise.all(
-        metas.map(async (v, i): Promise<VaultLive> => {
+      type Meta = { address: Address; sleeveId: number; name: string; symbol: string; style: string; launched: boolean; curator: Address };
+
+      // Round 2: every read of one vault and its sleeve at once. The demo's vaults already know their sleeve and
+      // curator; a launched vault first reads its own (one more round, only when there are launched vaults).
+      const readVault = async (v: Meta, i: number): Promise<VaultLive> => {
           const id = BigInt(v.sleeveId);
-          const [s, l, e, h, supply, epoch, ends, startEdge, fee, bond, budget, eps, hwm, idx, idxTime, t, nEpochs, prob, cur] = await Promise.all([
+          const cur = v.curator;
+          const [s, l, e, h, supply, epoch, ends, startEdge, fee, bond, budget, eps, hwm, idx, idxTime, t, nEpochs, prob, curShares] = await Promise.all([
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "sleeve", args: [id] }),
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "ledger", args: [id] }),
             pc!.readContract({ address: hook, abi: hookAbi, functionName: "edge", args: [id] }),
@@ -150,9 +176,8 @@ export function useLive() {
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgeTStat" }),
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "edgeEpochs" }),
             pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "onProbation" }),
-            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "curator" }),
+            pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "balanceOf", args: [cur] }),
           ]);
-          const curShares = await pc!.readContract({ address: v.address, abi: vaultAbi, functionName: "balanceOf", args: [cur] });
           // the statistic is unbounded when every epoch returned exactly the same; clamp it for display
           const tNum = Math.max(-99, Math.min(99, Number(t) / 1e18));
           const [btc, usdAmt] = split(h[0], h[1]);
@@ -193,9 +218,23 @@ export function useLive() {
             atHighWater: eps >= hwm,
             curatorValue: supply > 0n ? (Number(curShares) / Number(supply)) * tvl : 0,
           };
+      };
+      const demo: Meta[] = d.vaults.map((v) => ({ ...v, launched: false, curator: d.curator }));
+      const launchedList = launchedAddrs.filter((a): a is Address => !!a);
+      const vaults = await Promise.all([
+        ...demo.map((v, i) => readVault(v, i)),
+        ...launchedList.map(async (address, k): Promise<VaultLive> => {
+          const [name, symbol, sid, cur] = await Promise.all([
+            pc!.readContract({ address, abi: vaultAbi, functionName: "name" }),
+            pc!.readContract({ address, abi: vaultAbi, functionName: "symbol" }),
+            pc!.readContract({ address, abi: vaultAbi, functionName: "sleeveId" }),
+            pc!.readContract({ address, abi: vaultAbi, functionName: "curator" }),
+          ]);
+          const style = `Launched by ${cur.slice(0, 6)}…${cur.slice(-4)}`;
+          return readVault({ address, sleeveId: Number(sid), name, symbol, style, launched: true, curator: cur }, demo.length + k);
         }),
-      );
-      return {
+      ]);
+      const live: Live = {
         block: block.number,
         time: Number(block.timestamp),
         price,
@@ -204,6 +243,8 @@ export function useLive() {
         tvl: vaults.reduce((a, v) => a + v.tvl, 0),
         edge: vaults.reduce((a, v) => a + v.edge, 0),
       };
+      saveLive(live);
+      return live;
     },
   });
 }

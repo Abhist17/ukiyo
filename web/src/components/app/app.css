@@ -29,8 +29,20 @@
 .app-tabs {
   display: flex;
   gap: 2px;
+  /* the tabs take what space is left and scroll sideways if it runs out, so the wordmark and actions never wrap */
+  flex: 1 1 auto;
+  min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+.app-header-in > .wordmark-link,
+.app-actions {
+  flex-shrink: 0;
+}
+
+.app-actions > * {
+  white-space: nowrap;
 }
 
 .app-tabs button {
@@ -73,6 +85,15 @@
   border-radius: 999px;
   padding: 5px 10px;
   background: var(--card);
+}
+
+@media (max-width: 1180px) {
+  .app-actions .chain-pill {
+    display: none;
+  }
+  .app-tabs button {
+    padding: 8px 9px;
+  }
 }
 
 @media (max-width: 760px) {

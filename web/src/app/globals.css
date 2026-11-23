@@ -949,6 +949,7 @@ details.table-view th {
 }
 
 .wm-text {
+  white-space: nowrap;
   font-family: var(--sans);
   font-weight: 650;
   letter-spacing: -0.045em;
@@ -975,6 +976,7 @@ details.table-view th {
 .wordmark-link {
   text-decoration: none;
   display: inline-flex;
+  flex-shrink: 0;
 }
 
 /* A button inside a nav keeps its own colours (the nav's link rule would otherwise grey its label). */

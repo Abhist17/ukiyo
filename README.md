@@ -16,6 +16,32 @@ Edge = user fees + user price impact − arbitrage loss
 
 Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and Curation*).
 
+**Live:** [ukiyo-ochre.vercel.app](https://ukiyo-ochre.vercel.app) · Unichain Sepolia hook
+[`0x47afBF40Dc3B348467902815eb21639D269cAac0`](https://sepolia.uniscan.xyz/address/0x47afBF40Dc3B348467902815eb21639D269cAac0) · **Reviewing?** Start with
+[`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md).
+
+## Where the Uniswap v4 integration lives
+
+Ukiyo is a standard-curve v4 hook (no custom curve, no return deltas, static fee), so any v4 router can trade its pool.
+
+| What | Where | Notes |
+| --- | --- | --- |
+| **The hook** | [`src/UkiyoHook.sol:61`](src/UkiyoHook.sol#L61) | `UkiyoHook is BaseHook, Ownable, IUnlockCallback` (OpenZeppelin uniswap-hooks base) |
+| **Permissions** | [`src/UkiyoHook.sol:260`](src/UkiyoHook.sol#L260) | `beforeInitialize`, `beforeAddLiquidity`, `beforeRemoveLiquidity`, `beforeSwap`, `afterSwap`; no delta flags |
+| **Pool binding** | [`src/UkiyoHook.sol:545`](src/UkiyoHook.sol#L545) | One pool per hook, initialized by the owner only, dynamic fees refused (fee attribution needs a static LP fee) |
+| **Hook-exclusive liquidity** | [`src/UkiyoHook.sol:555`](src/UkiyoHook.sol#L555) | `beforeAdd/RemoveLiquidity` reject every sender but the hook: every position in the pool is a scored sleeve |
+| **Hook-owned positions** | [`src/UkiyoHook.sol:420`](src/UkiyoHook.sol#L420), [`:431`](src/UkiyoHook.sol#L431) | `modifySleeveLiquidity` → `PoolManager.unlock` → `unlockCallback` → `modifyLiquidity` (salt = sleeve id), settled with `CurrencySettler` |
+| **Classifier + impact credit** | [`src/UkiyoHook.sol:578`](src/UkiyoHook.sol#L578) | `beforeSwap`: tip = `tx.gasprice − block.basefee` against the threshold; the block's first swap credits the previous block's user impact; per-swap scratch in transient storage (EIP-1153) |
+| **Marks, loss, fees** | [`src/UkiyoHook.sol:607`](src/UkiyoHook.sol#L607) | `afterSwap`: reads `slot0` (price and protocol fee), books each sleeve's LP fee from the price path, marks the block's first swap and charges arbitrage loss |
+| **The maths** | [`src/libraries/EdgeMath.sol`](src/libraries/EdgeMath.sol#L61) | Closed forms: rebalancing loss, impact credit, the LP fee rate net of the protocol fee (mirrors `Pool.swap`), per-sleeve swap fee |
+| **Manipulation guard** | [`src/UkiyoHook.sol:511`](src/UkiyoHook.sol#L511) | `referenceSqrtPrice`: a post-arbitrage mark the current transaction cannot set; vaults refuse to add capital away from it |
+| **Vault swaps** | [`src/UkiyoVault.sol:650`](src/UkiyoVault.sol#L650) | `rebalanceWithSwap` swaps through the PoolManager (`unlock` → `swap`), capped at a 1% move and always booked as arbitrage |
+| **CREATE2 deploy** | [`script/DeployUkiyo.s.sol:119`](script/DeployUkiyo.s.sol#L119) | `HookMiner` mines the salt so the permission flags are in the hook's address |
+| **One-call read** | [`src/UkiyoLens.sol:100`](src/UkiyoLens.sol#L100) | `scoreboard(hook)`: every sleeve's ledger, Edge, Edge index, skill test and vault terms in one `view` |
+
+Tests run against the canonical PoolManager bytecode (hookmate's `V4PoolManagerDeployer`), and the live deployment uses
+the canonical Unichain Sepolia PoolManager `0x00B036B58a818B1BC34d502D3fE730Db729e62AC`.
+
 ---
 
 ## The problem

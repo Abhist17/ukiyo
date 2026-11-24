@@ -520,6 +520,40 @@ contract UkiyoHookTest is Test {
         assertLt(laterSwap, 300_000);
     }
 
+    /// @notice The same two swaps with the pool full: eight sleeves, all in range (every swap loops over them).
+    function test_gas_swapPathEightSleeves() public {
+        for (uint256 i = hook.sleeveCount(); i < hook.MAX_SLEEVES(); ++i) {
+            hook.openSleeve(stranger, -6000 + int24(int256(i)) * 60, 6000 - int24(int256(i)) * 60);
+            hook.modifySleeveLiquidity(i, int256(uint256(LIQ)));
+        }
+        _swapTo(_atTick(60), ARB_TIP);
+        _swapTo(_atTick(-120), USER_TIP);
+        _nextBlock();
+
+        vm.txGasPrice(BASE_FEE + ARB_TIP);
+        uint256 g = gasleft();
+        swapRouter.swap(
+            key,
+            SwapParams({zeroForOne: false, amountSpecified: -1e27, sqrtPriceLimitX96: _atTick(180)}),
+            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
+            ""
+        );
+        uint256 firstSwap = g - gasleft();
+        vm.txGasPrice(BASE_FEE + USER_TIP);
+        g = gasleft();
+        swapRouter.swap(
+            key,
+            SwapParams({zeroForOne: true, amountSpecified: -1e27, sqrtPriceLimitX96: _atTick(0)}),
+            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
+            ""
+        );
+        uint256 laterSwap = g - gasleft();
+        emit log_named_uint("gas: first swap of a block (8 sleeves)", firstSwap);
+        emit log_named_uint("gas: later swap in the same block (8 sleeves)", laterSwap);
+        assertLt(firstSwap, 800_000);
+        assertLt(laterSwap, 500_000);
+    }
+
     // ------------------------------------------------------------------------------------------------------------
     // Differential fuzz: the hook's ledgers equal an independent replay of the same price path
     // ------------------------------------------------------------------------------------------------------------

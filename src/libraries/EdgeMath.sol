@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {FullMath} from "@uniswap/v4-core/src/libraries/FullMath.sol";
-import {ProtocolFeeLibrary} from "@uniswap/v4-core/src/libraries/ProtocolFeeLibrary.sol";
+import {FullMath} from "v4-core/src/libraries/FullMath.sol";
+import {ProtocolFeeLibrary} from "v4-core/src/libraries/ProtocolFeeLibrary.sol";
 
 /// @title EdgeMath
 /// @author Abhist Kamle

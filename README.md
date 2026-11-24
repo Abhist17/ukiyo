@@ -344,6 +344,11 @@ forge test                          # 99 tests + 5 stateful invariants: unit, fu
 forge test --match-test test_gas -vv
 ```
 
+Using VS Code with Nomic Foundation's Solidity extension? Run `script/editor-setup.sh` once, then *Developer: Reload
+Window*. Some libraries under `lib/` ship their own `hardhat.config.js`, and the extension treats each as a separate
+project, which shows false type errors in `src/` (for example "IPoolManager is not convertible to IPoolManager");
+`forge build` is unaffected.
+
 `forge test --gas-report` runs each call as an isolated transaction, and Foundry's `vm.txGasPrice` cheat does not carry
 into it, so swaps there are all classified as user flow. Use `test_gas_swapPath` for gas numbers.
 

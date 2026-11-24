@@ -1270,3 +1270,75 @@ table.acct {
 .skill-split-row b {
   text-align: right;
 }
+
+/* Wallet picker under the header's connect button */
+.wallet {
+  position: relative;
+}
+.wallet-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 40;
+  width: 290px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  white-space: normal;
+  text-align: left;
+}
+.wallet-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.wallet-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+.wallet-opt:hover {
+  border-color: var(--ink-2);
+}
+.wallet-opt img,
+.wallet-blank {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex: none;
+}
+.wallet-blank {
+  background: var(--line);
+}
+.wallet-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.wallet-note a {
+  color: var(--ink);
+}
+.wallet-err {
+  border-color: color-mix(in srgb, var(--bad) 45%, var(--line));
+}
+.wallet-err p {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+}

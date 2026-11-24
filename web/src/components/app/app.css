@@ -1342,3 +1342,26 @@ table.acct {
   line-height: 1.45;
   color: var(--ink);
 }
+
+/* The scoreboard in plain words, above the numbers */
+.narration {
+  margin: 0 0 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--seal);
+  border-radius: 12px;
+  background: var(--card);
+}
+.narration p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.narration p + p {
+  margin-top: 4px;
+}
+.narration p:first-child {
+  color: var(--ink);
+  font-weight: 550;
+}

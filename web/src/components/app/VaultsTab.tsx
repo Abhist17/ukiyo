@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Live, VaultLive } from "@/lib/useUkiyo";
 import { compactUsd, tickToPrice, usd } from "@/lib/chain";
 import { VaultPanel } from "./VaultPanel";
+import { narrate } from "@/lib/narrate";
 import { LiquidityChart } from "./LiquidityChart";
 
 /** Range bar: where the sleeve sits around the current price (window ±30%). */
@@ -60,6 +61,11 @@ export function VaultsTab({ live }: { live: Live }) {
 
   return (
     <>
+      <div className="narration" aria-live="polite">
+        {narrate(live.vaults, (v) => usd(v)).map((line) => (
+          <p key={line.slice(0, 40)}>{line}</p>
+        ))}
+      </div>
       <div className="kpis">
         <div className="kpi accent">
           <span>Total Edge</span>

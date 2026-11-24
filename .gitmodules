@@ -4,8 +4,6 @@
 [submodule "lib/uniswap-hooks"]
 	path = lib/uniswap-hooks
 	url = https://github.com/openzeppelin/uniswap-hooks
-	# script/editor-setup.sh hides nested hardhat configs here for the editor; that is not a change to the library
-	ignore = dirty
 [submodule "lib/hookmate"]
 	path = lib/hookmate
 	url = https://github.com/akshatmittal/hookmate

@@ -48,5 +48,6 @@
       "style": "Vol-adaptive: width follows recent volatility",
       "symbol": "ukVOL"
     }
-  ]
+  ],
+  "lens": "0x0deFc0910dcbc5064998BF4b2b78e5A19d3068b9"
 }

@@ -19,6 +19,7 @@ import {UkiyoHook} from "../src/UkiyoHook.sol";
 import {UkiyoVault} from "../src/UkiyoVault.sol";
 import {UkiyoFactory} from "../src/UkiyoFactory.sol";
 import {UkiyoSkillRouter} from "../src/UkiyoSkillRouter.sol";
+import {UkiyoLens} from "../src/UkiyoLens.sol";
 
 /// @notice Curator vault tests against the canonical PoolManager bytecode, on a 5 bps pool.
 contract UkiyoVaultTest is Test {
@@ -1126,6 +1127,55 @@ contract UkiyoVaultTest is Test {
         hook.openSleeve(curator, -1000, 1000);
         vm.expectRevert(abi.encodeWithSelector(UkiyoVault.EpochTooLong.selector, delay, delay));
         new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(delay, 0, 0, 0), "L", "L");
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Lens
+    // ------------------------------------------------------------------------------------------------------------
+
+    /// @notice One call returns every sleeve's line, matching the hook and the vault read one by one; a sleeve run by
+    ///         the owner rather than a vault is reported without vault fields.
+    function test_lensMatchesDirectReads() public {
+        _backgroundLiquidity(1e21); // sleeve 1: owner-run, no vault
+        _deposit(alice, 100e18, 100e18);
+        _settle();
+        _winningEpoch();
+        _settle();
+        _winningEpoch();
+        _losingEpoch();
+        _settle();
+
+        UkiyoLens lens = new UkiyoLens();
+        (UkiyoLens.Pool memory pool, UkiyoLens.Row[] memory rows) = lens.scoreboard(hook);
+        assertEq(pool.sleeveCount, 2);
+        assertEq(pool.sqrtPriceX96, hook.sqrtPriceX96());
+        assertEq(pool.referenceSqrtPriceX96, hook.referenceSqrtPrice());
+        assertEq(pool.priorityFeeThreshold, hook.priorityFeeThreshold());
+
+        UkiyoLens.Row memory r = rows[0];
+        assertTrue(r.isVault);
+        assertEq(r.manager, address(vault));
+        assertEq(r.curator, curator);
+        assertEq(r.edge, hook.edge(0));
+        assertEq(r.ledger.arbLoss, hook.ledger(0).arbLoss);
+        assertEq(r.liquidity, hook.sleeve(0).liquidity);
+        assertEq(r.edgeIndex, vault.edgeIndex());
+        assertEq(r.edgeTStat, vault.edgeTStat());
+        assertEq(r.edgeEpochs, vault.edgeEpochs());
+        assertEq(r.hasSkill, vault.hasSkill());
+        assertEq(r.capital, vault.valueAtMark());
+        assertEq(r.bond, vault.bond());
+        assertEq(r.epoch, vault.epoch());
+        (uint256 h0, uint256 h1) = vault.holdings();
+        assertEq(r.amount0, h0);
+        assertEq(r.amount1, h1);
+        assertEq(r.symbol, vault.symbol());
+        assertEq(r.epochStartEdge, vault.epochStartEdge());
+        assertEq(r.curatorShares, vault.balanceOf(curator));
+
+        assertFalse(rows[1].isVault, "an owner-run sleeve has no vault");
+        assertEq(rows[1].manager, address(0));
+        assertEq(rows[1].edge, hook.edge(1));
     }
 
     // ------------------------------------------------------------------------------------------------------------

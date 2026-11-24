@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { usePublicClient } from "wagmi";
 import { encodeAbiParameters, keccak256, parseAbiItem, type Address } from "viem";
-import { factoryAbi, hookAbi, vaultAbi } from "./abi";
+import { factoryAbi, hookAbi, lensAbi, vaultAbi } from "./abi";
 import { CHAIN, DEP, POOL_KEY, num, priceOf, split } from "./chain";
 import { useVaultLogs } from "./logs";
 
@@ -136,6 +136,72 @@ export function useLive() {
       // Round 1: the pool, and the factory's launched vaults read speculatively (the hook has at most 8 sleeves, and
       // a missing index simply fails), so nothing waits on a count. The public RPC takes about a second per round
       // trip, so the number of rounds, not of reads, sets how fast the app appears.
+      // With a lens deployed, the whole scoreboard is one view call: a single round trip.
+      if (d.lens) {
+        const [block, [pool, rows]] = await Promise.all([
+          pc!.getBlock(),
+          pc!.readContract({ address: d.lens, abi: lensAbi, functionName: "scoreboard", args: [hook] }),
+        ]);
+        const price = priceOf(pool.sqrtPriceX96);
+        const vaults: VaultLive[] = rows
+          .filter((r) => r.isVault)
+          .map((r, i) => {
+            const demo = d.vaults.find((v) => v.address.toLowerCase() === r.manager.toLowerCase());
+            const [btc, usdAmt] = split(r.amount0, r.amount1);
+            const edge = num(r.edge);
+            const tvl = num(btc) * price + num(usdAmt);
+            const supply = r.totalSupply;
+            return {
+              i,
+              address: r.manager,
+              name: (demo?.name ?? r.name).replace(/^Ukiyo /, ""),
+              symbol: r.symbol,
+              style: demo ? (demo.style.split(": ")[1] ?? demo.style) : `Launched by ${r.curator.slice(0, 6)}…${r.curator.slice(-4)}`,
+              tickLower: r.tickLower,
+              tickUpper: r.tickUpper,
+              liquidity: r.liquidity,
+              userFees: num(r.ledger.userFees),
+              userImpact: num(r.ledger.userImpact),
+              arbLoss: num(r.ledger.arbLoss),
+              arbFees: num(r.ledger.arbFees),
+              edge,
+              edgeReturn: Number(r.edgeIndex) / 1e18 - 1,
+              edgeIndexed: r.edgeIndexTime > 0n,
+              // the statistic is unbounded when every epoch returned exactly the same; clamp it for display
+              tStat: Math.max(-99, Math.min(99, Number(r.edgeTStat) / 1e18)),
+              edgeEpochs: Number(r.edgeEpochs),
+              hasSkill: r.hasSkill,
+              onProbation: r.onProbation,
+              launched: !demo,
+              curator: r.curator,
+              btc: num(btc),
+              usd: num(usdAmt),
+              tvl,
+              supply,
+              epoch: Number(r.epoch),
+              epochEndsAt: Number(r.epochEndsAt),
+              epochEdge: edge - num(r.epochStartEdge),
+              feeBps: Number(r.performanceFeeBps),
+              bond: num(r.bond),
+              budgetBps: Number(r.lvrBudgetBps),
+              atHighWater: r.atHighWater,
+              curatorValue: supply > 0n ? (Number(r.curatorShares) / Number(supply)) * tvl : 0,
+            };
+          });
+        const live: Live = {
+          block: block.number,
+          time: Number(block.timestamp),
+          price,
+          threshold: pool.priorityFeeThreshold,
+          vaults,
+          tvl: vaults.reduce((a, v) => a + v.tvl, 0),
+          edge: vaults.reduce((a, v) => a + v.edge, 0),
+        };
+        saveLive(live);
+        return live;
+      }
+
+      // Without a lens: two rounds of individual reads.
       const launchedP = d.factory
         ? Promise.all(
             Array.from({ length: 8 }, (_, k) =>

@@ -25,6 +25,8 @@ export interface Deployment {
   factory?: Address;
   /** UkiyoSkillRouter: one deposit split across curators by their skill tests (absent on older deployments). */
   skillRouter?: Address;
+  /** UkiyoLens: the whole scoreboard in one view call (absent on older deployments). */
+  lens?: Address;
   vaults: { address: Address; sleeveId: number; name: string; symbol: string; style: string }[];
 }
 

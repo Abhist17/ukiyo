@@ -20,6 +20,7 @@ import {UkiyoHook} from "../src/UkiyoHook.sol";
 import {UkiyoVault} from "../src/UkiyoVault.sol";
 import {UkiyoFactory} from "../src/UkiyoFactory.sol";
 import {UkiyoSkillRouter} from "../src/UkiyoSkillRouter.sol";
+import {UkiyoLens} from "../src/UkiyoLens.sol";
 
 /// @title DeployUkiyo
 /// @notice Deploys the full Ukiyo demo: two faucet test tokens (tBTC, tUSD), the hook at a mined address, a 5 bps
@@ -67,6 +68,7 @@ contract DeployUkiyo is Script {
         PoolSwapTest router;
         UkiyoFactory factory;
         UkiyoSkillRouter skillRouter;
+        UkiyoLens lens;
         PoolKey key;
         UkiyoVault[] vaults;
     }
@@ -144,6 +146,8 @@ contract DeployUkiyo is Script {
             core[i] = address(d.vaults[i]);
         }
         d.skillRouter = new UkiyoSkillRouter(d.factory, core);
+        // the whole scoreboard in one view call, for apps and integrators
+        d.lens = new UkiyoLens();
         vm.stopBroadcast();
 
         _write(d, strategies, c);
@@ -266,6 +270,7 @@ contract DeployUkiyo is Script {
         vm.serializeAddress(o, "router", address(d.router));
         vm.serializeAddress(o, "factory", address(d.factory));
         vm.serializeAddress(o, "skillRouter", address(d.skillRouter));
+        vm.serializeAddress(o, "lens", address(d.lens));
         vm.serializeUint(o, "launchBond", c.launchBond);
         vm.serializeUint(o, "probationBps", c.probationBps);
         vm.serializeAddress(o, "token0", Currency.unwrap(d.key.currency0));

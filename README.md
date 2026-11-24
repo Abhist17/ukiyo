@@ -94,6 +94,7 @@ never count as user flow.
 | [`src/UkiyoHook.sol`](src/UkiyoHook.sol) | The meter: hook-exclusive pool, sleeves (≤ 8), per-block marks, priority-fee classifier, per-sleeve ledgers, `edge(sleeveId)` |
 | [`src/UkiyoVault.sol`](src/UkiyoVault.sol) | One curator vault per sleeve: two-token deposits, ERC-20 shares, entries and exits settled at epoch boundaries, curator rebalancing, performance fee on Edge above a high-water mark, LVR bond, Edge index, skill test, probation |
 | [`src/UkiyoFactory.sol`](src/UkiyoFactory.sol) | Open launches: anyone deploys a genuine vault, opens and hands over its sleeve, and posts a permanent bond, in one call |
+| [`src/UkiyoLens.sol`](src/UkiyoLens.sol) | The whole scoreboard in one `view` call: every sleeve's ledger and Edge, and each vault's Edge index, skill test, probation, capital and terms. The app reads through it |
 | [`src/UkiyoSkillRouter.sol`](src/UkiyoSkillRouter.sol) | Invest by skill: one deposit split across curators by their on-chain skill tests, shares held by the depositor |
 | [`src/libraries/EdgeMath.sol`](src/libraries/EdgeMath.sol) | Closed forms: rebalancing loss, impact credit, per-sleeve swap fee, clipping |
 | [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) | Demo deployment: test tokens, mined hook address, 5 bps pool, four bonded curator vaults, swap router |
@@ -313,7 +314,7 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
-forge test                          # 98 tests + 5 stateful invariants: unit, fuzz, integration, differential
+forge test                          # 99 tests + 5 stateful invariants: unit, fuzz, integration, differential
 forge test --match-test test_gas -vv
 ```
 
@@ -360,7 +361,7 @@ measured a later swap twice.
 | Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees`, and a curator benchmark built on it that separates skill from market direction |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Curators are paid a performance fee only on Edge above a high-water mark and bonded against LVR, so depositors pay for skill and are compensated for losses beyond what was promised; any curator vault can adopt the meter as its scoring and fee standard |
-| Functionality (15%) | 98 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 5 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
+| Functionality (15%) | 99 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 5 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 

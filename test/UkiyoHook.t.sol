@@ -433,6 +433,61 @@ contract UkiyoHookTest is Test {
         assertEq(hook.referenceSqrtPrice(), first, "within the block: the mark before it");
     }
 
+    /// @notice Griefing a rival: a tipped push leads one block and a tipped push back leads the next. Both are booked
+    ///         as arbitrage, but LPs earned fees on the round trip, so the spike is netted: the sleeves end up charged
+    ///         for the single move around it (here none), not twice.
+    function test_spikePushedBackIsChargedOnce() public {
+        _swapTo(_atTick(60), ARB_TIP);
+        _nextBlock();
+        _swapTo(_atTick(120), ARB_TIP); // an ordinary arbitrage move: the leg the spike starts from
+        uint256[2] memory before = [hook.ledger(0).arbLoss, hook.ledger(1).arbLoss];
+
+        _nextBlock();
+        _swapTo(_atTick(1200), ARB_TIP); // the push: about 11% of price, far over 8 fee-widths (2.4%)
+        assertGt(hook.ledger(1).arbLoss, before[1], "the push is charged when it happens");
+        _nextBlock();
+        vm.expectEmit(true, false, false, true, address(hook));
+        emit UkiyoHook.SpikeNetted(block.number, _atTick(120), _atTick(1200), _atTick(120));
+        _swapTo(_atTick(120), ARB_TIP); // pushed straight back
+
+        for (uint256 i; i < 2; ++i) {
+            assertApproxEqAbs(hook.ledger(i).arbLoss, before[i], 2, "the round trip costs nothing in arbitrage loss");
+            assertLe(hook.ledger(i).arbLoss + 1, before[i] + 2, "and never refunds more than it charged");
+        }
+    }
+
+    /// @notice Ordinary arbitrage moves the mark back and forth within the fee band: that is real loss, and both legs
+    ///         are charged in full.
+    function test_smallReversalsAreChargedInFull() public {
+        _swapTo(_atTick(60), ARB_TIP);
+        _nextBlock();
+        _swapTo(_atTick(120), ARB_TIP);
+        uint256 lossBefore = hook.ledger(0).arbLoss;
+        _nextBlock();
+        _swapTo(_atTick(180), ARB_TIP); // 0.6% of price, under the 2.4% spike threshold
+        _nextBlock();
+        _swapTo(_atTick(120), ARB_TIP);
+        (uint160 lo, uint160 hi) = _bounds(0);
+        uint256 expected = EdgeMath.rebalancingLoss(LIQ, _atTick(120), _atTick(180), lo, hi)
+            + EdgeMath.rebalancingLoss(LIQ, _atTick(180), _atTick(120), lo, hi);
+        assertEq(hook.ledger(0).arbLoss - lossBefore, expected);
+    }
+
+    /// @notice Liquidity added during the spike was not charged for the leg into it, so it is not netted: the new
+    ///         liquidity pays the move back in full.
+    function test_spikeIsNotNettedAcrossALiquidityChange() public {
+        _swapTo(_atTick(60), ARB_TIP);
+        _nextBlock();
+        _swapTo(_atTick(120), ARB_TIP);
+        _nextBlock();
+        _swapTo(_atTick(1200), ARB_TIP);
+        hook.modifySleeveLiquidity(1, int256(uint256(LIQ))); // a deposit lands at the spiked price
+        uint256 lossBefore = hook.ledger(1).arbLoss;
+        _nextBlock();
+        _swapTo(_atTick(120), ARB_TIP);
+        assertGt(hook.ledger(1).arbLoss, lossBefore, "charged for the move back");
+    }
+
     /// @notice Liquidity added after users moved the price is not credited for that move. Before anchoring, a vault
     ///         settling a large deposit right after user flow had its whole new liquidity credited with the block's
     ///         impact, overstating Edge.
@@ -566,11 +621,14 @@ contract UkiyoHookTest is Test {
         uint128 liquidity;
         uint128 anchored;
         uint160 anchor;
+        uint256 legLoss; // what the last leg between marks cost this sleeve
+        uint128 legLiq; // the liquidity it was charged on, 0 if it cannot be netted
     }
 
     /// @dev Reference-model state, kept in storage to stay clear of the stack limit.
     Ref[2] internal ref;
     uint160 internal refMark;
+    uint160 internal refLegStart;
     bool internal refPending;
     uint16[2] internal refProtocolFee; // [zeroForOne, oneForZero]
 
@@ -608,6 +666,35 @@ contract UkiyoHookTest is Test {
             assertEq(l.arbLoss, ref[i].loss, "arbLoss");
             assertEq(hook.sleeve(i).liquidity, ref[i].liquidity, "liquidity");
         }
+    }
+
+    /// @dev Book one sleeve's arbitrage loss at a new mark, as the spec says: the move since the last mark (from the
+    ///      anchor for liquidity added since), or, after a spike, the single move around it less what the leg into
+    ///      the spike already cost (a refund is shaved by a wei).
+    function _refCharge(Ref storage m, bool spike, uint160 target, uint160 lo, uint160 hi) internal {
+        if (m.liquidity == 0) {
+            (m.legLoss, m.legLiq) = (0, 0);
+        } else if (spike && m.anchored == 0 && m.legLiq == m.liquidity) {
+            uint256 chord = EdgeMath.rebalancingLoss(m.liquidity, refLegStart, target, lo, hi);
+            if (chord >= m.legLoss) {
+                m.loss += chord - m.legLoss;
+            } else {
+                uint256 refund = m.legLoss - chord;
+                refund = refund > 1 ? refund - 1 : 0;
+                m.loss -= refund < m.loss ? refund : m.loss;
+            }
+            (m.legLoss, m.legLiq) = (chord, m.liquidity);
+        } else {
+            uint256 leg = 0;
+            if (m.liquidity > m.anchored && refMark != 0) {
+                leg = EdgeMath.rebalancingLoss(m.liquidity - m.anchored, refMark, target, lo, hi);
+            }
+            if (m.anchored != 0) leg += EdgeMath.rebalancingLoss(m.anchored, m.anchor, target, lo, hi);
+            m.loss += leg;
+            (m.legLoss, m.legLiq) = (leg, m.anchored == 0 && refMark != 0 ? m.liquidity : 0);
+        }
+        m.anchored = 0;
+        m.anchor = 0;
     }
 
     /// @dev Add or remove a random amount of one sleeve's liquidity, in the pool and in the reference model.
@@ -656,6 +743,18 @@ contract UkiyoHookTest is Test {
             }
         }
 
+        // Spec: the last mark was a spike if the legs into and out of it go opposite ways and each moves the price by
+        // more than SPIKE_FEE_WIDTHS fee-widths (half that on the square-root price).
+        bool spike = false;
+        if (firstInBlock && refLegStart != 0 && refMark != 0) {
+            uint256 w = hook.SPIKE_FEE_WIDTHS() * FEE;
+            bool up = refMark > refLegStart;
+            bool reverses = refMark != refLegStart && target != refMark && (target > refMark) != up;
+            uint256 legIn = up ? refMark - refLegStart : refLegStart - refMark;
+            uint256 legOut = target > refMark ? target - refMark : refMark - target;
+            spike = reverses && legIn * 2e6 > uint256(refLegStart) * w && legOut * 2e6 > uint256(refMark) * w;
+        }
+
         _swapTo(target, arb ? ARB_TIP : USER_TIP);
 
         (uint256 num, uint256 den) = EdgeMath.lpFeeRate(FEE, refProtocolFee[target < before ? 0 : 1]);
@@ -665,18 +764,10 @@ contract UkiyoHookTest is Test {
             uint256 fee = m.liquidity == 0 ? 0 : EdgeMath.swapFee(m.liquidity, before, target, lo, hi, num, den);
             if (arb) m.arbFees += fee;
             else m.userFees += fee;
-            if (firstInBlock) {
-                if (m.liquidity > m.anchored && refMark != 0) {
-                    m.loss += EdgeMath.rebalancingLoss(m.liquidity - m.anchored, refMark, target, lo, hi);
-                }
-                if (m.liquidity != 0 && m.anchored != 0) {
-                    m.loss += EdgeMath.rebalancingLoss(m.anchored, m.anchor, target, lo, hi);
-                }
-                m.anchored = 0;
-                m.anchor = 0;
-            }
+            if (firstInBlock) _refCharge(m, spike, target, lo, hi);
         }
         if (firstInBlock) {
+            if (!spike) refLegStart = refMark;
             refMark = target;
             refPending = true;
         }

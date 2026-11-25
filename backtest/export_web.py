@@ -25,7 +25,7 @@ STYLE = ["±25% range, never moves", "±8% range, never moves", "±1.5% range, r
          "Width 3σ of recent vol", "Width 1.5σ of recent vol", "±10% range, leans with the trend"]
 
 SERIES = {
-    "edge": "edge_v5_blockdisp",  # Ukiyo's formula, as the hook computes it
+    "edge": "edge_v7_spike8",  # Ukiyo's formula, as the hook computes it (v5 with spike-netted marks)
     "truth": "truth",  # true hedged P&L: fees - true LVR - rebalancing cost
     "naive": "edge_v0_raw",  # fees - LVR at pool prices
     "fees": "fee_apr",  # fee income alone
@@ -69,7 +69,7 @@ def main():
         out["tiers"][tier] = {
             "series": {name: r2(m[key]) for name, key in SERIES.items()},
             "error": {
-                "edge": {k: round(e1["edge_v5_blockdisp"][k], 4) for k in ("mae", "rmse", "corr", "bias")},
+                "edge": {k: round(e1["edge_v7_spike8"][k], 4) for k in ("mae", "rmse", "corr", "bias")},
                 "naive": {k: round(e1["edge_v0_raw"][k], 4) for k in ("mae", "rmse", "corr", "bias")},
             },
         }

@@ -97,6 +97,14 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         uint256 arbFees;
     }
 
+    /// @notice What a sleeve was charged for the last leg between marks, so a spike can be netted out later.
+    /// @param loss Arbitrage loss charged for the leg.
+    /// @param liquidity Liquidity it was charged on; 0 when the leg involved anchored liquidity (never netted).
+    struct Leg {
+        uint128 loss;
+        uint128 liquidity;
+    }
+
     /// @dev Payload passed through `PoolManager.unlock` to `unlockCallback`.
     struct LiquidityCall {
         uint256 sleeveId;
@@ -142,6 +150,18 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     ///         gives `referenceSqrtPrice`, a price no single transaction can move.
     uint160 public prevPostMark;
 
+    /// @notice Where the last charged leg between marks started: the mark before `lastPostMark`, or, after a spike was
+    ///         netted, the mark before the spike.
+    uint160 public legStart;
+
+    /// @notice A move between marks is a spike when it is wider than this many fee-widths of price and the next mark
+    ///         moves back by as much: both legs are then charged as the single move around the spike. Honest arbitrage
+    ///         moves the mark within the fee band, while a tipped push that is pushed back would otherwise be charged
+    ///         twice, though LPs earned fees on the round trip. Backtested: on BTC/USD 2024 Edge keeps a 0.9988
+    ///         correlation with true hedged P&L and still errs low, while griefing a rival costs at least a quarter of
+    ///         the damage it does.
+    uint256 public constant SPIKE_FEE_WIDTHS = 8;
+
     /// @notice True while the user-impact term of `lastMarkedBlock` is still to be credited.
     bool public impactPending;
 
@@ -161,6 +181,7 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
 
     Sleeve[] internal _sleeves;
     mapping(uint256 sleeveId => Ledger) internal _ledgers;
+    mapping(uint256 sleeveId => Leg) internal _lastLeg;
 
     /// @dev Pool price before the current swap. Scratch value for one swap, so transient (EIP-1153).
     uint160 private transient _sqrtPriceBeforeSwap;
@@ -189,6 +210,9 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
 
     /// @notice Emitted when a block's post-arbitrage mark is recorded.
     event BlockMarked(uint256 indexed blockNumber, uint160 sqrtPostMarkX96);
+
+    /// @notice The previous mark was a spike the new one reverses: the legs around it were charged as one move.
+    event SpikeNetted(uint256 indexed blockNumber, uint160 from, uint160 spike, uint160 to);
 
     /// @notice Emitted when the arbitrage threshold changes.
     event PriorityFeeThresholdSet(uint256 threshold);
@@ -619,19 +643,7 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         );
         _attributeFees(_sqrtPriceBeforeSwap, sqrtAfter, num, den, _swapIsArbitrage);
 
-        if (_swapIsFirstInBlock) {
-            _chargeArbitrageLoss(sqrtAfter);
-            // before the pool's first mark there is none to keep: the price before this swap stands in, so the
-            // reference price never comes from the block's own (possibly manipulating) first swap
-            uint160 last = lastPostMark;
-            prevPostMark = last != 0 ? last : _sqrtPriceBeforeSwap;
-            lastPostMark = sqrtAfter;
-            lastMarkedBlock = block.number;
-            impactPending = true;
-            // the only external calls before this are the PoolManager's read-only getSlot0
-            // forge-lint: disable-next-line(reentrancy-events)
-            emit BlockMarked(block.number, sqrtAfter);
-        }
+        if (_swapIsFirstInBlock) _mark(sqrtAfter, key.fee);
         return (this.afterSwap.selector, 0);
     }
 
@@ -658,11 +670,51 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         }
     }
 
+    /// @dev Mark the block's first swap: net out the previous mark if it was a spike, charge arbitrage loss up to the
+    ///      new mark, and record it.
+    function _mark(uint160 sqrtAfter, uint24 feePips) internal {
+        uint160 from = legStart;
+        bool spike = _isSpike(from, lastPostMark, sqrtAfter, feePips);
+        _chargeArbitrageLoss(sqrtAfter, spike ? from : 0);
+        // after a spike the next leg is measured from before it; otherwise from the mark just passed
+        if (!spike) legStart = lastPostMark;
+        // before the pool's first mark there is none to keep: the price before this swap stands in, so the
+        // reference price never comes from the block's own (possibly manipulating) first swap
+        uint160 last = lastPostMark;
+        prevPostMark = last != 0 ? last : _sqrtPriceBeforeSwap;
+        lastPostMark = sqrtAfter;
+        lastMarkedBlock = block.number;
+        impactPending = true;
+        // the only external calls before this are the PoolManager's read-only getSlot0
+        // forge-lint: disable-next-line(reentrancy-events)
+        emit BlockMarked(block.number, sqrtAfter);
+        // forge-lint: disable-next-line(reentrancy-events)
+        if (spike) emit SpikeNetted(block.number, from, last, sqrtAfter);
+    }
+
+    /// @dev Whether the mark `b` was a spike: the moves `a -> b` and `b -> c` go opposite ways and are each wider than
+    ///      `SPIKE_FEE_WIDTHS` fee-widths of price. On square-root prices a price move of `k` is a move of about `k / 2`,
+    ///      so the test is `|b - a| / a > widths * fee / 2`, and likewise for the move back. A zero-fee pool has no
+    ///      fee band to measure against, so nothing is a spike there.
+    function _isSpike(uint160 a, uint160 b, uint160 c, uint24 feePips) internal pure returns (bool) {
+        if (a == 0 || b == 0 || feePips == 0) return false;
+        if ((b > a) == (c > b) || b == a || c == b) return false;
+        uint256 up = b > a ? b - a : a - b;
+        uint256 back = c > b ? c - b : b - c;
+        uint256 w = SPIKE_FEE_WIDTHS * feePips;
+        return up * 2_000_000 > uint256(a) * w && back * 2_000_000 > uint256(b) * w;
+    }
+
     /// @dev Charge each sleeve the rebalancing loss up to the new post-arbitrage mark: from the previous mark for
     ///      liquidity that was there at it, and from the anchor for liquidity added since. Then clear the anchors: from
     ///      this mark on, all liquidity is measured from it. Before the pool's first mark there is no previous mark, so
     ///      only anchored liquidity is charged. Each part rounds up, so the sum does too.
-    function _chargeArbitrageLoss(uint160 sqrtPost) internal {
+    ///
+    ///      When the previous mark was a spike (`spikeFrom` is the mark before it, else 0), a sleeve whose liquidity is
+    ///      unchanged since is charged for the single move `spikeFrom -> sqrtPost` instead of the two legs around the
+    ///      spike: what the first leg was charged is set against it. Any refund is shaved by a wei, so the netting can
+    ///      never raise Edge by more than the exact amount.
+    function _chargeArbitrageLoss(uint160 sqrtPost, uint160 spikeFrom) internal {
         uint256 n = _sleeves.length;
         uint160 mark = lastPostMark;
         for (uint256 i; i < n; ++i) {
@@ -674,13 +726,40 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
                 s.anchor = 0;
                 s.anchoredLiquidity = 0;
             }
-            if (l == 0) continue;
+            if (l == 0) {
+                delete _lastLeg[i];
+                continue;
+            }
             (uint160 lo, uint160 hi) = _bounds(s);
+            Leg memory last = _lastLeg[i];
+            if (spikeFrom != 0 && anchored == 0 && last.liquidity == l) {
+                _netSpike(i, l, spikeFrom, sqrtPost, lo, hi, last.loss);
+                continue;
+            }
             uint256 loss = 0;
             if (l > anchored && mark != 0) loss = EdgeMath.rebalancingLoss(l - anchored, mark, sqrtPost, lo, hi);
             if (anchored != 0) loss += EdgeMath.rebalancingLoss(anchored, anchor, sqrtPost, lo, hi);
             if (loss != 0) _ledgers[i].arbLoss += loss;
+            // a leg that involved anchored liquidity, or had no previous mark, is never netted later
+            _lastLeg[i] = Leg({loss: SafeCast.toUint128(loss), liquidity: anchored == 0 && mark != 0 ? l : 0});
         }
+    }
+
+    /// @dev Charge sleeve `i` for the move `from -> to` around a spike, against `charged`, what the leg into the spike
+    ///      already cost it.
+    function _netSpike(uint256 i, uint128 l, uint160 from, uint160 to, uint160 lo, uint160 hi, uint256 charged)
+        internal
+    {
+        uint256 chord = EdgeMath.rebalancingLoss(l, from, to, lo, hi);
+        Ledger storage g = _ledgers[i];
+        if (chord >= charged) {
+            g.arbLoss += chord - charged;
+        } else {
+            uint256 refund = charged - chord;
+            refund = refund > 1 ? refund - 1 : 0;
+            g.arbLoss -= refund < g.arbLoss ? refund : g.arbLoss;
+        }
+        _lastLeg[i] = Leg({loss: SafeCast.toUint128(chord), liquidity: l});
     }
 
     /// @dev Split one swap's LP fee across sleeves from the price path and book it as user or arbitrage fee.

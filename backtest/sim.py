@@ -33,6 +33,11 @@ EST_NAMES = [
     "block_disp",   # 15 net displacement after the arb slot, per block: l (s_close - s_post)^2 / s_post
     "cls_arb_fee_as_user",    # 16 fees from true arbitrage swaps the classifier booked as user (overstates Edge)
     "cls_noise_fee_as_arb",   # 17 fees from true noise swaps the classifier booked as arbitrage (understates Edge)
+    "rev_post",     # 18 raw_post, but a mark the next marked block reverts is a spike: both legs are charged as the
+                    #    single move around it (a -> c instead of a -> b -> c), as the hook can compute on-chain
+    "spike4",       # 19 raw_post, but a move of more than 4 fee-widths that the next mark reverses by more than 4
+                    #    fee-widths is a spike: both legs are charged as the single move around it
+    "spike8",       # 20 the same with 8 fee-widths
 ]
 # Classifier modes for run(..., cls_mode=):
 #   0  at swap time, with injected error rates miss_arb / false_arb (stands in for the priority-fee test)
@@ -283,6 +288,16 @@ def run(P, seed, gamma, lam, size_mu, size_sig, typ, width, kvol, cost_rate,
     d_end = np.zeros(N)
     d_end2 = np.zeros(N)
     d_post = np.zeros(N)
+    # reversion-aware marks: the effective mark before last (ra), the last mark (rb), what the last leg was charged
+    ra = np.full(N, s)
+    rb = np.full(N, s)
+    rchg = np.zeros(N)
+    rn = np.ones(N)
+    # spike-aware marks at two spike sizes: [i, 0] for 4 fee-widths, [i, 1] for 8
+    sa = np.full((N, 2), s)
+    sb = np.full((N, 2), s)
+    schg = np.zeros((N, 2))
+    sn = np.ones((N, 2))
     grid1 = np.zeros((N, K1))
     grid2 = np.zeros((N, K2))
     for i in range(N):
@@ -452,6 +467,48 @@ def run(P, seed, gamma, lam, size_mu, size_sig, typ, width, kvol, cost_rate,
             est[e, i, 3] += l * (dp * dp + 2.0 * dp * d_post[i]) / p0
             d_post[i] = dp
             last_post[i] = s_post
+            # reversion-aware marks, only on blocks that had a swap (as the hook marks)
+            if first:
+                c = s_post
+                if rn[i] >= 2 and (rb[i] - ra[i]) * (c - rb[i]) < 0.0:
+                    q0 = clip(ra[i], a, b)
+                    q1 = clip(c, a, b)
+                    chord = l * (q1 - q0) * (q1 - q0) / q0
+                    est[e, i, 18] += chord - rchg[i]
+                    rchg[i] = chord
+                    rb[i] = c
+                else:
+                    q0 = clip(rb[i], a, b)
+                    q1 = clip(c, a, b)
+                    inc = l * (q1 - q0) * (q1 - q0) / q0
+                    est[e, i, 18] += inc
+                    ra[i] = rb[i]
+                    rb[i] = c
+                    rchg[i] = inc
+                    rn[i] = 2.0
+                for z in range(2):
+                    kz = 4.0 if z == 0 else 8.0
+                    a0 = sa[i, z]
+                    b0 = sb[i, z]
+                    up = 2.0 * np.log(b0 / a0)
+                    back = 2.0 * np.log(c / b0)
+                    spike = sn[i, z] >= 2 and up * back < 0.0 and abs(up) > kz * gamma and abs(back) > kz * gamma
+                    if spike:
+                        q0 = clip(a0, a, b)
+                        q1 = clip(c, a, b)
+                        chord = l * (q1 - q0) * (q1 - q0) / q0
+                        est[e, i, 19 + z] += chord - schg[i, z]
+                        schg[i, z] = chord
+                        sb[i, z] = c
+                    else:
+                        q0 = clip(b0, a, b)
+                        q1 = clip(c, a, b)
+                        inc = l * (q1 - q0) * (q1 - q0) / q0
+                        est[e, i, 19 + z] += inc
+                        sa[i, z] = b0
+                        sb[i, z] = c
+                        schg[i, z] = inc
+                        sn[i, z] = 2.0
             # sparse grids
             j1 = t % K1
             g0 = clip(grid1[i, j1], a, b)
@@ -522,6 +579,15 @@ def run(P, seed, gamma, lam, size_mu, size_sig, typ, width, kvol, cost_rate,
                 vh_prev[i] = x_prev[i] * phat + yamt(L[i], s, SA[i], SB[i])
                 last_end[i] = s
                 last_post[i] = s
+                ra[i] = s
+                rb[i] = s
+                rchg[i] = 0.0
+                rn[i] = 1.0
+                for z in range(2):
+                    sa[i, z] = s
+                    sb[i, z] = s
+                    schg[i, z] = 0.0
+                    sn[i, z] = 1.0
                 d_end[i] = 0.0
                 d_end2[i] = 0.0
                 d_post[i] = 0.0

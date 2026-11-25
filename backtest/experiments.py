@@ -54,6 +54,9 @@ def metrics(out, est):
         "edge_v3_zhou": b(est[:, :, E["flag_noise_fee"]] - est[:, :, E["zhou_end"]] - c),
         "edge_v4_impact": b(est[:, :, E["flag_noise_fee"]] + est[:, :, E["flag_noise_impact"]] - est[:, :, E["raw_post"]] - c),
         "edge_v5_blockdisp": b(est[:, :, E["flag_noise_fee"]] + est[:, :, E["block_disp"]] - est[:, :, E["raw_post"]] - c),
+        "edge_v6_reversion": b(est[:, :, E["flag_noise_fee"]] + est[:, :, E["block_disp"]] - est[:, :, E["rev_post"]] - c),
+        "edge_v7_spike4": b(est[:, :, E["flag_noise_fee"]] + est[:, :, E["block_disp"]] - est[:, :, E["spike4"]] - c),
+        "edge_v7_spike8": b(est[:, :, E["flag_noise_fee"]] + est[:, :, E["block_disp"]] - est[:, :, E["spike8"]] - c),
         "edge_v4_impact_end": b(est[:, :, E["flag_noise_fee"]] + est[:, :, E["flag_noise_impact"]] - est[:, :, E["raw_end"]] - c),
         # decomposition check: pool-marked LVR vs (true LVR - arb fees)
         "lvr_true": b(out[:, :, O["lvr_true"]]),
@@ -84,9 +87,9 @@ def spearman(a, b):
 
 
 SCORES = ["fee_apr", "vs_hodl", "edge_v0_raw", "edge_v1_firstswap", "edge_v2_bandmark",
-          "edge_v3_classified", "edge_v3_post", "edge_v4_impact", "edge_v5_blockdisp", "edge_oracle_split", "truth"]
+          "edge_v3_classified", "edge_v3_post", "edge_v4_impact", "edge_v5_blockdisp", "edge_v6_reversion", "edge_v7_spike4", "edge_v7_spike8", "edge_oracle_split", "truth"]
 EDGES = ["edge_v0_raw", "edge_v0_zhou", "edge_v0_sparse60", "edge_v1_firstswap",
-         "edge_v2_bandmark", "edge_v3_classified", "edge_v3_post", "edge_v3_zhou", "edge_v4_impact", "edge_v5_blockdisp", "edge_v4_impact_end", "edge_oracle_split"]
+         "edge_v2_bandmark", "edge_v3_classified", "edge_v3_post", "edge_v3_zhou", "edge_v4_impact", "edge_v5_blockdisp", "edge_v6_reversion", "edge_v7_spike4", "edge_v7_spike8", "edge_v4_impact_end", "edge_oracle_split"]
 
 
 def analyse(m, regimes, label):

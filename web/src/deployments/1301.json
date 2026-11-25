@@ -2,17 +2,18 @@
   "btc": "0xe4134d0bA75d9cc0a22dac01a11f589559434148",
   "chainId": 1301,
   "curator": "0xd3E4a71C208D23b9d5A284154d483D190219736d",
-  "deployBlock": 68614039,
+  "deployBlock": 68788402,
   "epochLength": 600,
-  "factory": "0xF84cB2286495a9C2b444941dd36947F95758C198",
+  "factory": "0x3dE6c3063DD12a776Bd737811070c990945efb7f",
   "fee": 500,
-  "hook": "0x47afBF40Dc3B348467902815eb21639D269cAac0",
+  "hook": "0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0",
   "launchBond": "5000000000000000000000",
+  "lens": "0xA5a2Ea466E883e6f2139Ca61BeE818DE77D36C52",
   "performanceFeeBps": 1000,
   "poolManager": "0x00B036B58a818B1BC34d502D3fE730Db729e62AC",
   "probationBps": 300,
-  "router": "0x5245C33FF548A0174002F4D593DE1E9760051220",
-  "skillRouter": "0x29a9cf8C6Af8a6Aa332cd818AC50FCc074E0aF7B",
+  "router": "0x1d2f6bBE71ec15ebf5c21625672B02fa2cB64553",
+  "skillRouter": "0xF4198d05821a655B57bD797765e244Bf310f8Fb4",
   "startPrice": 42268,
   "threshold": "2000000",
   "tickSpacing": 10,
@@ -21,33 +22,32 @@
   "usd": "0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db",
   "vaults": [
     {
-      "address": "0xeEb5677bDC07dcF3a3d901E6d801059f5961Bb74",
+      "address": "0x71226DFC8b70a6aB3e540aD1785Cc16d7CC0E194",
       "name": "Ukiyo Passive Wide",
       "sleeveId": 0,
       "style": "Passive wide: 25% each side, never moves",
       "symbol": "ukWIDE"
     },
     {
-      "address": "0x9FB567cFBaAbEE8C6582Aa29e9Cd9A297279aB51",
+      "address": "0x825A5A02d71E42e83c1888B2D9258b4E45a6b133",
       "name": "Ukiyo Passive Mid",
       "sleeveId": 1,
       "style": "Passive mid: 8% each side, never moves",
       "symbol": "ukMID"
     },
     {
-      "address": "0xe27fc6A41f9070F99B3934Fc9B969C88487644F4",
+      "address": "0xC39906F62988A0ef97B86213192aD37F6E548E51",
       "name": "Ukiyo Tight Chaser",
       "sleeveId": 2,
       "style": "Tight chaser: 1.5% each side, recentres on exit",
       "symbol": "ukTIGHT"
     },
     {
-      "address": "0x78d018DF2626Abbb13e9078ec539BE410ED5c17d",
+      "address": "0x70d29E954F837D48cc9345d34e9322C9D908A640",
       "name": "Ukiyo Vol Adaptive",
       "sleeveId": 3,
       "style": "Vol-adaptive: width follows recent volatility",
       "symbol": "ukVOL"
     }
-  ],
-  "lens": "0x0deFc0910dcbc5064998BF4b2b78e5A19d3068b9"
+  ]
 }

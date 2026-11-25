@@ -17,7 +17,7 @@ Edge = user fees + user price impact − arbitrage loss
 Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and Curation*).
 
 **Live:** [ukiyo-ochre.vercel.app](https://ukiyo-ochre.vercel.app) · Unichain Sepolia hook
-[`0x47afBF40Dc3B348467902815eb21639D269cAac0`](https://sepolia.uniscan.xyz/address/0x47afBF40Dc3B348467902815eb21639D269cAac0) · **Reviewing?** Start with
+[`0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0`](https://sepolia.uniscan.xyz/address/0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0) · **Reviewing?** Start with
 [`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md).
 
 ## Where the Uniswap v4 integration lives
@@ -278,23 +278,23 @@ recomputing anything, so the site and the backtest always agree.
 
 ## Live deployment: Unichain Sepolia
 
-Deployed at block 68,614,039 with [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) (transactions in
+Deployed at block 68,788,402 with [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) (transactions in
 [`broadcast/`](broadcast/DeployUkiyo.s.sol/1301/run-latest.json)). The replay bot keeps it trading; the app reads it
 straight from the public RPC. The test tokens sit at fixed CREATE2 addresses, so they carry over between deployments.
 
 | Contract | Address |
 | --- | --- |
-| Hook (`UkiyoHook`) | [`0x47afBF40Dc3B348467902815eb21639D269cAac0`](https://sepolia.uniscan.xyz/address/0x47afBF40Dc3B348467902815eb21639D269cAac0) |
-| Factory (`UkiyoFactory`) | [`0xF84cB2286495a9C2b444941dd36947F95758C198`](https://sepolia.uniscan.xyz/address/0xF84cB2286495a9C2b444941dd36947F95758C198) |
-| Skill router (`UkiyoSkillRouter`) | [`0x29a9cf8C6Af8a6Aa332cd818AC50FCc074E0aF7B`](https://sepolia.uniscan.xyz/address/0x29a9cf8C6Af8a6Aa332cd818AC50FCc074E0aF7B) |
+| Hook (`UkiyoHook`) | [`0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0`](https://sepolia.uniscan.xyz/address/0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0) |
+| Factory (`UkiyoFactory`) | [`0x3dE6c3063DD12a776Bd737811070c990945efb7f`](https://sepolia.uniscan.xyz/address/0x3dE6c3063DD12a776Bd737811070c990945efb7f) |
+| Skill router (`UkiyoSkillRouter`) | [`0xF4198d05821a655B57bD797765e244Bf310f8Fb4`](https://sepolia.uniscan.xyz/address/0xF4198d05821a655B57bD797765e244Bf310f8Fb4) |
 | PoolManager (canonical v4) | [`0x00B036B58a818B1BC34d502D3fE730Db729e62AC`](https://sepolia.uniscan.xyz/address/0x00B036B58a818B1BC34d502D3fE730Db729e62AC) |
-| Swap router (`PoolSwapTest`) | [`0x5245C33FF548A0174002F4D593DE1E9760051220`](https://sepolia.uniscan.xyz/address/0x5245C33FF548A0174002F4D593DE1E9760051220) |
+| Swap router (`PoolSwapTest`) | [`0x1d2f6bBE71ec15ebf5c21625672B02fa2cB64553`](https://sepolia.uniscan.xyz/address/0x1d2f6bBE71ec15ebf5c21625672B02fa2cB64553) |
 | tBTC (test token, token0) | [`0xe4134d0bA75d9cc0a22dac01a11f589559434148`](https://sepolia.uniscan.xyz/address/0xe4134d0bA75d9cc0a22dac01a11f589559434148) |
 | tUSD (test token, token1) | [`0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db`](https://sepolia.uniscan.xyz/address/0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db) |
-| Vault: Passive Wide (`ukWIDE`) | [`0xeEb5677bDC07dcF3a3d901E6d801059f5961Bb74`](https://sepolia.uniscan.xyz/address/0xeEb5677bDC07dcF3a3d901E6d801059f5961Bb74) |
-| Vault: Passive Mid (`ukMID`) | [`0x9FB567cFBaAbEE8C6582Aa29e9Cd9A297279aB51`](https://sepolia.uniscan.xyz/address/0x9FB567cFBaAbEE8C6582Aa29e9Cd9A297279aB51) |
-| Vault: Tight Chaser (`ukTIGHT`) | [`0xe27fc6A41f9070F99B3934Fc9B969C88487644F4`](https://sepolia.uniscan.xyz/address/0xe27fc6A41f9070F99B3934Fc9B969C88487644F4) |
-| Vault: Vol Adaptive (`ukVOL`) | [`0x78d018DF2626Abbb13e9078ec539BE410ED5c17d`](https://sepolia.uniscan.xyz/address/0x78d018DF2626Abbb13e9078ec539BE410ED5c17d) |
+| Vault: Passive Wide (`ukWIDE`) | [`0x71226DFC8b70a6aB3e540aD1785Cc16d7CC0E194`](https://sepolia.uniscan.xyz/address/0x71226DFC8b70a6aB3e540aD1785Cc16d7CC0E194) |
+| Vault: Passive Mid (`ukMID`) | [`0x825A5A02d71E42e83c1888B2D9258b4E45a6b133`](https://sepolia.uniscan.xyz/address/0x825A5A02d71E42e83c1888B2D9258b4E45a6b133) |
+| Vault: Tight Chaser (`ukTIGHT`) | [`0xC39906F62988A0ef97B86213192aD37F6E548E51`](https://sepolia.uniscan.xyz/address/0xC39906F62988A0ef97B86213192aD37F6E548E51) |
+| Vault: Vol Adaptive (`ukVOL`) | [`0x70d29E954F837D48cc9345d34e9322C9D908A640`](https://sepolia.uniscan.xyz/address/0x70d29E954F837D48cc9345d34e9322C9D908A640) |
 
 Demo settings: 5 bps pool, classifier threshold 0.002 gwei, 10-minute epochs, 10% performance fee, curator bonds of
 $10K–$50K with a 25 bps per-epoch LVR budget. Test tokens only.

@@ -15,10 +15,10 @@ import { lensAbi } from "./abi"; // from out/UkiyoLens.sol/UkiyoLens.json
 
 const client = createPublicClient({ chain: unichainSepolia, transport: http() });
 const [pool, rows] = await client.readContract({
-  address: "0x0deFc0910dcbc5064998BF4b2b78e5A19d3068b9", // UkiyoLens
+  address: "0xA5a2Ea466E883e6f2139Ca61BeE818DE77D36C52", // UkiyoLens
   abi: lensAbi,
   functionName: "scoreboard",
-  args: ["0x47afBF40Dc3B348467902815eb21639D269cAac0"], // UkiyoHook
+  args: ["0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0"], // UkiyoHook
 });
 // rank curators by size-neutral skill: rows.filter((r) => r.isVault).sort((a, b) => Number(b.edgeIndex - a.edgeIndex))
 ```
@@ -61,8 +61,8 @@ ordinary users need not.
 
 | Contract | Address |
 | --- | --- |
-| UkiyoHook | `0x47afBF40Dc3B348467902815eb21639D269cAac0` |
-| UkiyoLens | `0x0deFc0910dcbc5064998BF4b2b78e5A19d3068b9` |
-| UkiyoFactory | `0xF84cB2286495a9C2b444941dd36947F95758C198` |
-| UkiyoSkillRouter | `0x29a9cf8C6Af8a6Aa332cd818AC50FCc074E0aF7B` |
+| UkiyoHook | `0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0` |
+| UkiyoLens | `0xA5a2Ea466E883e6f2139Ca61BeE818DE77D36C52` |
+| UkiyoFactory | `0x3dE6c3063DD12a776Bd737811070c990945efb7f` |
+| UkiyoSkillRouter | `0xF4198d05821a655B57bD797765e244Bf310f8Fb4` |
 | PoolManager (canonical) | `0x00B036B58a818B1BC34d502D3fE730Db729e62AC` |

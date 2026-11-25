@@ -139,7 +139,7 @@ export default function Home() {
             <div><b data-count>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>
             <div><b data-count>6 / 6</b><span>curators in the true order</span></div>
             <div><b>0</b><span>oracles or keepers</span></div>
-            <div><b data-count>100</b><span>tests + 5 stateful invariants</span></div>
+            <div><b data-count>103</b><span>tests + 5 stateful invariants</span></div>
           </div>
         </div>
       </section>

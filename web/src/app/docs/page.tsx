@@ -70,7 +70,7 @@ console.log("Edge", formatEther(edge), "= user fees", formatEther(l.userFees),
 
 const LOCAL = `
 git clone --recurse-submodules ${REPO} && cd ukiyo
-forge test                                   # 100 tests + 5 invariants
+forge test                                   # 103 tests + 5 invariants
 anvil --block-time 2                         # in another terminal
 EPOCH=120 forge script script/DeployUkiyo.s.sol --rpc-url http://127.0.0.1:8545 --broadcast \\
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80   # anvil's public dev key

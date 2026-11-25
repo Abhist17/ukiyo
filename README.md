@@ -69,7 +69,7 @@ impact paid by ordinary users, and measures the arbitrage loss at marks taken ri
 
 | | Old formula | Ukiyo |
 | --- | --- | --- |
-| Weekly error vs true hedged P&L (BTC/USD 2024 replay) | 206–364 bps | 12–13 bps |
+| Weekly error vs true hedged P&L (BTC/USD 2024 replay) | 206–364 bps | 13–14 bps |
 | Correlation with true hedged P&L | −0.58 to 0.50 | 0.987 to 0.999 |
 | Weeks it orders curators like their real P&L | 64–77% | 94–99% |
 | Full-year ranking of six curators (5 bps pool) | wrong curator first | identical to the true order |
@@ -78,6 +78,25 @@ The backtest is in [`backtest/`](backtest/) (Python + Numba, ~20 s per run). It 
 six curator strategies, top-of-block arbitrage inside the fee band and random user flow, on 208 synthetic weeks and on
 a full-year replay of Bitstamp BTC/USD 2024 prices.
 
+### Spike-netted marks: closing the griefing hole without losing accuracy
+
+Charging arbitrage loss between consecutive post-arbitrage marks has one weakness: a tipped push that the next block's
+first swap pushes back is booked as two arbitrage moves, although the LPs earned fees on the round trip. Anyone paying
+the fees could make a rival's Edge read worse than it is, with leverage that grows with the size of the push (a 5%
+push costs victims about 50 times what it costs the attacker). We tested three fixes in the same backtest:
+
+| Marks | BTC 2024, 5 bps: correlation / weekly error / bias | Griefing leverage |
+| --- | --- | --- |
+| Every move between marks (previous formula) | 0.9992 / 12.4 bps / −4.4 | unbounded |
+| Net every reversal (a → b → c charged as a → c) | 0.9764 / 42.5 bps / **+17.0** (overstates) | none |
+| **Net a spike: both legs wider than 8 fee-widths, opposite ways** (deployed) | 0.9988 / 14.2 bps / −2.8 | at most ~4× |
+
+Netting every reversal is wrong: honest arbitrage moves the mark back and forth inside the fee band, and that is real
+loss. Only a move wider than `SPIKE_FEE_WIDTHS` (8) fee-widths that the next mark reverses by as much is netted; on
+synthetic paths and on the 30 bps pool the results are unchanged, it still ranks the six curators in exactly the true
+order, and it still errs low. A push below the threshold can hurt a rival by at most about `widths / 2` times what it
+costs in fees, whatever path it takes (`test_spikePushedBackIsChargedOnce`, `test_smallReversalsAreChargedInFull`).
+
 ## How the hook works
 
 | Step | Where | What |
@@ -85,7 +104,7 @@ a full-year replay of Bitstamp BTC/USD 2024 prices.
 | Classify | `beforeSwap` | A swap paying a priority fee (`tx.gasprice − block.basefee`) at or above `priorityFeeThreshold` is **arbitrage**. On Unichain, priority ordering makes arbitrageurs bid for the top of the block. Rule: *when in doubt, call it arbitrage* — the backtest shows a classifier that never misses an arbitrage never overstates Edge. |
 | Credit impact | first `beforeSwap` of a block | The previous block closed at the current price. Credit each sleeve `l·(close − s*)²/s*`: user displacement that the next arbitrage reverts in the LPs' favour. Net per block, so a same-block round trip earns nothing. |
 | Attribute fees | `afterSwap` | Each sleeve's LP fee is computed exactly from the price path, net of any protocol fee the pool pays, and booked as user or arbitrage fee. Arbitrage fees never count toward Edge. |
-| Mark and charge | first `afterSwap` of a block | Record `s*`, the price right after the arbitrage slot. Charge each sleeve `l·(s*_k − s*_{k−1})²/s*_{k−1}`. |
+| Mark and charge | first `afterSwap` of a block | Record `s*`, the price right after the arbitrage slot. Charge each sleeve `l·(s*_k − s*_{k−1})²/s*_{k−1}`. A move wider than 8 fee-widths that the next mark reverses is a spike: both legs are charged as the single move around it. |
 | Anchor new liquidity | `modifySleeveLiquidity` | Liquidity added between marks is measured from the price it joins at, not from `s*`, until the next mark, so a deposit landing after user flow is never credited with that flow's impact. |
 
 All formulas live in [`src/libraries/EdgeMath.sol`](src/libraries/EdgeMath.sol). Losses round up and credits round
@@ -340,7 +359,7 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
-forge test                          # 100 tests + 5 stateful invariants: unit, fuzz, integration, differential
+forge test                          # 103 tests + 5 stateful invariants: unit, fuzz, integration, differential
 forge test --match-test test_gas -vv
 ```
 
@@ -370,9 +389,9 @@ python export_web.py                       # refresh the site's data after exper
 
 | Path | Gas |
 | --- | --- |
-| First swap of a block, two sleeves (mark, impact credit, loss charge, fee attribution), including the router and PoolManager | ~282k |
+| First swap of a block, two sleeves (mark, impact credit, loss charge, fee attribution), including the router and PoolManager | ~300k |
 | Later swap in the same block, two sleeves | ~177k |
-| First swap of a block with the pool full (eight sleeves, all in range) | ~582k |
+| First swap of a block with the pool full (eight sleeves, all in range) | ~634k |
 | Later swap in the same block, eight sleeves | ~257k |
 | `requestDeposit` (including the minimum-deposit check) | ~189k |
 | `settleEpoch` with a performance fee, one redemption and one deposit | ~717k |
@@ -389,7 +408,7 @@ measured a later swap twice.
 | Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees`, and a curator benchmark built on it that separates skill from market direction |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
 | Impact (20%) | Curators are paid a performance fee only on Edge above a high-water mark and bonded against LVR, so depositors pay for skill and are compensated for losses beyond what was promised; any curator vault can adopt the meter as its scoring and fee standard |
-| Functionality (15%) | 100 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 5 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
+| Functionality (15%) | 103 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 5 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
 
@@ -413,9 +432,9 @@ No partner integrations.
 
 ### Known limitations
 
-- Marks treat every block's first swap as arbitrage, so a tipped push that the next block's first swap reverts charges
-  every in-range sleeve for both moves although its LPs earned fees. Edge errs low, never high, but someone willing to
-  pay the fees can make a rival's Edge read worse than it is (see `THREAT_MODEL.md`).
+- A tipped push smaller than 8 fee-widths that the next block pushes back is still charged as two arbitrage moves, so
+  someone paying fees can make a rival's Edge read lower than it is, by at most about 4 times what it costs them.
+  Larger spikes are netted (see *Spike-netted marks* above). Edge errs low, never high.
 - A curator can remove and re-add its liquidity between a block's user flow and the next arbitrage to re-anchor it,
   lowering one block's booked loss; bounded per block but repeatable.
 

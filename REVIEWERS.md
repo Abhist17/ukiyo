@@ -9,7 +9,7 @@ Edge = user fees + user price impact − arbitrage loss
 ```
 
 per curator, block by block, with no oracle. On a full year of BTC/USD 2024 prices it tracks true hedged P&L with
-correlation 0.987–0.999 and ranks six curators in exactly the true order (weekly error 12–13 bps vs 206–364 bps for
+correlation 0.987–0.999 and ranks six curators in exactly the true order (weekly error 13–14 bps vs 206–364 bps for
 the naive formula).
 
 ## 1. See it live (two minutes)
@@ -28,7 +28,7 @@ Sepolia (arbitrage with a priority fee, users without).
 ## 2. Check the claims (two minutes)
 
 ```bash
-forge test                                   # 100 tests + 5 stateful invariants, canonical PoolManager bytecode
+forge test                                   # 103 tests + 5 stateful invariants, canonical PoolManager bytecode
 forge test --match-test testFuzz_ledgersMatchReferenceReplay   # differential fuzz: hook ledgers = independent replay
 forge test --match-test test_gas -vv         # gas of the swap path and the vault paths
 cd backtest && python experiments.py         # the backtest behind the numbers above
@@ -47,6 +47,7 @@ cd backtest && python experiments.py         # the backtest behind the numbers a
 
 - The classifier is the priority fee. On real Unichain flow about 7% of informed swaps pay no tip; a 5 bps pool
   tolerates that (about 25% error), a 30 bps pool would not. Measured, not assumed: see the README.
-- Edge errs low, never high, by design; but someone paying fees can make a rival's Edge read lower than it is. Open
-  and documented in the threat model.
+- Edge errs low, never high, by design; someone paying fees can still make a rival's Edge read lower than it is, but
+  since spike-netted marks only by about 4× what it costs them (it was unbounded). See the README's backtest section
+  and the threat model.
 - Unaudited hackathon code on a testnet.

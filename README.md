@@ -17,7 +17,7 @@ Edge = user fees + user price impact − arbitrage loss
 Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and Curation*).
 
 **Live:** [ukiyo-ochre.vercel.app](https://ukiyo-ochre.vercel.app) · Unichain Sepolia hook
-[`0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0`](https://sepolia.uniscan.xyz/address/0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0) · **Reviewing?** Start with
+[`0xbe62a2D964ab8d81A203F2C05bDF0a96E6f7eac0`](https://sepolia.uniscan.xyz/address/0xbe62a2D964ab8d81A203F2C05bDF0a96E6f7eac0) · **Reviewing?** Start with
 [`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md).
 
 ## Where the Uniswap v4 integration lives
@@ -284,17 +284,17 @@ straight from the public RPC. The test tokens sit at fixed CREATE2 addresses, so
 
 | Contract | Address |
 | --- | --- |
-| Hook (`UkiyoHook`) | [`0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0`](https://sepolia.uniscan.xyz/address/0xeaad9d26Ce6caa6De593ed34262863532a1bEAC0) |
-| Factory (`UkiyoFactory`) | [`0x3dE6c3063DD12a776Bd737811070c990945efb7f`](https://sepolia.uniscan.xyz/address/0x3dE6c3063DD12a776Bd737811070c990945efb7f) |
-| Skill router (`UkiyoSkillRouter`) | [`0xF4198d05821a655B57bD797765e244Bf310f8Fb4`](https://sepolia.uniscan.xyz/address/0xF4198d05821a655B57bD797765e244Bf310f8Fb4) |
+| Hook (`UkiyoHook`) | [`0xbe62a2D964ab8d81A203F2C05bDF0a96E6f7eac0`](https://sepolia.uniscan.xyz/address/0xbe62a2D964ab8d81A203F2C05bDF0a96E6f7eac0) |
+| Factory (`UkiyoFactory`) | [`0x14B0Bd9235B5f8c564F538a33832b99180A39533`](https://sepolia.uniscan.xyz/address/0x14B0Bd9235B5f8c564F538a33832b99180A39533) |
+| Skill router (`UkiyoSkillRouter`) | [`0xB3dEdd9694A9a67c75442dAfe7A31595E9972625`](https://sepolia.uniscan.xyz/address/0xB3dEdd9694A9a67c75442dAfe7A31595E9972625) |
 | PoolManager (canonical v4) | [`0x00B036B58a818B1BC34d502D3fE730Db729e62AC`](https://sepolia.uniscan.xyz/address/0x00B036B58a818B1BC34d502D3fE730Db729e62AC) |
-| Swap router (`PoolSwapTest`) | [`0x1d2f6bBE71ec15ebf5c21625672B02fa2cB64553`](https://sepolia.uniscan.xyz/address/0x1d2f6bBE71ec15ebf5c21625672B02fa2cB64553) |
+| Swap router (`PoolSwapTest`) | [`0x1Ca687AC1D8cDC7b46971CF7359590b90E896d78`](https://sepolia.uniscan.xyz/address/0x1Ca687AC1D8cDC7b46971CF7359590b90E896d78) |
 | tBTC (test token, token0) | [`0xe4134d0bA75d9cc0a22dac01a11f589559434148`](https://sepolia.uniscan.xyz/address/0xe4134d0bA75d9cc0a22dac01a11f589559434148) |
 | tUSD (test token, token1) | [`0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db`](https://sepolia.uniscan.xyz/address/0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db) |
-| Vault: Passive Wide (`ukWIDE`) | [`0x71226DFC8b70a6aB3e540aD1785Cc16d7CC0E194`](https://sepolia.uniscan.xyz/address/0x71226DFC8b70a6aB3e540aD1785Cc16d7CC0E194) |
-| Vault: Passive Mid (`ukMID`) | [`0x825A5A02d71E42e83c1888B2D9258b4E45a6b133`](https://sepolia.uniscan.xyz/address/0x825A5A02d71E42e83c1888B2D9258b4E45a6b133) |
-| Vault: Tight Chaser (`ukTIGHT`) | [`0xC39906F62988A0ef97B86213192aD37F6E548E51`](https://sepolia.uniscan.xyz/address/0xC39906F62988A0ef97B86213192aD37F6E548E51) |
-| Vault: Vol Adaptive (`ukVOL`) | [`0x70d29E954F837D48cc9345d34e9322C9D908A640`](https://sepolia.uniscan.xyz/address/0x70d29E954F837D48cc9345d34e9322C9D908A640) |
+| Vault: Passive Wide (`ukWIDE`) | [`0xe865b762fe2A47E7949d568ed9A676Fe7Caf4923`](https://sepolia.uniscan.xyz/address/0xe865b762fe2A47E7949d568ed9A676Fe7Caf4923) |
+| Vault: Passive Mid (`ukMID`) | [`0x35305b067374149d4baEF34e62AAD2A7C1034F34`](https://sepolia.uniscan.xyz/address/0x35305b067374149d4baEF34e62AAD2A7C1034F34) |
+| Vault: Tight Chaser (`ukTIGHT`) | [`0xf67e16732e8Bf12AB0119a35049fF074a6530246`](https://sepolia.uniscan.xyz/address/0xf67e16732e8Bf12AB0119a35049fF074a6530246) |
+| Vault: Vol Adaptive (`ukVOL`) | [`0x1Fa3ecb67510747e37EF60F18567FabbE3f314ce`](https://sepolia.uniscan.xyz/address/0x1Fa3ecb67510747e37EF60F18567FabbE3f314ce) |
 
 Demo settings: 5 bps pool, classifier threshold 0.002 gwei, 10-minute epochs, 10% performance fee, curator bonds of
 $10K–$50K with a 25 bps per-epoch LVR budget. Test tokens only.

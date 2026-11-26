@@ -30,7 +30,7 @@ TypeScript and Python in it was written after that, in public commits. Nothing p
 | 23 Nov | The Edge index: a size-neutral, compounding skill score per vault |
 | 24 Nov | Skill t-statistic and probation; `UkiyoFactory` (permissionless launches) and `UkiyoSkillRouter`; security fixes from a full review (price guard on settle and rebalance, freed deposit slots, capped redeploys); `UkiyoLens`; wallet connect rework; line-anchored integration map |
 | 25 Nov | Spike-netted marks, backtested before shipping (estimator v7 against the v5 and a rejected v6) |
-| 26 Nov | Liquidity put back between marks can no longer be re-anchored, in the same range or a shifted one; impact section; this file and [`FEEDBACK.md`](FEEDBACK.md); an out-of-sample backtest on four years of ETH/USDT; [`ROADMAP.md`](ROADMAP.md) |
+| 26 Nov | Liquidity put back between marks can no longer be re-anchored, in the same range or a shifted one; impact section; this file and [`FEEDBACK.md`](FEEDBACK.md); an out-of-sample backtest on four years of ETH/USDT; [`ROADMAP.md`](ROADMAP.md); the one-page overview and the drawn explainer; wallets through RainbowKit, with WalletConnect for phones |
 
 `git log --reverse` shows the full history, one focused commit at a time.
 

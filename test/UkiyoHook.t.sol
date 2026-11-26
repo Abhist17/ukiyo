@@ -519,6 +519,54 @@ contract UkiyoHookTest is Test {
         assertEq(hook.sleeve(0).anchor, 0);
     }
 
+    /// @notice Taking liquidity out and putting it back between two marks changes nothing about the position, so it
+    ///         changes nothing in the ledger. Before, it re-anchored the liquidity at the block's close: when the
+    ///         market was about to continue the users' move, a curator could do that to drop the move's cross term
+    ///         from its arbitrage loss, overstating its Edge.
+    function test_takingLiquidityOutAndBackIsANoOp() public {
+        _swapTo(_atTick(60), ARB_TIP); // s* of this block
+        _swapTo(_atTick(300), USER_TIP); // users push the price up
+        UkiyoHook.Ledger memory before = hook.ledger(0);
+        hook.modifySleeveLiquidity(0, -int256(uint256(LIQ))); // the round trip, at the block's close
+        hook.setSleeveRange(0, -600, 600); // a vault's rebalance re-sets the same ticks: still the same position
+        hook.modifySleeveLiquidity(0, int256(uint256(LIQ)));
+        assertEq(hook.sleeve(0).anchoredLiquidity, 0, "it rejoins as the liquidity it was");
+
+        _nextBlock();
+        _swapTo(_atTick(540), ARB_TIP); // the market continues the users' move
+
+        (uint160 lo, uint160 hi) = _bounds(0);
+        uint256 impact = hook.ledger(0).userImpact - before.userImpact;
+        uint256 loss = hook.ledger(0).arbLoss - before.arbLoss;
+        assertEq(impact, EdgeMath.impactCredit(LIQ, _atTick(60), _atTick(300), lo, hi), "credited as if it stayed");
+        assertEq(loss, EdgeMath.rebalancingLoss(LIQ, _atTick(60), _atTick(540), lo, hi), "charged as if it stayed");
+        // what re-anchoring would have booked instead: no credit, and only the move from the close
+        uint256 reanchored = EdgeMath.rebalancingLoss(LIQ, _atTick(300), _atTick(540), lo, hi);
+        assertLt(int256(impact) - int256(loss), -int256(reanchored), "the round trip would have raised Edge");
+    }
+
+    /// @notice Only what left comes back measured from the mark; liquidity beyond it is new, and anchored.
+    function test_onlyWhatLeftRejoins() public {
+        _swapTo(_atTick(60), ARB_TIP);
+        _swapTo(_atTick(-240), USER_TIP);
+        hook.modifySleeveLiquidity(0, -int256(uint256(LIQ / 2)));
+        hook.modifySleeveLiquidity(0, int256(uint256(LIQ)));
+        assertEq(hook.sleeve(0).liquidity, LIQ + LIQ / 2);
+        assertEq(hook.sleeve(0).anchoredLiquidity, LIQ / 2, "what goes beyond what left is new");
+        assertEq(hook.sleeve(0).anchor, _price());
+    }
+
+    /// @notice Liquidity that left before a mark was not there for the move to it, so it cannot rejoin after it.
+    function test_liquidityThatLeftBeforeAMarkJoinsAfreshAfterIt() public {
+        _swapTo(_atTick(60), ARB_TIP);
+        hook.modifySleeveLiquidity(0, -int256(uint256(LIQ)));
+        _nextBlock();
+        _swapTo(_atTick(300), ARB_TIP); // a mark while the sleeve is empty
+        hook.modifySleeveLiquidity(0, int256(uint256(LIQ)));
+        assertEq(hook.sleeve(0).anchoredLiquidity, LIQ, "anchored where it joined");
+        assertEq(hook.sleeve(0).anchor, _atTick(300));
+    }
+
     /// @notice Removal takes the newest liquidity first, and removing all of it drops the anchor.
     function test_removalTakesAnchoredLiquidityFirst() public {
         _swapTo(_atTick(60), ARB_TIP);
@@ -623,6 +671,7 @@ contract UkiyoHookTest is Test {
         uint160 anchor;
         uint256 legLoss; // what the last leg between marks cost this sleeve
         uint128 legLiq; // the liquidity it was charged on, 0 if it cannot be netted
+        uint128 left; // mark-measured liquidity removed since the last mark, which may rejoin as it was
     }
 
     /// @dev Reference-model state, kept in storage to stay clear of the stack limit.
@@ -695,6 +744,7 @@ contract UkiyoHookTest is Test {
         }
         m.anchored = 0;
         m.anchor = 0;
+        m.left = 0;
     }
 
     /// @dev Add or remove a random amount of one sleeve's liquidity, in the pool and in the reference model.
@@ -708,14 +758,30 @@ contract UkiyoHookTest is Test {
         if (add) {
             hook.modifySleeveLiquidity(i, int256(uint256(amount)));
             m.liquidity += amount;
-            m.anchored += amount;
-            m.anchor = _price();
+            // what left since the mark comes back as it was; only the rest is new, anchored where it joins
+            uint128 back = amount < m.left ? amount : m.left;
+            m.left -= back;
+            if (amount > back) {
+                m.anchored += amount - back;
+                m.anchor = _price();
+            }
         } else {
             hook.modifySleeveLiquidity(i, -int256(uint256(amount)));
             m.liquidity -= amount;
-            if (m.anchored != 0) {
-                m.anchored = m.anchored > amount ? m.anchored - amount : 0;
-                if (m.anchored == 0) m.anchor = 0;
+            uint128 fromAnchored = amount < m.anchored ? amount : m.anchored;
+            m.anchored -= fromAnchored;
+            if (m.anchored == 0) m.anchor = 0;
+            m.left += amount - fromAnchored;
+            // a quarter of removals are round trips: the same liquidity straight back, at the same price
+            if ((r >> 206) % 4 == 0) {
+                hook.modifySleeveLiquidity(i, int256(uint256(amount)));
+                m.liquidity += amount;
+                uint128 back = amount < m.left ? amount : m.left;
+                m.left -= back;
+                if (amount > back) {
+                    m.anchored += amount - back;
+                    m.anchor = _price();
+                }
             }
         }
     }

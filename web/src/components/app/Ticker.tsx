@@ -1,7 +1,7 @@
 /** A slow strip of verifiable facts under the app header; each links to where it can be checked. */
 const REPO = "https://github.com/Abhist17/ukiyo";
 const FACTS: [string, string][] = [
-  ["108 tests and 5 stateful invariants against the canonical PoolManager", `${REPO}/tree/main/test`],
+  ["109 tests and 5 stateful invariants against the canonical PoolManager", `${REPO}/tree/main/test`],
   ["Differential fuzz test: every ledger field equals an independent replay", `${REPO}/blob/main/test/UkiyoHook.t.sol`],
   ["No oracle, no keeper: the hook reads only the pool's own prices", `${REPO}#how-the-hook-works`],
   ["Rounding never overstates Edge: losses round up, credits round down", `${REPO}/blob/main/src/libraries/EdgeMath.sol`],

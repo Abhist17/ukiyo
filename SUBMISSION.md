@@ -51,7 +51,7 @@ spike netting, the anchoring and dual-measurement rules, and the vault mechanics
 ## How to check the claims
 
 ```bash
-forge test                                   # 108 tests + 5 stateful invariants, canonical PoolManager bytecode
+forge test                                   # 109 tests + 5 stateful invariants, canonical PoolManager bytecode
 forge test --match-test test_gas -vv         # the README's gas table
 cd backtest && uv run --no-project --with numpy --with numba python experiments.py   # every backtest number
 cd web && npm test                           # the site's maths, the backtest claim it shows, the README's code links

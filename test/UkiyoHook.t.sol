@@ -643,30 +643,7 @@ contract UkiyoHookTest is Test {
 
     /// @notice Gas of a block's first swap (marks + loss + impact for 2 sleeves) and of a later swap in the block.
     function test_gas_swapPath() public {
-        _swapTo(_atTick(60), ARB_TIP);
-        _swapTo(_atTick(-120), USER_TIP);
-        _nextBlock();
-
-        vm.txGasPrice(BASE_FEE + ARB_TIP);
-        uint256 g = gasleft();
-        swapRouter.swap(
-            key,
-            SwapParams({zeroForOne: false, amountSpecified: -1e27, sqrtPriceLimitX96: _atTick(180)}),
-            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
-            ""
-        );
-        uint256 firstSwap = g - gasleft();
-
-        vm.txGasPrice(BASE_FEE + USER_TIP);
-        g = gasleft();
-        swapRouter.swap(
-            key,
-            SwapParams({zeroForOne: true, amountSpecified: -1e27, sqrtPriceLimitX96: _atTick(0)}),
-            PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
-            ""
-        );
-        uint256 laterSwap = g - gasleft();
-
+        (uint256 firstSwap, uint256 laterSwap) = _measureSteadyState();
         emit log_named_uint("gas: first swap of a block (2 sleeves)", firstSwap);
         emit log_named_uint("gas: later swap in the same block (2 sleeves)", laterSwap);
         assertLt(firstSwap, 400_000);
@@ -679,10 +656,22 @@ contract UkiyoHookTest is Test {
             hook.openSleeve(stranger, -6000 + int24(int256(i)) * 60, 6000 - int24(int256(i)) * 60);
             hook.modifySleeveLiquidity(i, int256(uint256(LIQ)));
         }
-        _swapTo(_atTick(60), ARB_TIP);
-        _swapTo(_atTick(-120), USER_TIP);
-        _nextBlock();
+        (uint256 firstSwap, uint256 laterSwap) = _measureSteadyState();
+        emit log_named_uint("gas: first swap of a block (8 sleeves)", firstSwap);
+        emit log_named_uint("gas: later swap in the same block (8 sleeves)", laterSwap);
+        assertLt(firstSwap, 800_000);
+        assertLt(laterSwap, 500_000);
+    }
 
+    /// @dev Gas of a block's first swap (tipped) and of a later user swap, after a few blocks of history, so every ledger
+    ///      entry is already non-zero and no one-off first write is counted. Foundry meters each call from a test as its
+    ///      own transaction, so the figures include the 21,000 base cost and cold storage reads, like a real swap.
+    function _measureSteadyState() internal returns (uint256 firstSwap, uint256 laterSwap) {
+        for (uint256 b; b < 3; ++b) {
+            _swapTo(_atTick(b % 2 == 0 ? int24(60) : int24(120)), ARB_TIP);
+            _swapTo(_atTick(-120), USER_TIP);
+            _nextBlock();
+        }
         vm.txGasPrice(BASE_FEE + ARB_TIP);
         uint256 g = gasleft();
         swapRouter.swap(
@@ -691,7 +680,7 @@ contract UkiyoHookTest is Test {
             PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
             ""
         );
-        uint256 firstSwap = g - gasleft();
+        firstSwap = g - gasleft();
         vm.txGasPrice(BASE_FEE + USER_TIP);
         g = gasleft();
         swapRouter.swap(
@@ -700,11 +689,36 @@ contract UkiyoHookTest is Test {
             PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false}),
             ""
         );
-        uint256 laterSwap = g - gasleft();
-        emit log_named_uint("gas: first swap of a block (8 sleeves)", firstSwap);
-        emit log_named_uint("gas: later swap in the same block (8 sleeves)", laterSwap);
-        assertLt(firstSwap, 800_000);
-        assertLt(laterSwap, 500_000);
+        laterSwap = g - gasleft();
+    }
+
+    /// @notice Baseline for the table above: the same two swaps on a plain v4 pool with no hook and the same liquidity,
+    ///         so the scoreboard's cost per swap can be read as the difference.
+    function test_gas_plainPoolBaseline() public {
+        PoolKey memory plain = PoolKey({
+            currency0: Currency.wrap(address(token0)),
+            currency1: Currency.wrap(address(token1)),
+            fee: FEE,
+            tickSpacing: SPACING,
+            hooks: IHooks(address(0))
+        });
+        manager.initialize(plain, SQRT_PRICE_1_1);
+        lpRouter.modifyLiquidity(plain, ModifyLiquidityParams(-600, 600, int256(uint256(LIQ)), 0), "");
+        lpRouter.modifyLiquidity(plain, ModifyLiquidityParams(-6000, 6000, int256(uint256(LIQ)), 0), "");
+        PoolSwapTest.TestSettings memory t = PoolSwapTest.TestSettings({takeClaims: false, settleUsingBurn: false});
+        for (uint256 b; b < 3; ++b) {
+            swapRouter.swap(plain, SwapParams(false, -1e27, _atTick(b % 2 == 0 ? int24(60) : int24(120))), t, "");
+            swapRouter.swap(plain, SwapParams(true, -1e27, _atTick(-120)), t, "");
+            _nextBlock();
+        }
+        uint256 g = gasleft();
+        swapRouter.swap(plain, SwapParams(false, -1e27, _atTick(180)), t, "");
+        uint256 up = g - gasleft();
+        g = gasleft();
+        swapRouter.swap(plain, SwapParams(true, -1e27, _atTick(0)), t, "");
+        uint256 down = g - gasleft();
+        emit log_named_uint("gas: plain v4 pool, same swap up (no hook)", up);
+        emit log_named_uint("gas: plain v4 pool, same swap down (no hook)", down);
     }
 
     // ------------------------------------------------------------------------------------------------------------

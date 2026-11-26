@@ -70,20 +70,21 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     // Types
     // ---------------------------------------------------------------------------------------------------------------
 
-    /// @notice A curator's hook-owned position.
-    /// @param curator Address credited with this sleeve's Edge.
+    /// @notice A curator's hook-owned position. The fields every swap reads (range and liquidity) share one storage
+    ///         slot, so a swap costs one cold read per sleeve; the rest is read only at marks and liquidity changes.
     /// @param tickLower Lower tick of the position.
     /// @param tickUpper Upper tick of the position.
     /// @param liquidity Current liquidity of the position.
+    /// @param curator Address credited with this sleeve's Edge.
     /// @param anchoredLiquidity The part of `liquidity` added since the last mark. It is measured from `anchor` instead
     ///        of the global post-arbitrage mark, so liquidity is never credited or charged for price moves that happened
     ///        before it existed. Cleared by the next mark, from which on it is ordinary liquidity.
     /// @param anchor Square-root price at which `anchoredLiquidity` was added, or 0.
     struct Sleeve {
-        address curator;
         int24 tickLower;
         int24 tickUpper;
         uint128 liquidity;
+        address curator;
         uint128 anchoredLiquidity;
         uint160 anchor;
     }

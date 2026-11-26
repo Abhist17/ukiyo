@@ -28,7 +28,7 @@ Sepolia (arbitrage with a priority fee, users without).
 ## 2. Check the claims (two minutes)
 
 ```bash
-forge test                                   # 108 tests + 5 stateful invariants, canonical PoolManager bytecode
+forge test                                   # 109 tests + 5 stateful invariants, canonical PoolManager bytecode
 forge test --match-test testFuzz_ledgersMatchReferenceReplay   # differential fuzz: hook ledgers = independent replay
 forge test --match-test test_gas -vv         # gas of the swap path and the vault paths
 cd backtest && python experiments.py         # the backtest behind the numbers above

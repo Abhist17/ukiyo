@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Ukiyo: product overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --navy:#11162B; --ink:#0a0d14; --muted:#5b6275; --line:#e3e6ee; --sun:#E8452C; --paper:#ffffff; --soft:#f4f5f8; --pos:#127a4b; }
+body { width:210mm; height:297mm; background:var(--paper); color:var(--ink); font:9.7pt/1.42 Geist, "Helvetica Neue", Arial, sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.page { padding:12mm 14mm 9mm; height:297mm; display:flex; flex-direction:column; gap:4.2mm; }
+header { display:flex; align-items:center; gap:4mm; }
+header h1 { font-size:22pt; letter-spacing:-0.02em; line-height:1; }
+header h1 span { color:var(--muted); font-weight:500; font-size:15pt; margin-left:2mm; }
+header p { color:var(--muted); font-size:9.5pt; margin-top:1.2mm; }
+.lead { font-size:12.2pt; line-height:1.38; letter-spacing:-0.01em; font-weight:500; }
+.lead em { font-style:normal; color:var(--sun); }
+h3 { font-size:8pt; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:2mm; }
+.chart { background:var(--navy); color:#eef0f8; border-radius:4mm; padding:4.4mm 6mm 4mm; }
+.chart h3 { color:#9aa3bd; }
+.cols { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5mm; }
+.col h4 { font-size:10pt; margin-bottom:1.6mm; }
+.col.edge h4 { color:var(--sun); }
+.col ol { list-style:none; }
+.col li { display:flex; gap:2.4mm; align-items:center; padding:0.8mm 2mm; border-radius:1.6mm; font-size:9.4pt; color:#c3c9db; }
+.col li b { width:4.4mm; color:#7d86a3; font-weight:600; }
+.col li.hl { background:rgba(232,69,44,.18); color:#fff; }
+.col li.bad { background:rgba(120,140,255,.22); color:#fff; }
+.col li.loss::after { content:"loses money"; margin-left:auto; font-size:7.6pt; color:#ff8d7a; }
+.col p { font-size:8.3pt; color:#9aa3bd; margin-top:1.8mm; line-height:1.35; }
+.formula { display:flex; flex-direction:column; gap:1.2mm; background:var(--soft); border-radius:3mm; padding:3.2mm 5mm; }
+.formula code { font:500 11.5pt "Geist Mono", ui-monospace, monospace; white-space:nowrap; }
+.formula p { font-size:9.2pt; color:var(--muted); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:6mm; }
+ul.plain { list-style:none; display:flex; flex-direction:column; gap:1.2mm; }
+ul.plain li { font-size:9.1pt; padding-left:3.6mm; position:relative; }
+ul.plain li::before { content:""; position:absolute; left:0; top:2.1mm; width:1.5mm; height:1.5mm; border-radius:50%; background:var(--sun); }
+ul.plain b { font-weight:600; }
+.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:3mm; }
+.stat { border:0.3mm solid var(--line); border-radius:3mm; padding:3mm 3.4mm; }
+.stat b { display:block; font-size:16pt; letter-spacing:-0.02em; line-height:1.1; }
+.stat span { font-size:8.2pt; color:var(--muted); line-height:1.3; display:block; margin-top:1mm; }
+.stat small { color:var(--muted); font-size:7.6pt; }
+footer { margin-top:auto; display:flex; justify-content:space-between; gap:6mm; border-top:0.3mm solid var(--line); padding-top:3mm; font-size:8.4pt; color:var(--muted); }
+footer b { color:var(--ink); font-weight:600; }
+</style></head>
+<body><div class="page">
+<header><svg width="46" height="46" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Ukiyo">
+  <rect x="3" y="3" width="58" height="58" rx="15" fill="#11162B"/>
+  <rect x="3.75" y="3.75" width="56.5" height="56.5" rx="14.25" fill="none" stroke="#F4EFE6" stroke-opacity="0.18" stroke-width="1.5"/>
+  <circle cx="41" cy="22.5" r="10.5" fill="#E8452C"/>
+  <path d="M30 51 C36 51 42 49 53 44" fill="none" stroke="#F4EFE6" stroke-opacity="0.45" stroke-width="3.2" stroke-linecap="round"/>
+  <path d="M11 50 C19 50 23 44 26 37 C29.5 29 37 26.5 42 31 C46 35 43.5 41 38.5 40.5 C35.5 40.2 35 37 37 35.8" fill="none" stroke="#F4EFE6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+<div><h1>Ukiyo <span>浮世</span></h1><p>An honest scoreboard for curated liquidity · a Uniswap v4 hook · Uniswap Hook Incubator, cohort 11</p></div></header>
+
+<p class="lead">More and more of Uniswap's liquidity is run by <b>curators</b> who manage it for depositors. Depositors pick them by fee income or by &ldquo;did they beat holding&rdquo;, numbers that mostly measure the market, not the manager. <em>So money follows the wrong curators.</em> Ukiyo measures each curator's real skill inside the pool itself, with no oracle.</p>
+
+<section class="chart">
+<h3>Six curators, all of 2024's real BTC prices, ranked three ways</h3>
+<div class="cols">
+<div class="col fees"><h4>Fee income</h4><ol><li class="bad"><b>1</b>Tight chaser</li><li class="hl"><b>2</b>Vol-adaptive 1.5σ</li><li class=""><b>3</b>Vol-adaptive 3σ</li><li class=""><b>4</b>Passive mid</li><li class=""><b>5</b>Momentum</li><li class=""><b>6</b>Passive wide</li></ol><p>Crowns the tight chaser: it trades most against arbitrageurs, who cost its depositors money. Hides the momentum curator's loss.</p></div>
+<div class="col edge"><h4>Ukiyo Edge</h4><ol><li class="hl"><b>1</b>Vol-adaptive 1.5σ</li><li class=""><b>2</b>Vol-adaptive 3σ</li><li class=""><b>3</b>Tight chaser</li><li class=""><b>4</b>Passive mid</li><li class=""><b>5</b>Passive wide</li><li class=" loss"><b>6</b>Momentum</li></ol><p>Computed by the hook, block by block, from the pool's own prices.</p></div>
+<div class="col truth"><h4>True hedged P&L</h4><ol><li class="hl"><b>1</b>Vol-adaptive 1.5σ</li><li class=""><b>2</b>Vol-adaptive 3σ</li><li class=""><b>3</b>Tight chaser</li><li class=""><b>4</b>Passive mid</li><li class=""><b>5</b>Passive wide</li><li class=" loss"><b>6</b>Momentum</li></ol><p>The answer key, known only to the simulation. Edge matches it exactly.</p></div>
+</div>
+</section>
+
+<div class="formula"><code>Edge = user fees + user price impact − arbitrage loss</code><p>What ordinary traders paid the curator, minus what arbitrageurs took. The market's direction is left out, so a bull run can't make a curator look skilled.</p></div>
+
+<div class="stats">
+<div class="stat"><b>0.999</b><span>correlation with true P&amp;L, week by week <small>(BTC 2024)</small></span></div>
+<div class="stat"><b>4 of 4</b><span>years it picks the true best curator on ETH 2021–24 <small>(fee income: 1 of 4)</small></span></div>
+<div class="stat"><b>23 of 24</b><span>curators' profit or loss called right on ETH <small>(fee income: 16)</small></span></div>
+<div class="stat"><b>0</b><span>oracles or keepers: only the pool's own prices</span></div>
+</div>
+
+<div class="grid2">
+<div><h3>What's built and live</h3><ul class="plain">
+<li><b>The hook</b> keeps a ledger per curator on every swap, rounded against the curator wherever it has to choose.</li>
+<li><b>Curator vaults</b> that pay the curator only a share of Edge, with a bond that refunds depositors after a bad epoch.</li>
+<li><b>A skill test</b> on every vault (is it skill or luck?) and <b>probation</b> for a losing streak.</li>
+<li><b>Open launches</b> for any curator, and a <b>router</b> that splits a deposit by evidence of skill.</li>
+<li>Live on <b>Unichain Sepolia</b>, with 109 tests, 5 stateful invariants and a threat model.</li>
+</ul></div>
+<div><h3>Who it's for</h3><ul class="plain">
+<li><b>Depositors</b> back skill instead of volume, and see whether a record is more than luck.</li>
+<li><b>Curators</b> get a track record nobody can dispute, and are paid for skill, not for trading volume.</li>
+<li><b>Vault platforms</b> rank and route on one on-chain call.</li>
+</ul>
+<h3 style="margin-top:4mm">Honest limits</h3><ul class="plain">
+<li>Testnet only and not yet audited. Next: an off-chain scoreboard for existing pools, a security review, a capped mainnet pilot.</li>
+<li>Arbitrage is spotted by its priority fee; on today's Unichain flow that misses about 7% of informed trades, which the 5 bps pools Ukiyo targets tolerate.</li>
+</ul></div>
+</div>
+
+<footer><span><b>Try it:</b> ukiyo-ochre.vercel.app</span><span><b>Code:</b> github.com/Abhist17/ukiyo</span><span>Abhist Kamle · 2026</span></footer>
+</div></body></html>

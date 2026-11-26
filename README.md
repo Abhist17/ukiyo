@@ -19,13 +19,16 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
 **Live:** [ukiyo-ochre.vercel.app](https://ukiyo-ochre.vercel.app) · Unichain Sepolia hook
 [`0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0`](https://sepolia.uniscan.xyz/address/0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0) · **Reviewing?** Start with
 [`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md). **Built when?**
-[`SUBMISSION.md`](SUBMISSION.md). **Feedback on v4:** [`FEEDBACK.md`](FEEDBACK.md).
+[`SUBMISSION.md`](SUBMISSION.md). **Feedback on v4:** [`FEEDBACK.md`](FEEDBACK.md). **One page, no maths:**
+[`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf). **What's next:** [`ROADMAP.md`](ROADMAP.md).
 
 ## Highlights
 
 1. **Skill measured on-chain, with no oracle.** The hook reads only its own pool's prices. On a full year of real
    BTC/USD prices its Edge has a 0.987–0.999 correlation with each curator's true hedged P&L, and it ranks six curators in
    exactly their true order. The obvious formula puts the wrong curator first ([backtest](#what-the-backtest-found-and-why-the-obvious-formula-is-wrong)).
+   Out of sample, on four years of ETH (2021–2024), it picks the true best curator every year; fee income does so once
+   ([four years of ETH](#out-of-sample-four-years-of-ethusdt)).
 2. **It never flatters a curator.** Every rounding goes against the curator. A doubtful swap is booked as arbitrage. A
    tipped price spike that is pushed back is charged once, not twice
    ([`_isSpike`](src/UkiyoHook.sol#L785)). Liquidity is measured from where it joins, and a remove-and-re-add cannot reset
@@ -144,9 +147,38 @@ push costs victims about 50 times what it costs the attacker). We tested three f
 
 Netting every reversal is wrong: honest arbitrage moves the mark back and forth inside the fee band, and that is real
 loss. Only a move wider than `SPIKE_FEE_WIDTHS` (8) fee-widths that the next mark reverses by as much is netted; on
-synthetic paths and on the 30 bps pool the results are unchanged, it still ranks the six curators in exactly the true
-order, and it still errs low. A push below the threshold can hurt a rival by at most about `widths / 2` times what it
+synthetic paths and on the 30 bps pool the results are unchanged (on 30 bps pools both versions overstate by 7–9 bps a
+week, the cost of the 3% of arbitrage the simulated classifier misses; see below), it still ranks the six curators in
+exactly the true order, and on the 5 bps pool it still errs low. A push below the threshold can hurt a rival by at most about `widths / 2` times what it
 costs in fees, whatever path it takes (`test_spikePushedBackIsChargedOnce`, `test_smallReversalsAreChargedInFull`).
+
+### Out of sample: four years of ETH/USDT
+
+Nothing above was tuned on ETH. [`backtest/multiyear.py`](backtest/multiyear.py) runs the same simulator, the same six
+curators and the same formula on Binance ETH/USDT minute prices for each calendar year from 2021 to 2024: a bull run
+(+399%), a crash (−68%), a recovery (+91%) and a quieter year (+46%).
+
+| 5 bps pool, four years | Picks the true best curator | Curator pairs in the true full-year order | Gets each curator's profit or loss right | Weekly correlation with true P&L |
+| --- | --- | --- | --- | --- |
+| **Ukiyo Edge** | **4 of 4 years** | **97%** | **23 of 24** | **0.997–0.999** |
+| Fees − pool LVR (the obvious formula) | 1 of 4 | 70% | 16 of 24 | 0.45–0.85 |
+| Fee income | 1 of 4 | 68% | 16 of 24 | −0.38–0.63 |
+| Returns vs holding | 1 of 4 | 65% | 16 of 24 | 0.50–0.90 |
+
+Edge's weekly error is 9–17% of how much true P&L itself moves week to week, against 10% on BTC 2024, so it holds up
+across very different markets. Where it does not order a year exactly, the curators it swaps are near-ties (14 bps
+apart over all of 2023) or a curator it understates (the tight chaser in 2024). What does not hold up as well:
+
+- **Volatile years have large absolute errors.** In 2021 and 2022 true weekly P&L swings by about 750 bps, and Edge's
+  weekly error is 107–128 bps. It still ranks both years exactly.
+- **30 bps pools overstate.** With 3% of arbitrage misclassified, Edge on a 30 bps pool overstates by 5–25 bps a week
+  (the most in the 2021 bull run), and in 2023–24 it understates how much the tight chaser lost. It still picks the
+  true best curator in all four years and orders 92% of pairs (fee income: 50%). This is why Ukiyo targets 5 bps pools,
+  which tolerate about 25% classifier error, while 30 bps pools need about 97%.
+
+```bash
+cd backtest && uv run --no-project --with numpy python fetch_eth.py && uv run --no-project --with numpy --with numba python multiyear.py   # ~1 minute
+```
 
 ## How the hook works
 
@@ -470,7 +502,7 @@ first swap look about 35k (two sleeves) to 135k (eight) dearer than it is in a r
 | Impact (20%) | [Who it's for](#who-its-for-and-what-it-changes): fee income ranks the wrong curator first and hides a losing one, Edge does not. Depositors, curators and vault platforms each get something they cannot get today, live in vaults with an Edge-only performance fee, an LVR bond, a skill test, open launches and a skill-weighted router |
 | Functionality (15%) | 109 passing tests (10,000 fuzz runs each in CI), including a differential fuzz test against an independent model, and 5 stateful invariants over random sequences of every vault action; live on Unichain Sepolia with a replay bot; every tab of the app works against it |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
-| Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min), [`SUBMISSION.md`](SUBMISSION.md) (what was built when, what is reused), [`FEEDBACK.md`](FEEDBACK.md) (developer feedback on v4) |
+| Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min), [`SUBMISSION.md`](SUBMISSION.md) (what was built when, what is reused), [`FEEDBACK.md`](FEEDBACK.md) (developer feedback on v4), a one-page overview ([`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf)) and the [`ROADMAP.md`](ROADMAP.md) to real users |
 
 ## Partner integrations
 
@@ -532,7 +564,7 @@ No partner integrations.
 - Project layout follows [Uniswap/v4-template](https://github.com/Uniswap/v4-template)
 - Site: [Next.js](https://nextjs.org), React, [wagmi](https://wagmi.sh) and [viem](https://viem.sh); fonts Geist and Geist Mono from Google Fonts
 - Demo: v4-core's `PoolSwapTest` as the swap router, v4-periphery's `HookMiner` for the hook address, solmate's `MockERC20` for the faucet test tokens
-- Price data: [ff137/bitstamp-btcusd-minute-data](https://github.com/ff137/bitstamp-btcusd-minute-data)
+- Price data: [ff137/bitstamp-btcusd-minute-data](https://github.com/ff137/bitstamp-btcusd-minute-data); ETH/USDT minute klines from Binance's public data archive ([data.binance.vision](https://data.binance.vision))
 - Unichain swap data: the public RPC `mainnet.unichain.org`; contract verification labels from the
   [Blockscout](https://unichain.blockscout.com) API
 - Theory: Milionis, Moallemi, Roughgarden, Zhang, *Automated Market Making and Loss-Versus-Rebalancing* (2022);

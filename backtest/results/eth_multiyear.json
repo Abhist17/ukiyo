@@ -1,0 +1,689 @@
+{
+ "source": "Binance ETH/USDT 1-minute klines, 2021-2024 (data.binance.vision)",
+ "years": {
+  "2021": {
+   "eth_return": 3.988,
+   "5bps": {
+    "weeks": 52,
+    "true_weekly_sd_bps": 746.4936292736535,
+    "true_total_bps": {
+     "Passive wide (+-25%)": -4092.5,
+     "Passive mid (+-8%)": -9262.1,
+     "Tight chaser (+-1.5%)": -40186.0,
+     "Vol-adaptive (3 sigma)": -3225.9,
+     "Vol-adaptive (1.5 sigma)": -4933.7,
+     "Momentum (+-10%)": -8002.9
+    },
+    "edge": {
+     "corr": 0.9965530359572224,
+     "rmse_bps": 107.26209737299673,
+     "rmse_over_true_sd": 0.14368789386369438,
+     "bias_bps": 7.6079372954877345,
+     "year_pairs_in_true_order": 1.0,
+     "year_order_exact": true,
+     "picks_true_best": true,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": -3848.0,
+      "Passive mid (+-8%)": -8924.9,
+      "Tight chaser (+-1.5%)": -38603.7,
+      "Vol-adaptive (3 sigma)": -3242.9,
+      "Vol-adaptive (1.5 sigma)": -5135.2,
+      "Momentum (+-10%)": -7574.6
+     }
+    },
+    "naive": {
+     "corr": 0.8477842769579429,
+     "rmse_bps": 531.4802207022755,
+     "rmse_over_true_sd": 0.7119688633102088,
+     "bias_bps": 315.8868093801386,
+     "year_pairs_in_true_order": 0.26666666666666666,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 0,
+     "total_bps": {
+      "Passive wide (+-25%)": 523.4,
+      "Passive mid (+-8%)": 3333.2,
+      "Tight chaser (+-1.5%)": 14959.7,
+      "Vol-adaptive (3 sigma)": 2885.3,
+      "Vol-adaptive (1.5 sigma)": 6515.9,
+      "Momentum (+-10%)": 636.2
+     }
+    },
+    "fees": {
+     "corr": -0.3791876100183148,
+     "rmse_bps": 1522.349165200327,
+     "rmse_over_true_sd": 2.039333097432579,
+     "bias_bps": 893.3590057000471,
+     "year_pairs_in_true_order": 0.2,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 0,
+     "total_bps": {
+      "Passive wide (+-25%)": 9372.5,
+      "Passive mid (+-8%)": 26103.8,
+      "Tight chaser (+-1.5%)": 116856.7,
+      "Vol-adaptive (3 sigma)": 14024.5,
+      "Vol-adaptive (1.5 sigma)": 26588.0,
+      "Momentum (+-10%)": 16079.6
+     }
+    },
+    "hodl": {
+     "corr": 0.869555576723214,
+     "rmse_bps": 497.5980476932713,
+     "rmse_over_true_sd": 0.666580434420371,
+     "bias_bps": -24.873217052784756,
+     "year_pairs_in_true_order": 0.7333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": -7048.8,
+      "Passive mid (+-8%)": -7102.5,
+      "Tight chaser (+-1.5%)": -50094.2,
+      "Vol-adaptive (3 sigma)": -3492.1,
+      "Vol-adaptive (1.5 sigma)": -6426.2,
+      "Momentum (+-10%)": -3299.7
+     }
+    }
+   },
+   "30bps": {
+    "weeks": 52,
+    "true_weekly_sd_bps": 351.7364029447494,
+    "true_total_bps": {
+     "Passive wide (+-25%)": -1970.1,
+     "Passive mid (+-8%)": -4521.0,
+     "Tight chaser (+-1.5%)": -21547.0,
+     "Vol-adaptive (3 sigma)": -1717.2,
+     "Vol-adaptive (1.5 sigma)": -2814.5,
+     "Momentum (+-10%)": -4208.3
+    },
+    "edge": {
+     "corr": 0.9976123127217086,
+     "rmse_bps": 56.58346922309256,
+     "rmse_over_true_sd": 0.16086895967939,
+     "bias_bps": 24.796005874741354,
+     "year_pairs_in_true_order": 1.0,
+     "year_order_exact": true,
+     "picks_true_best": true,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": -1647.4,
+      "Passive mid (+-8%)": -3630.9,
+      "Tight chaser (+-1.5%)": -16712.4,
+      "Vol-adaptive (3 sigma)": -1351.2,
+      "Vol-adaptive (1.5 sigma)": -2106.6,
+      "Momentum (+-10%)": -3593.1
+     }
+    },
+    "naive": {
+     "corr": -0.6318128932528926,
+     "rmse_bps": 1165.4093320685568,
+     "rmse_over_true_sd": 3.313303150631295,
+     "bias_bps": 703.3804103686259,
+     "year_pairs_in_true_order": 0.13333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 0,
+     "total_bps": {
+      "Passive wide (+-25%)": 8591.4,
+      "Passive mid (+-8%)": 23916.7,
+      "Tight chaser (+-1.5%)": 100743.4,
+      "Vol-adaptive (3 sigma)": 12081.8,
+      "Vol-adaptive (1.5 sigma)": 23037.3,
+      "Momentum (+-10%)": 14306.1
+     }
+    },
+    "fees": {
+     "corr": -0.7686456252693156,
+     "rmse_bps": 1561.4186109103089,
+     "rmse_over_true_sd": 4.439172624266519,
+     "bias_bps": 911.227495753376,
+     "year_pairs_in_true_order": 0.13333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 0,
+     "total_bps": {
+      "Passive wide (+-25%)": 11807.5,
+      "Passive mid (+-8%)": 31968.9,
+      "Tight chaser (+-1.5%)": 137496.4,
+      "Vol-adaptive (3 sigma)": 15880.4,
+      "Vol-adaptive (1.5 sigma)": 29821.2,
+      "Momentum (+-10%)": 20550.4
+     }
+    },
+    "hodl": {
+     "corr": 0.6897011234494341,
+     "rmse_bps": 469.4055393291997,
+     "rmse_over_true_sd": 1.3345378396984795,
+     "bias_bps": -7.759544875320426,
+     "year_pairs_in_true_order": 0.7333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 5,
+     "total_bps": {
+      "Passive wide (+-25%)": -4719.1,
+      "Passive mid (+-8%)": -4786.1,
+      "Tight chaser (+-1.5%)": -27075.0,
+      "Vol-adaptive (3 sigma)": -1711.9,
+      "Vol-adaptive (1.5 sigma)": -2140.2,
+      "Momentum (+-10%)": 1233.3
+     }
+    }
+   }
+  },
+  "2022": {
+   "eth_return": -0.6754,
+   "5bps": {
+    "weeks": 52,
+    "true_weekly_sd_bps": 747.5006178955115,
+    "true_total_bps": {
+     "Passive wide (+-25%)": 2763.7,
+     "Passive mid (+-8%)": 8581.1,
+     "Tight chaser (+-1.5%)": 41298.3,
+     "Vol-adaptive (3 sigma)": 7918.4,
+     "Vol-adaptive (1.5 sigma)": 15912.2,
+     "Momentum (+-10%)": 4928.7
+    },
+    "edge": {
+     "corr": 0.9984141533497479,
+     "rmse_bps": 128.09231826881302,
+     "rmse_over_true_sd": 0.17136081924512636,
+     "bias_bps": -53.53553172309043,
+     "year_pairs_in_true_order": 1.0,
+     "year_order_exact": true,
+     "picks_true_best": true,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": 2198.8,
+      "Passive mid (+-8%)": 6827.1,
+      "Tight chaser (+-1.5%)": 32895.0,
+      "Vol-adaptive (3 sigma)": 6365.6,
+      "Vol-adaptive (1.5 sigma)": 12787.1,
+      "Momentum (+-10%)": 3625.8
+     }
+    },
+    "naive": {
+     "corr": 0.8491493228322738,
+     "rmse_bps": 463.3757752949347,
+     "rmse_over_true_sd": 0.6199001903162402,
+     "bias_bps": -19.152093693291043,
+     "year_pairs_in_true_order": 1.0,
+     "year_order_exact": true,
+     "picks_true_best": true,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": 2604.1,
+      "Passive mid (+-8%)": 8148.8,
+      "Tight chaser (+-1.5%)": 38978.8,
+      "Vol-adaptive (3 sigma)": 6802.7,
+      "Vol-adaptive (1.5 sigma)": 13636.4,
+      "Momentum (+-10%)": 5256.2
+     }
+    },
+    "fees": {
+     "corr": 0.6316543396250323,
+     "rmse_bps": 965.2586492176605,
+     "rmse_over_true_sd": 1.2913148512642274,
+     "bias_bps": 559.0635004917278,
+     "year_pairs_in_true_order": 1.0,
+     "year_order_exact": true,
+     "picks_true_best": true,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": 10043.8,
+      "Passive mid (+-8%)": 28687.4,
+      "Tight chaser (+-1.5%)": 138596.7,
+      "Vol-adaptive (3 sigma)": 20447.2,
+      "Vol-adaptive (1.5 sigma)": 39409.4,
+      "Momentum (+-10%)": 18645.7
+     }
+    },
+    "hodl": {
+     "corr": 0.8952618513691527,
+     "rmse_bps": 383.0237660010688,
+     "rmse_over_true_sd": 0.5124059523581682,
+     "bias_bps": -32.41196440156289,
+     "year_pairs_in_true_order": 0.8666666666666667,
+     "year_order_exact": false,
+     "picks_true_best": true,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": 2657.6,
+      "Passive mid (+-8%)": 7803.1,
+      "Tight chaser (+-1.5%)": 33141.4,
+      "Vol-adaptive (3 sigma)": 9289.8,
+      "Vol-adaptive (1.5 sigma)": 15885.6,
+      "Momentum (+-10%)": 2512.4
+     }
+    }
+   },
+   "30bps": {
+    "weeks": 52,
+    "true_weekly_sd_bps": 256.2354879656747,
+    "true_total_bps": {
+     "Passive wide (+-25%)": 538.5,
+     "Passive mid (+-8%)": 1887.5,
+     "Tight chaser (+-1.5%)": 8268.1,
+     "Vol-adaptive (3 sigma)": 1982.6,
+     "Vol-adaptive (1.5 sigma)": 3935.4,
+     "Momentum (+-10%)": 471.4
+    },
+    "edge": {
+     "corr": 0.9969852342658989,
+     "rmse_bps": 28.364279189620643,
+     "rmse_over_true_sd": 0.11069613898844614,
+     "bias_bps": 7.7332419642688315,
+     "year_pairs_in_true_order": 0.8666666666666667,
+     "year_order_exact": false,
+     "picks_true_best": true,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": 605.9,
+      "Passive mid (+-8%)": 2095.1,
+      "Tight chaser (+-1.5%)": 9994.7,
+      "Vol-adaptive (3 sigma)": 2084.8,
+      "Vol-adaptive (1.5 sigma)": 4097.8,
+      "Momentum (+-10%)": 617.9
+     }
+    },
+    "naive": {
+     "corr": 0.1123574558057008,
+     "rmse_bps": 740.8493077903744,
+     "rmse_over_true_sd": 2.8912829900033934,
+     "bias_bps": 440.5846174082873,
+     "year_pairs_in_true_order": 0.8666666666666667,
+     "year_order_exact": false,
+     "picks_true_best": true,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": 6344.6,
+      "Passive mid (+-8%)": 18059.0,
+      "Tight chaser (+-1.5%)": 84220.2,
+      "Vol-adaptive (3 sigma)": 12081.9,
+      "Vol-adaptive (1.5 sigma)": 22831.3,
+      "Momentum (+-10%)": 11008.9
+     }
+    },
+    "fees": {
+     "corr": -0.023726474534298696,
+     "rmse_bps": 983.2552028593351,
+     "rmse_over_true_sd": 3.837310790420459,
+     "bias_bps": 571.1170151359657,
+     "year_pairs_in_true_order": 0.8666666666666667,
+     "year_order_exact": false,
+     "picks_true_best": true,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": 8067.3,
+      "Passive mid (+-8%)": 22671.6,
+      "Tight chaser (+-1.5%)": 106888.4,
+      "Vol-adaptive (3 sigma)": 14881.4,
+      "Vol-adaptive (1.5 sigma)": 28052.6,
+      "Momentum (+-10%)": 14710.5
+     }
+    },
+    "hodl": {
+     "corr": 0.5420562773894118,
+     "rmse_bps": 374.88227039573155,
+     "rmse_over_true_sd": 1.4630380567969992,
+     "bias_bps": -0.6107808208694004,
+     "year_pairs_in_true_order": 0.9333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": true,
+     "signs_right": 5,
+     "total_bps": {
+      "Passive wide (+-25%)": 89.2,
+      "Passive mid (+-8%)": 991.3,
+      "Tight chaser (+-1.5%)": 8633.2,
+      "Vol-adaptive (3 sigma)": 5043.3,
+      "Vol-adaptive (1.5 sigma)": 3588.9,
+      "Momentum (+-10%)": -1453.0
+     }
+    }
+   }
+  },
+  "2023": {
+   "eth_return": 0.9077,
+   "5bps": {
+    "weeks": 52,
+    "true_weekly_sd_bps": 107.84226456600926,
+    "true_total_bps": {
+     "Passive wide (+-25%)": 152.6,
+     "Passive mid (+-8%)": 543.9,
+     "Tight chaser (+-1.5%)": 1277.9,
+     "Vol-adaptive (3 sigma)": 1264.4,
+     "Vol-adaptive (1.5 sigma)": 2674.0,
+     "Momentum (+-10%)": -432.7
+    },
+    "edge": {
+     "corr": 0.9988483268158398,
+     "rmse_bps": 9.642283458283632,
+     "rmse_over_true_sd": 0.08941098832713847,
+     "bias_bps": -2.242472722066967,
+     "year_pairs_in_true_order": 0.9333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": true,
+     "signs_right": 6,
+     "total_bps": {
+      "Passive wide (+-25%)": 126.2,
+      "Passive mid (+-8%)": 460.7,
+      "Tight chaser (+-1.5%)": 1097.3,
+      "Vol-adaptive (3 sigma)": 1136.7,
+      "Vol-adaptive (1.5 sigma)": 2443.1,
+      "Momentum (+-10%)": -483.5
+     }
+    },
+    "naive": {
+     "corr": 0.4546188198283845,
+     "rmse_bps": 168.32243054368692,
+     "rmse_over_true_sd": 1.5608206227963461,
+     "bias_bps": 111.78784070686116,
+     "year_pairs_in_true_order": 0.8666666666666667,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 5,
+     "total_bps": {
+      "Passive wide (+-25%)": 1278.2,
+      "Passive mid (+-8%)": 3821.9,
+      "Tight chaser (+-1.5%)": 18387.1,
+      "Vol-adaptive (3 sigma)": 5106.0,
+      "Vol-adaptive (1.5 sigma)": 9801.8,
+      "Momentum (+-10%)": 1963.1
+     }
+    },
+    "fees": {
+     "corr": -0.005361530350512,
+     "rmse_bps": 326.70457484373145,
+     "rmse_over_true_sd": 3.029466936349047,
+     "bias_bps": 212.7820241215619,
+     "year_pairs_in_true_order": 0.8666666666666667,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 5,
+     "total_bps": {
+      "Passive wide (+-25%)": 2272.9,
+      "Passive mid (+-8%)": 6660.4,
+      "Tight chaser (+-1.5%)": 34043.9,
+      "Vol-adaptive (3 sigma)": 8346.5,
+      "Vol-adaptive (1.5 sigma)": 15611.4,
+      "Momentum (+-10%)": 4933.0
+     }
+    },
+    "hodl": {
+     "corr": 0.5029795706921972,
+     "rmse_bps": 194.43128977762373,
+     "rmse_over_true_sd": 1.8029229130162983,
+     "bias_bps": -18.133796722662378,
+     "year_pairs_in_true_order": 0.6666666666666666,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 4,
+     "total_bps": {
+      "Passive wide (+-25%)": -143.7,
+      "Passive mid (+-8%)": 1910.4,
+      "Tight chaser (+-1.5%)": -986.0,
+      "Vol-adaptive (3 sigma)": 2005.6,
+      "Vol-adaptive (1.5 sigma)": 462.6,
+      "Momentum (+-10%)": -3426.6
+     }
+    }
+   },
+   "30bps": {
+    "weeks": 52,
+    "true_weekly_sd_bps": 46.52893544666126,
+    "true_total_bps": {
+     "Passive wide (+-25%)": -22.0,
+     "Passive mid (+-8%)": -36.1,
+     "Tight chaser (+-1.5%)": -1062.7,
+     "Vol-adaptive (3 sigma)": 179.1,
+     "Vol-adaptive (1.5 sigma)": 334.5,
+     "Momentum (+-10%)": -888.1
+    },
+    "edge": {
+     "corr": 0.9872156728644881,
+     "rmse_bps": 10.230864186830354,
+     "rmse_over_true_sd": 0.21988175935292073,
+     "bias_bps": 5.50104538465433,
+     "year_pairs_in_true_order": 0.8666666666666667,
+     "year_order_exact": false,
+     "picks_true_best": true,
+     "signs_right": 4,
+     "total_bps": {
+      "Passive wide (+-25%)": 24.9,
+      "Passive mid (+-8%)": 103.4,
+      "Tight chaser (+-1.5%)": -118.4,
+      "Vol-adaptive (3 sigma)": 339.6,
+      "Vol-adaptive (1.5 sigma)": 659.0,
+      "Momentum (+-10%)": -787.5
+     }
+    },
+    "naive": {
+     "corr": -0.3377426407703925,
+     "rmse_bps": 264.3987771913285,
+     "rmse_over_true_sd": 5.682459197770036,
+     "bias_bps": 175.14014731280568,
+     "year_pairs_in_true_order": 0.5333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 2,
+     "total_bps": {
+      "Passive wide (+-25%)": 1773.3,
+      "Passive mid (+-8%)": 5161.1,
+      "Tight chaser (+-1.5%)": 25484.0,
+      "Vol-adaptive (3 sigma)": 6319.3,
+      "Vol-adaptive (1.5 sigma)": 11503.1,
+      "Momentum (+-10%)": 2907.7
+     }
+    },
+    "fees": {
+     "corr": -0.43513415824556534,
+     "rmse_bps": 330.6647184153908,
+     "rmse_over_true_sd": 7.106646976577626,
+     "bias_bps": 218.25004223999997,
+     "year_pairs_in_true_order": 0.5333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 2,
+     "total_bps": {
+      "Passive wide (+-25%)": 2171.0,
+      "Passive mid (+-8%)": 6300.2,
+      "Tight chaser (+-1.5%)": 31938.1,
+      "Vol-adaptive (3 sigma)": 7642.1,
+      "Vol-adaptive (1.5 sigma)": 13928.5,
+      "Momentum (+-10%)": 4618.9
+     }
+    },
+    "hodl": {
+     "corr": 0.34284380240313383,
+     "rmse_bps": 191.77236583681977,
+     "rmse_over_true_sd": 4.121572178599686,
+     "bias_bps": -7.853306775052124,
+     "year_pairs_in_true_order": 0.6,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 4,
+     "total_bps": {
+      "Passive wide (+-25%)": -207.6,
+      "Passive mid (+-8%)": 1552.3,
+      "Tight chaser (+-1.5%)": -1621.4,
+      "Vol-adaptive (3 sigma)": 1475.5,
+      "Vol-adaptive (1.5 sigma)": -1402.3,
+      "Momentum (+-10%)": -3742.1
+     }
+    }
+   }
+  },
+  "2024": {
+   "eth_return": 0.4625,
+   "5bps": {
+    "weeks": 52,
+    "true_weekly_sd_bps": 210.2153588524938,
+    "true_total_bps": {
+     "Passive wide (+-25%)": 111.3,
+     "Passive mid (+-8%)": 480.2,
+     "Tight chaser (+-1.5%)": 353.6,
+     "Vol-adaptive (3 sigma)": 912.3,
+     "Vol-adaptive (1.5 sigma)": 2260.8,
+     "Momentum (+-10%)": -595.5
+    },
+    "edge": {
+     "corr": 0.9973504359012015,
+     "rmse_bps": 32.10656853682322,
+     "rmse_over_true_sd": 0.15273179234896964,
+     "bias_bps": -5.057905255705093,
+     "year_pairs_in_true_order": 0.9333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": true,
+     "signs_right": 5,
+     "total_bps": {
+      "Passive wide (+-25%)": 75.6,
+      "Passive mid (+-8%)": 304.6,
+      "Tight chaser (+-1.5%)": -326.1,
+      "Vol-adaptive (3 sigma)": 725.3,
+      "Vol-adaptive (1.5 sigma)": 1833.3,
+      "Momentum (+-10%)": -668.2
+     }
+    },
+    "naive": {
+     "corr": 0.6037293866059192,
+     "rmse_bps": 253.2503229225179,
+     "rmse_over_true_sd": 1.2047184577993721,
+     "bias_bps": 165.92414500149835,
+     "year_pairs_in_true_order": 0.6666666666666666,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 5,
+     "total_bps": {
+      "Passive wide (+-25%)": 1980.4,
+      "Passive mid (+-8%)": 5868.5,
+      "Tight chaser (+-1.5%)": 27580.1,
+      "Vol-adaptive (3 sigma)": 5583.1,
+      "Vol-adaptive (1.5 sigma)": 11127.8,
+      "Momentum (+-10%)": 3151.0
+     }
+    },
+    "fees": {
+     "corr": 0.0622297159768464,
+     "rmse_bps": 572.1877230536512,
+     "rmse_over_true_sd": 2.721912072348387,
+     "bias_bps": 360.35573078163566,
+     "year_pairs_in_true_order": 0.6666666666666666,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 5,
+     "total_bps": {
+      "Passive wide (+-25%)": 4182.2,
+      "Passive mid (+-8%)": 12127.5,
+      "Tight chaser (+-1.5%)": 60011.4,
+      "Vol-adaptive (3 sigma)": 10781.6,
+      "Vol-adaptive (1.5 sigma)": 20618.5,
+      "Momentum (+-10%)": 8232.3
+     }
+    },
+    "hodl": {
+     "corr": 0.6189559327907845,
+     "rmse_bps": 322.80445800377333,
+     "rmse_over_true_sd": 1.5355893107234009,
+     "bias_bps": -29.26494617362412,
+     "year_pairs_in_true_order": 0.3333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 0,
+     "total_bps": {
+      "Passive wide (+-25%)": -223.8,
+      "Passive mid (+-8%)": -13.2,
+      "Tight chaser (+-1.5%)": -5722.5,
+      "Vol-adaptive (3 sigma)": -1870.6,
+      "Vol-adaptive (1.5 sigma)": -655.1,
+      "Momentum (+-10%)": 2877.2
+     }
+    }
+   },
+   "30bps": {
+    "weeks": 52,
+    "true_weekly_sd_bps": 96.50909816097393,
+    "true_total_bps": {
+     "Passive wide (+-25%)": -109.9,
+     "Passive mid (+-8%)": -323.3,
+     "Tight chaser (+-1.5%)": -2422.6,
+     "Vol-adaptive (3 sigma)": -18.0,
+     "Vol-adaptive (1.5 sigma)": 223.5,
+     "Momentum (+-10%)": -1085.1
+    },
+    "edge": {
+     "corr": 0.9897268573159302,
+     "rmse_bps": 21.233964012761273,
+     "rmse_over_true_sd": 0.22002033401393653,
+     "bias_bps": 9.82798760594267,
+     "year_pairs_in_true_order": 0.9333333333333333,
+     "year_order_exact": false,
+     "picks_true_best": true,
+     "signs_right": 5,
+     "total_bps": {
+      "Passive wide (+-25%)": -11.0,
+      "Passive mid (+-8%)": -51.4,
+      "Tight chaser (+-1.5%)": -583.7,
+      "Vol-adaptive (3 sigma)": 199.3,
+      "Vol-adaptive (1.5 sigma)": 662.9,
+      "Momentum (+-10%)": -885.0
+     }
+    },
+    "naive": {
+     "corr": -0.2802471190098927,
+     "rmse_bps": 478.37548856574386,
+     "rmse_over_true_sd": 4.956791615313093,
+     "bias_bps": 308.1013612217824,
+     "year_pairs_in_true_order": 0.4666666666666667,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 1,
+     "total_bps": {
+      "Passive wide (+-25%)": 3448.9,
+      "Passive mid (+-8%)": 9933.8,
+      "Tight chaser (+-1.5%)": 47978.5,
+      "Vol-adaptive (3 sigma)": 8599.8,
+      "Vol-adaptive (1.5 sigma)": 16560.8,
+      "Momentum (+-10%)": 5870.6
+     }
+    },
+    "fees": {
+     "corr": -0.4046260782513173,
+     "rmse_bps": 600.0018187733274,
+     "rmse_over_true_sd": 6.217049275214908,
+     "bias_bps": 380.0019143293303,
+     "year_pairs_in_true_order": 0.4666666666666667,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 1,
+     "total_bps": {
+      "Passive wide (+-25%)": 4241.1,
+      "Passive mid (+-8%)": 12260.8,
+      "Tight chaser (+-1.5%)": 59743.2,
+      "Vol-adaptive (3 sigma)": 10436.5,
+      "Vol-adaptive (1.5 sigma)": 19858.5,
+      "Momentum (+-10%)": 8285.2
+     }
+    },
+    "hodl": {
+     "corr": 0.39993915018728493,
+     "rmse_bps": 328.735819648756,
+     "rmse_over_true_sd": 3.4062676567595283,
+     "bias_bps": -24.82724189201678,
+     "year_pairs_in_true_order": 0.4,
+     "year_order_exact": false,
+     "picks_true_best": false,
+     "signs_right": 4,
+     "total_bps": {
+      "Passive wide (+-25%)": -619.1,
+      "Passive mid (+-8%)": -327.9,
+      "Tight chaser (+-1.5%)": -7801.9,
+      "Vol-adaptive (3 sigma)": -3103.1,
+      "Vol-adaptive (1.5 sigma)": -2516.1,
+      "Momentum (+-10%)": 2886.7
+     }
+    }
+   }
+  }
+ }
+}

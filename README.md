@@ -17,7 +17,7 @@ Edge = user fees + user price impact − arbitrage loss
 Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and Curation*).
 
 **Live:** [ukiyo-ochre.vercel.app](https://ukiyo-ochre.vercel.app) · Unichain Sepolia hook
-[`0xbe62a2D964ab8d81A203F2C05bDF0a96E6f7eac0`](https://sepolia.uniscan.xyz/address/0xbe62a2D964ab8d81A203F2C05bDF0a96E6f7eac0) · **Reviewing?** Start with
+[`0xDf718121e527ACcAd0D59FaA9D4BEF345948aAC0`](https://sepolia.uniscan.xyz/address/0xDf718121e527ACcAd0D59FaA9D4BEF345948aAC0) · **Reviewing?** Start with
 [`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md).
 
 ## Highlights
@@ -309,17 +309,17 @@ straight from the public RPC. The test tokens sit at fixed CREATE2 addresses, so
 
 | Contract | Address |
 | --- | --- |
-| Hook (`UkiyoHook`) | [`0xbe62a2D964ab8d81A203F2C05bDF0a96E6f7eac0`](https://sepolia.uniscan.xyz/address/0xbe62a2D964ab8d81A203F2C05bDF0a96E6f7eac0) |
-| Factory (`UkiyoFactory`) | [`0x14B0Bd9235B5f8c564F538a33832b99180A39533`](https://sepolia.uniscan.xyz/address/0x14B0Bd9235B5f8c564F538a33832b99180A39533) |
-| Skill router (`UkiyoSkillRouter`) | [`0xB3dEdd9694A9a67c75442dAfe7A31595E9972625`](https://sepolia.uniscan.xyz/address/0xB3dEdd9694A9a67c75442dAfe7A31595E9972625) |
+| Hook (`UkiyoHook`) | [`0xDf718121e527ACcAd0D59FaA9D4BEF345948aAC0`](https://sepolia.uniscan.xyz/address/0xDf718121e527ACcAd0D59FaA9D4BEF345948aAC0) |
+| Factory (`UkiyoFactory`) | [`0x55aD00575622bD0FF3b22D8221c08208e46E9196`](https://sepolia.uniscan.xyz/address/0x55aD00575622bD0FF3b22D8221c08208e46E9196) |
+| Skill router (`UkiyoSkillRouter`) | [`0xC28cd92bde73F94cBfF0E5F138d89684a0611D4F`](https://sepolia.uniscan.xyz/address/0xC28cd92bde73F94cBfF0E5F138d89684a0611D4F) |
 | PoolManager (canonical v4) | [`0x00B036B58a818B1BC34d502D3fE730Db729e62AC`](https://sepolia.uniscan.xyz/address/0x00B036B58a818B1BC34d502D3fE730Db729e62AC) |
-| Swap router (`PoolSwapTest`) | [`0x1Ca687AC1D8cDC7b46971CF7359590b90E896d78`](https://sepolia.uniscan.xyz/address/0x1Ca687AC1D8cDC7b46971CF7359590b90E896d78) |
+| Swap router (`PoolSwapTest`) | [`0x5885E44F98675329f28e82c263A651A6aDbC6a0f`](https://sepolia.uniscan.xyz/address/0x5885E44F98675329f28e82c263A651A6aDbC6a0f) |
 | tBTC (test token, token0) | [`0xe4134d0bA75d9cc0a22dac01a11f589559434148`](https://sepolia.uniscan.xyz/address/0xe4134d0bA75d9cc0a22dac01a11f589559434148) |
 | tUSD (test token, token1) | [`0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db`](https://sepolia.uniscan.xyz/address/0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db) |
-| Vault: Passive Wide (`ukWIDE`) | [`0xe865b762fe2A47E7949d568ed9A676Fe7Caf4923`](https://sepolia.uniscan.xyz/address/0xe865b762fe2A47E7949d568ed9A676Fe7Caf4923) |
-| Vault: Passive Mid (`ukMID`) | [`0x35305b067374149d4baEF34e62AAD2A7C1034F34`](https://sepolia.uniscan.xyz/address/0x35305b067374149d4baEF34e62AAD2A7C1034F34) |
-| Vault: Tight Chaser (`ukTIGHT`) | [`0xf67e16732e8Bf12AB0119a35049fF074a6530246`](https://sepolia.uniscan.xyz/address/0xf67e16732e8Bf12AB0119a35049fF074a6530246) |
-| Vault: Vol Adaptive (`ukVOL`) | [`0x1Fa3ecb67510747e37EF60F18567FabbE3f314ce`](https://sepolia.uniscan.xyz/address/0x1Fa3ecb67510747e37EF60F18567FabbE3f314ce) |
+| Vault: Passive Wide (`ukWIDE`) | [`0x9a02129A92F92B0e5751BF4062Acde67b30063f9`](https://sepolia.uniscan.xyz/address/0x9a02129A92F92B0e5751BF4062Acde67b30063f9) |
+| Vault: Passive Mid (`ukMID`) | [`0x3e269e7a7D1bCD9F869f39b88Fe3A11a8b430163`](https://sepolia.uniscan.xyz/address/0x3e269e7a7D1bCD9F869f39b88Fe3A11a8b430163) |
+| Vault: Tight Chaser (`ukTIGHT`) | [`0x24640442cd9D95c353b61d40F6EedeDAe9e5bb11`](https://sepolia.uniscan.xyz/address/0x24640442cd9D95c353b61d40F6EedeDAe9e5bb11) |
+| Vault: Vol Adaptive (`ukVOL`) | [`0x811FCAD038C91B3a5d1a2125f33A571E4FA21819`](https://sepolia.uniscan.xyz/address/0x811FCAD038C91B3a5d1a2125f33A571E4FA21819) |
 
 Demo settings: 5 bps pool, classifier threshold 0.002 gwei, 10-minute epochs, 10% performance fee, curator bonds of
 $10K–$50K with a 25 bps per-epoch LVR budget. Test tokens only.

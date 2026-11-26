@@ -20,7 +20,8 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
 [`0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0`](https://sepolia.uniscan.xyz/address/0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0) · **Reviewing?** Start with
 [`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md). **Built when?**
 [`SUBMISSION.md`](SUBMISSION.md). **Feedback on v4:** [`FEEDBACK.md`](FEEDBACK.md). **One page, no maths:**
-[`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf). **What's next:** [`ROADMAP.md`](ROADMAP.md).
+[`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf). **Drawn explainer** (open at excalidraw.com):
+[`pitch/ukiyo-explainer.excalidraw`](pitch/ukiyo-explainer.excalidraw). **What's next:** [`ROADMAP.md`](ROADMAP.md).
 
 ## Highlights
 

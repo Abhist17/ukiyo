@@ -18,7 +18,8 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
 
 **Live:** [ukiyo-ochre.vercel.app](https://ukiyo-ochre.vercel.app) · Unichain Sepolia hook
 [`0xDf718121e527ACcAd0D59FaA9D4BEF345948aAC0`](https://sepolia.uniscan.xyz/address/0xDf718121e527ACcAd0D59FaA9D4BEF345948aAC0) · **Reviewing?** Start with
-[`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md).
+[`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md). **Built when?**
+[`SUBMISSION.md`](SUBMISSION.md). **Feedback on v4:** [`FEEDBACK.md`](FEEDBACK.md).
 
 ## Highlights
 
@@ -44,6 +45,31 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
    their skill tests. The depositor holds every share directly, and the router never holds anyone's funds.
 7. **Live and measured.** The live board runs on Unichain Sepolia, with a bot replaying 2024 BTC prices through the
    pool. The classifier was measured on 6,714 real Unichain swaps, and the README reports where it falls short.
+
+## Who it's for, and what it changes
+
+Concentrated liquidity is increasingly run by curators: vault managers who choose and move ranges for depositors.
+Depositors choose between them by the numbers dashboards show, mostly fee APR and returns against holding. Those numbers
+reward volume and market direction, not management, so capital flows to the wrong curators. On the BTC/USD 2024 replay
+(5 bps pool, full-year totals of weekly returns):
+
+| Curator | Fee income | Fees − pool LVR (the obvious formula) | **Ukiyo Edge** | True hedged P&L |
+| --- | --- | --- | --- | --- |
+| Tight chaser (±1.5%) | **41,463 bps**, ranked 1st | 22,542 bps, 1st | 1,044 bps, 3rd | 1,328 bps, 3rd |
+| Vol-adaptive (1.5σ) | 18,826 bps, 2nd | 11,838 bps, 2nd | **2,540 bps, 1st** | 2,806 bps, 1st |
+| Momentum (±10%) | 5,857 bps, 5th | 2,694 bps, 5th | **−275 bps, the only loss** | −205 bps, the only loss |
+
+Fee income puts the tight chaser first by more than twice the runner-up, though it is truly third, and shows the
+momentum curator earning while it loses money. The obvious on-chain formula overstates the tight chaser 17×. Edge gets the order right and flags the loser. That
+matters to three groups:
+
+- **Depositors and allocators** pick curators by Edge return and its t-statistic instead of fee APR, or hand the choice
+  to [`UkiyoSkillRouter`](src/UkiyoSkillRouter.sol#L92), which splits a deposit by the evidence.
+- **Curators** get a track record nobody can dispute, because the pool computes it itself, and are paid a share of
+  Edge rather than of volume. A good curator can launch through the factory and be ranked from its first epoch.
+- **Vault platforms and aggregators** read every curator's ledger, Edge index, skill test and terms in one call
+  ([`UkiyoLens.scoreboard`](src/UkiyoLens.sol#L100)) and can rank or route on it. The hook needs no oracle and no
+  keeper, so it can run under any v4 pair on a chain that orders transactions by priority fee.
 
 ## Where the Uniswap v4 integration lives
 
@@ -430,12 +456,12 @@ measured a later swap twice.
 
 | Criterion (weight) | Where to look |
 | --- | --- |
-| Original Idea (30%) | The decomposition `LVR_true ≈ LVR_pool + arbitrage fees`, and a curator benchmark built on it that separates skill from market direction |
-| Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook with no oracle |
-| Impact (20%) | Curators are paid a performance fee only on Edge above a high-water mark and bonded against LVR, so depositors pay for skill and are compensated for losses beyond what was promised; any curator vault can adopt the meter as its scoring and fee standard |
-| Functionality (15%) | 108 passing tests (10,000 fuzz runs each in CI) including a differential fuzz test, and 5 stateful invariants over random sequences of every vault action; curator vaults with fee and bond; one-command deploy and a replay bot; backtest on real prices; classifier measured on real Unichain swaps |
+| Original Idea (30%) | A new primitive: curator skill measured on-chain, with no oracle, from the decomposition `LVR_true ≈ LVR_pool + arbitrage fees`. The [backtest](#what-the-backtest-found-and-why-the-obvious-formula-is-wrong) shows why the obvious formula fails and this one does not |
+| Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook. Every rule that could flatter a curator is closed and tested: spike netting, anchoring, dual-measured re-ranging, the price guard ([Highlights](#highlights)) |
+| Impact (20%) | [Who it's for](#who-its-for-and-what-it-changes): fee income ranks the wrong curator first and hides a losing one, Edge does not. Depositors, curators and vault platforms each get something they cannot get today, live in vaults with an Edge-only performance fee, an LVR bond, a skill test, open launches and a skill-weighted router |
+| Functionality (15%) | 108 passing tests (10,000 fuzz runs each in CI), including a differential fuzz test against an independent model, and 5 stateful invariants over random sequences of every vault action; live on Unichain Sepolia with a replay bot; every tab of the app works against it |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
-| Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min) |
+| Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min), [`SUBMISSION.md`](SUBMISSION.md) (what was built when, what is reused), [`FEEDBACK.md`](FEEDBACK.md) (developer feedback on v4) |
 
 ## Partner integrations
 

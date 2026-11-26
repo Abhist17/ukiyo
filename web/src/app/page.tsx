@@ -42,6 +42,24 @@ const STEPS = [
   },
 ];
 
+const AUDIENCES = [
+  {
+    k: "Depositors",
+    title: "Back skill, not volume",
+    body: "Rank curators by Edge return and a t-statistic that says whether it is more than luck, or let the skill router split a deposit by the evidence. Your shares stay yours.",
+  },
+  {
+    k: "Curators",
+    title: "A record nobody can dispute",
+    body: "The pool computes your Edge itself, block by block. Launch a vault in one call and get paid a share of Edge above a high-water mark, not of volume.",
+  },
+  {
+    k: "Platforms",
+    title: "Rank and route on it",
+    body: "One view call returns every curator's ledger, Edge index, skill test and terms. No oracle, no keeper: it runs under any v4 pair on a priority-ordered chain.",
+  },
+];
+
 const FAQ = [
   {
     q: "What is Edge?",
@@ -209,6 +227,26 @@ export default function Home() {
           <div className="l-cta center">
             <Link className="btn light" href="/research/">See the full backtest</Link>
             <a className="btn ghost-light" href={`${REPO}/tree/main/backtest`} target="_blank" rel="noreferrer">Run it yourself ↗</a>
+          </div>
+        </div>
+      </section>
+
+      <section className="l-section" id="impact">
+        <div className="wrap">
+          <h2 data-reveal>Capital follows the scoreboard</h2>
+          <p className="l-sub" data-reveal>
+            On the 2024 replay, fee income ranks the tight chaser first by more than twice the runner-up; its true
+            hedged P&amp;L is third. The momentum curator earns 5,857 bps of fees while losing money, and only Edge
+            shows the loss. Whoever ranks curators decides where liquidity goes.
+          </p>
+          <div className="l-steps" data-reveal="stagger">
+            {AUDIENCES.map((a) => (
+              <div className="l-step" key={a.k}>
+                <span className="k">{a.k}</span>
+                <h3>{a.title}</h3>
+                <p>{a.body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

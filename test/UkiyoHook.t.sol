@@ -545,6 +545,56 @@ contract UkiyoHookTest is Test {
         assertLt(int256(impact) - int256(loss), -int256(reanchored), "the round trip would have raised Edge");
     }
 
+    /// @notice Shifting the range a tick in the round trip does not escape the cross term either. Liquidity that comes
+    ///         back into another range is booked at the lower of two readings, and when the market continues the
+    ///         users' move, the reading from the mark is the lower one.
+    function test_reRangingCannotEscapeTheCrossTerm() public {
+        _swapTo(_atTick(60), ARB_TIP);
+        _swapTo(_atTick(300), USER_TIP);
+        UkiyoHook.Ledger memory before = hook.ledger(0);
+        hook.modifySleeveLiquidity(0, -int256(uint256(LIQ)));
+        hook.setSleeveRange(0, -540, 660); // one tick spacing over
+        hook.modifySleeveLiquidity(0, int256(uint256(LIQ)));
+        assertEq(hook.dualLiquidity(0), LIQ, "dual-measured until the next mark");
+
+        _nextBlock();
+        _swapTo(_atTick(540), ARB_TIP);
+
+        (uint160 lo, uint160 hi) = _bounds(0);
+        int256 booked =
+            int256(hook.ledger(0).userImpact - before.userImpact) - int256(hook.ledger(0).arbLoss - before.arbLoss);
+        int256 fromMark = int256(EdgeMath.impactCredit(LIQ, _atTick(60), _atTick(300), lo, hi))
+            - int256(EdgeMath.rebalancingLoss(LIQ, _atTick(60), _atTick(540), lo, hi));
+        int256 fromJoin = -int256(EdgeMath.rebalancingLoss(LIQ, _atTick(300), _atTick(540), lo, hi));
+        assertEq(booked, fromMark, "booked as if it had been in the new range since the mark");
+        assertLt(booked, fromJoin, "lower than measuring it from where it joined");
+        assertEq(hook.dualLiquidity(0), 0, "the mark makes it ordinary liquidity");
+    }
+
+    /// @notice The other side: a range picked after seeing the move cannot clip a loss away. Here the new range starts
+    ///         at the mark, so measured from the mark the overshoot below it would cost nothing; measured from where
+    ///         the liquidity joined, it pays the whole fall into its range, and that lower reading is the one booked.
+    function test_reRangingCannotClipALossAway() public {
+        _swapTo(_atTick(60), ARB_TIP);
+        _swapTo(_atTick(300), USER_TIP);
+        UkiyoHook.Ledger memory before = hook.ledger(0);
+        hook.modifySleeveLiquidity(0, -int256(uint256(LIQ)));
+        hook.setSleeveRange(0, 60, 660); // lower bound exactly at the mark
+        hook.modifySleeveLiquidity(0, int256(uint256(LIQ)));
+
+        _nextBlock();
+        _swapTo(_atTick(-120), ARB_TIP); // arbitrage overshoots below the mark
+
+        (uint160 lo, uint160 hi) = _bounds(0);
+        int256 booked =
+            int256(hook.ledger(0).userImpact - before.userImpact) - int256(hook.ledger(0).arbLoss - before.arbLoss);
+        int256 fromJoin = -int256(EdgeMath.rebalancingLoss(LIQ, _atTick(300), _atTick(-120), lo, hi));
+        int256 fromMark = int256(EdgeMath.impactCredit(LIQ, _atTick(60), _atTick(300), lo, hi))
+            - int256(EdgeMath.rebalancingLoss(LIQ, _atTick(60), _atTick(-120), lo, hi));
+        assertGt(fromMark, 0, "the mark's reading would show a gain");
+        assertEq(booked, fromJoin, "the join's reading, a loss, is booked");
+    }
+
     /// @notice Only what left comes back measured from the mark; liquidity beyond it is new, and anchored.
     function test_onlyWhatLeftRejoins() public {
         _swapTo(_atTick(60), ARB_TIP);
@@ -671,7 +721,11 @@ contract UkiyoHookTest is Test {
         uint160 anchor;
         uint256 legLoss; // what the last leg between marks cost this sleeve
         uint128 legLiq; // the liquidity it was charged on, 0 if it cannot be netted
-        uint128 left; // mark-measured liquidity removed since the last mark, which may rejoin as it was
+        uint128 left; // liquidity that was there at the mark and left since, which may come back
+        bool leftSet; // whether `left` has a range this interval
+        int24 leftLo; // the range that liquidity had at the mark
+        int24 leftHi;
+        uint128 dual; // anchored liquidity that came back into another range: booked at the lower of two readings
     }
 
     /// @dev Reference-model state, kept in storage to stay clear of the stack limit.
@@ -681,8 +735,8 @@ contract UkiyoHookTest is Test {
     bool internal refPending;
     uint16[2] internal refProtocolFee; // [zeroForOne, oneForZero]
 
-    /// @notice Random blocks of random swaps, with liquidity added and removed at random points and a random protocol
-    ///         fee; every ledger field must equal a straightforward reference replay.
+    /// @notice Random blocks of random swaps, with liquidity added, removed, put back and moved to new ranges at random
+    ///         points, and a random protocol fee; every ledger field must equal a straightforward reference replay.
     function testFuzz_ledgersMatchReferenceReplay(uint256 seed) public {
         // setUp added both sleeves' liquidity before the pool's first mark: all of it anchored at the initial price
         for (uint256 i; i < 2; ++i) {
@@ -719,8 +773,9 @@ contract UkiyoHookTest is Test {
 
     /// @dev Book one sleeve's arbitrage loss at a new mark, as the spec says: the move since the last mark (from the
     ///      anchor for liquidity added since), or, after a spike, the single move around it less what the leg into
-    ///      the spike already cost (a refund is shaved by a wei).
-    function _refCharge(Ref storage m, bool spike, uint160 target, uint160 lo, uint160 hi) internal {
+    ///      the spike already cost (a refund is shaved by a wei). Dual liquidity is booked at the lower of its two
+    ///      readings, credit and loss together, its credit running to the block's `close`.
+    function _refCharge(Ref storage m, bool spike, uint160 target, uint160 close, uint160 lo, uint160 hi) internal {
         if (m.liquidity == 0) {
             (m.legLoss, m.legLiq) = (0, 0);
         } else if (spike && m.anchored == 0 && m.legLiq == m.liquidity) {
@@ -738,52 +793,103 @@ contract UkiyoHookTest is Test {
             if (m.liquidity > m.anchored && refMark != 0) {
                 leg = EdgeMath.rebalancingLoss(m.liquidity - m.anchored, refMark, target, lo, hi);
             }
-            if (m.anchored != 0) leg += EdgeMath.rebalancingLoss(m.anchored, m.anchor, target, lo, hi);
+            if (m.anchored > m.dual) leg += EdgeMath.rebalancingLoss(m.anchored - m.dual, m.anchor, target, lo, hi);
+            if (m.dual != 0) leg += _refDual(m, target, close, lo, hi);
             m.loss += leg;
             (m.legLoss, m.legLiq) = (leg, m.anchored == 0 && refMark != 0 ? m.liquidity : 0);
         }
         m.anchored = 0;
         m.anchor = 0;
         m.left = 0;
+        m.leftSet = false;
+        m.dual = 0;
     }
 
-    /// @dev Add or remove a random amount of one sleeve's liquidity, in the pool and in the reference model.
+    /// @dev Dual liquidity's two readings, signed: from its anchor and from the mark. Books the lower (ties to the
+    ///      anchor) and returns that reading's loss.
+    function _refDual(Ref storage m, uint160 target, uint160 close, uint160 lo, uint160 hi) internal returns (uint256) {
+        uint256 creditA = EdgeMath.impactCredit(m.dual, m.anchor, close, lo, hi);
+        uint256 lossA = EdgeMath.rebalancingLoss(m.dual, m.anchor, target, lo, hi);
+        uint256 creditM = EdgeMath.impactCredit(m.dual, refMark, close, lo, hi);
+        uint256 lossM = EdgeMath.rebalancingLoss(m.dual, refMark, target, lo, hi);
+        if (int256(creditM) - int256(lossM) < int256(creditA) - int256(lossA)) {
+            m.impact += creditM;
+            return lossM;
+        }
+        m.impact += creditA;
+        return lossA;
+    }
+
+    /// @dev Add `amount` to sleeve `i`, in the pool and in the model: what left since the mark comes back as it was
+    ///      into its own range, dual into another; the rest is new, anchored where it joins.
+    function _refAdd(uint256 i, uint128 amount) internal {
+        Ref storage m = ref[i];
+        hook.modifySleeveLiquidity(i, int256(uint256(amount)));
+        m.liquidity += amount;
+        uint128 back = amount < m.left ? amount : m.left;
+        m.left -= back;
+        UkiyoHook.Sleeve memory s = hook.sleeve(i);
+        if (back != 0 && (s.tickLower != m.leftLo || s.tickUpper != m.leftHi)) {
+            m.dual += back;
+            back = 0;
+        }
+        if (amount > back) {
+            m.anchored += amount - back;
+            m.anchor = _price();
+        }
+    }
+
+    /// @dev Remove `amount` from sleeve `i`: plainly anchored liquidity first, then dual, then what was there at the
+    ///      mark; the last two may come back.
+    function _refRemove(uint256 i, uint128 amount) internal {
+        Ref storage m = ref[i];
+        hook.modifySleeveLiquidity(i, -int256(uint256(amount)));
+        m.liquidity -= amount;
+        uint128 plain = m.anchored - m.dual;
+        uint128 fromPlain = amount < plain ? amount : plain;
+        uint128 rest = amount - fromPlain;
+        uint128 fromDual = rest < m.dual ? rest : m.dual;
+        m.anchored -= fromPlain + fromDual;
+        m.dual -= fromDual;
+        if (m.anchored == 0) m.anchor = 0;
+        if (rest != 0) {
+            if (!m.leftSet) {
+                UkiyoHook.Sleeve memory s = hook.sleeve(i);
+                (m.leftSet, m.leftLo, m.leftHi) = (true, s.tickLower, s.tickUpper);
+            }
+            m.left += rest;
+        }
+    }
+
+    /// @dev A random liquidity action on one sleeve: add, remove (a quarter of the time put straight back), or move
+    ///      to a new range (empty it, re-range, add).
     function _refLiquidity(uint256 r) internal {
         uint256 i = (r >> 202) % 2;
         Ref storage m = ref[i];
-        bool add = m.liquidity == 0 || (r >> 204) % 2 == 0;
-        // casting to 'uint128' is safe because the value is at most LIQ or the sleeve's liquidity
-        // forge-lint: disable-next-line(unsafe-typecast)
-        uint128 amount = uint128(1 + (r >> 64) % (add ? LIQ : m.liquidity));
-        if (add) {
-            hook.modifySleeveLiquidity(i, int256(uint256(amount)));
-            m.liquidity += amount;
-            // what left since the mark comes back as it was; only the rest is new, anchored where it joins
-            uint128 back = amount < m.left ? amount : m.left;
-            m.left -= back;
-            if (amount > back) {
-                m.anchored += amount - back;
-                m.anchor = _price();
-            }
+        uint256 kind = (r >> 204) % 8;
+        // casting to 'uint128' is safe because the values are at most LIQ or the sleeve's liquidity
+        // forge-lint: disable-start(unsafe-typecast)
+        if (m.liquidity == 0 || kind < 3) {
+            _refAdd(i, uint128(1 + (r >> 64) % LIQ));
+        } else if (kind < 6) {
+            uint128 amount = uint128(1 + (r >> 64) % m.liquidity);
+            _refRemove(i, amount);
+            if ((r >> 208) % 4 == 0) _refAdd(i, amount);
         } else {
-            hook.modifySleeveLiquidity(i, -int256(uint256(amount)));
-            m.liquidity -= amount;
-            uint128 fromAnchored = amount < m.anchored ? amount : m.anchored;
-            m.anchored -= fromAnchored;
-            if (m.anchored == 0) m.anchor = 0;
-            m.left += amount - fromAnchored;
-            // a quarter of removals are round trips: the same liquidity straight back, at the same price
-            if ((r >> 206) % 4 == 0) {
-                hook.modifySleeveLiquidity(i, int256(uint256(amount)));
-                m.liquidity += amount;
-                uint128 back = amount < m.left ? amount : m.left;
-                m.left -= back;
-                if (amount > back) {
-                    m.anchored += amount - back;
-                    m.anchor = _price();
-                }
-            }
+            _refRemove(i, m.liquidity);
+            int24[2][6] memory ranges = [
+                [int24(-600), 600],
+                [int24(-540), 660],
+                [int24(-6000), 6000],
+                [int24(60), 660],
+                [int24(-1200), -60],
+                [int24(-3000), 3000]
+            ];
+            int24[2] memory g = ranges[(r >> 210) % 6];
+            hook.setSleeveRange(i, g[0], g[1]);
+            _refAdd(i, uint128(1 + (r >> 80) % (2 * LIQ)));
         }
+        // forge-lint: disable-end(unsafe-typecast)
     }
 
     /// @dev One random swap, applied to the pool and to the reference model.
@@ -805,7 +911,10 @@ contract UkiyoHookTest is Test {
                 if (m.liquidity > m.anchored) {
                     m.impact += EdgeMath.impactCredit(m.liquidity - m.anchored, refMark, before, lo, hi);
                 }
-                if (m.anchored != 0) m.impact += EdgeMath.impactCredit(m.anchored, m.anchor, before, lo, hi);
+                // dual liquidity is credited at the mark, with the reading it is booked at
+                if (m.anchored > m.dual) {
+                    m.impact += EdgeMath.impactCredit(m.anchored - m.dual, m.anchor, before, lo, hi);
+                }
             }
         }
 
@@ -830,7 +939,7 @@ contract UkiyoHookTest is Test {
             uint256 fee = m.liquidity == 0 ? 0 : EdgeMath.swapFee(m.liquidity, before, target, lo, hi, num, den);
             if (arb) m.arbFees += fee;
             else m.userFees += fee;
-            if (firstInBlock) _refCharge(m, spike, target, lo, hi);
+            if (firstInBlock) _refCharge(m, spike, target, before, lo, hi);
         }
         if (firstInBlock) {
             if (!spike) refLegStart = refMark;

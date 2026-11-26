@@ -20,9 +20,9 @@ is still open. Below: every finding from our own reviews, the fix, and the test 
 
 - Tipped push-and-revert swaps smaller than 8 fee-widths still make in-range sleeves' Edge read lower than it is
   (Edge errs low, never high), by at most about 4× what the attacker pays. Larger spikes are netted since 25 Nov.
-- A curator that moves its range between a block's user flow and the next arbitrage measures the new range from
-  where it joins, which can lower one block's booked loss. Removing and re-adding in the same range no longer does:
-  the liquidity rejoins as it was.
+- Liquidity removed between two marks and not put back is neither credited nor charged for that block's move up to
+  its removal (one block, one sleeve). Removing and putting it back, into the same range or a shifted one, cannot
+  re-anchor it any more (26 Nov).
 - The priority-fee classifier misses about 7% of informed swaps on real Unichain flow.
 
 Details and numbers in [`THREAT_MODEL.md`](THREAT_MODEL.md).

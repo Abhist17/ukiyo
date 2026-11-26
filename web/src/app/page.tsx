@@ -139,7 +139,7 @@ export default function Home() {
             <div><b data-count>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>
             <div><b data-count>6 / 6</b><span>curators in the true order</span></div>
             <div><b>0</b><span>oracles or keepers</span></div>
-            <div><b data-count>106</b><span>tests + 5 stateful invariants</span></div>
+            <div><b data-count>108</b><span>tests + 5 stateful invariants</span></div>
           </div>
         </div>
       </section>
@@ -188,7 +188,7 @@ export default function Home() {
             <li><b>Rounded against the curator.</b> Every loss rounds up and every credit rounds down.</li>
             <li><b>When in doubt, arbitrage.</b> A swap that might be informed is booked as arbitrage, so no arbitrage passes as user flow.</li>
             <li><b>Spikes charged once.</b> A tipped push that is pushed straight back is charged as one move, so a rival cannot make you look bad for free.</li>
-            <li><b>Measured from where it joins.</b> New liquidity gets no credit for moves before it arrived, and taking liquidity out and back cannot reset its starting point.</li>
+            <li><b>Measured from where it joins.</b> New liquidity gets no credit for moves before it arrived, and taking it out and back, even into a shifted range, cannot reset its starting point.</li>
             <li><b>A price no transaction can set.</b> Vaults settle and rebalance only within 1% of the previous block&apos;s mark, so a sandwich cannot pick the price their capital goes in at.</li>
             <li><b>Checked against a second model.</b> A fuzz test replays random swaps, deposits and protocol fees through an independent model and demands every ledger match to the wei.</li>
           </ul>

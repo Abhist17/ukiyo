@@ -55,11 +55,12 @@ import {EdgeMath} from "./libraries/EdgeMath.sol";
 ///      Liquidity added between marks is anchored at the price it joins at and measured from there until the next
 ///      mark, so no liquidity is credited for impact, or charged for moves, from before it existed. Liquidity taken
 ///      out and put back into the same range between two marks rejoins as it was, measured from the mark, so a round
-///      trip that leaves the position unchanged leaves the ledger unchanged too. LP fees are computed from the price
-///      path, net of any protocol fee the pool pays.
+///      trip that leaves the position unchanged leaves the ledger unchanged too. Put back into another range, it is
+///      booked at the lower of two readings (see `_dualLiquidity`). LP fees are computed from the price path, net of
+///      any protocol fee the pool pays.
 ///
-///      Known approximation, bounded to one block for one sleeve: liquidity removed between marks, and not put back
-///      into the same range, is neither credited nor charged for that block's move up to its removal.
+///      Known approximation, bounded to one block for one sleeve: liquidity removed between marks, and not put back,
+///      is neither credited nor charged for that block's move up to its removal.
 contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     using StateLibrary for IPoolManager;
     using PoolIdLibrary for PoolKey;
@@ -107,12 +108,16 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         uint128 liquidity;
     }
 
-    /// @notice Mark-measured liquidity a sleeve has removed since the last mark, which may rejoin as it was.
-    /// @param liquidity Liquidity removed that was measured from the mark (not anchored).
+    /// @notice Liquidity a sleeve has removed since the last mark that was measured from the mark, and may come back.
+    /// @param liquidity Liquidity removed that was there at the mark (not added since).
     /// @param markBlock The `lastMarkedBlock` it was removed under; the record is stale once a new mark is set.
+    /// @param tickLower Lower tick of the range it was in at the mark.
+    /// @param tickUpper Upper tick of the range it was in at the mark.
     struct Left {
         uint128 liquidity;
-        uint128 markBlock;
+        uint64 markBlock;
+        int24 tickLower;
+        int24 tickUpper;
     }
 
     /// @dev Payload passed through `PoolManager.unlock` to `unlockCallback`.
@@ -156,6 +161,10 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @notice Post-arbitrage mark s* of `lastMarkedBlock` (Q64.96 square-root price).
     uint160 public lastPostMark;
 
+    /// @dev Bit `i` is set while sleeve `i` holds dual-measured liquidity (`_dualLiquidity`). Packed beside
+    ///      `lastPostMark`, which every mark reads anyway, so sleeves without any cost no extra storage read.
+    uint8 internal _dualMask;
+
     /// @notice The post-arbitrage mark of the marked block before `lastMarkedBlock`. Together with `lastPostMark` it
     ///         gives `referenceSqrtPrice`, a price no single transaction can move.
     uint160 public prevPostMark;
@@ -198,6 +207,13 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     ///      curator could re-anchor its liquidity at the block's close whenever the market was about to continue the
     ///      users' move, and drop the cross term of that move from its arbitrage loss.
     mapping(uint256 sleeveId => Left) internal _leftSinceMark;
+
+    /// @dev Liquidity that left since the last mark and came back into a different range. It is part of
+    ///      `anchoredLiquidity`, but at the next mark it is booked at the lower of two readings: measured from where it
+    ///      joined, or as if it had been in the new range since the mark. The first alone would let a curator escape
+    ///      a move's cross term by shifting its range a tick; the second alone would let it pick bounds that clip away
+    ///      a loss after seeing the move. The lower of the two is never above either.
+    mapping(uint256 sleeveId => uint128) internal _dualLiquidity;
 
     /// @dev Pool price before the current swap. Scratch value for one swap, so transient (EIP-1153).
     uint160 private transient _sqrtPriceBeforeSwap;
@@ -447,9 +463,6 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         Sleeve storage s = _sleeve(sleeveId);
         if (s.liquidity != 0) revert SleeveNotEmpty(sleeveId);
         _checkRange(tickLower, tickUpper);
-        // Liquidity measured from the mark in the old range cannot rejoin in a range picked after seeing the move: the
-        // new range's clipping could then be chosen to drop a loss it would have taken.
-        if (s.tickLower != tickLower || s.tickUpper != tickUpper) delete _leftSinceMark[sleeveId];
         s.tickLower = tickLower;
         s.tickUpper = tickUpper;
         emit SleeveRangeSet(sleeveId, tickLower, tickUpper);
@@ -496,38 +509,11 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         if (call.liquidityDelta > 0) {
             uint128 added = SafeCast.toUint128(SafeCast.toUint256(call.liquidityDelta));
             after_ = s.liquidity + added;
-            // Liquidity that left since the mark comes back measured from the mark, exactly as if it had stayed.
-            Left storage left = _leftSinceMark[call.sleeveId];
-            uint128 back = 0;
-            if (left.markBlock == lastMarkedBlock && left.liquidity != 0) {
-                back = added < left.liquidity ? added : left.liquidity;
-                left.liquidity -= back;
-            }
-            // New liquidity is measured from the price it joins at. Liquidity added earlier in the same interval at
-            // another price moves to this anchor too: its move in between is then neither credited nor charged, so
-            // no liquidity is ever credited with impact from before it existed.
-            if (added > back) {
-                s.anchoredLiquidity += added - back;
-                s.anchor = _currentSqrtPrice();
-            }
+            _joined(call.sleeveId, s, added);
         } else if (call.liquidityDelta < 0) {
             uint128 removed = SafeCast.toUint128(SafeCast.toUint256(-call.liquidityDelta));
             after_ = s.liquidity - removed;
-            // The newest liquidity leaves first; whatever stays keeps its own reference price.
-            uint128 anchored = s.anchoredLiquidity;
-            uint128 fromAnchored = anchored < removed ? anchored : removed;
-            if (anchored != 0) {
-                s.anchoredLiquidity = anchored - fromAnchored;
-                if (anchored <= removed) s.anchor = 0;
-            }
-            // what leaves beyond the anchored part was measured from the mark, and may rejoin as such
-            uint128 fromMark = removed - fromAnchored;
-            if (fromMark != 0) {
-                Left storage left = _leftSinceMark[call.sleeveId];
-                uint128 current = SafeCast.toUint128(lastMarkedBlock);
-                if (left.markBlock != current) (left.liquidity, left.markBlock) = (0, current);
-                left.liquidity += fromMark;
-            }
+            _left(call.sleeveId, s, removed);
         } else {
             after_ = s.liquidity;
         }
@@ -536,6 +522,60 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
         // forge-lint: disable-next-line(reentrancy-events)
         emit SleeveLiquidityModified(call.sleeveId, call.liquidityDelta, after_);
         return "";
+    }
+
+    /// @dev Book `added` liquidity joining sleeve `id`. Liquidity that left since the mark comes back measured from
+    ///      the mark when it returns to the range it left, exactly as if it had stayed; returning to another range it
+    ///      is dual-measured (see `_dualLiquidity`). The rest is new and measured from the price it joins at. Liquidity
+    ///      added earlier in the same interval at another price moves to this anchor too: its move in between is then
+    ///      neither credited nor charged, so no liquidity is ever credited with impact from before it existed.
+    function _joined(uint256 id, Sleeve storage s, uint128 added) internal {
+        Left storage left = _leftSinceMark[id];
+        uint128 back = 0;
+        if (left.markBlock == lastMarkedBlock && left.liquidity != 0) {
+            back = added < left.liquidity ? added : left.liquidity;
+            left.liquidity -= back;
+            if (left.tickLower != s.tickLower || left.tickUpper != s.tickUpper) {
+                _dualLiquidity[id] += back;
+                // casting to 'uint8' is safe because id < MAX_SLEEVES = 8
+                // forge-lint: disable-next-line(unsafe-typecast)
+                _dualMask |= uint8(1 << id);
+                back = 0; // anchored like new liquidity, and dual-measured on top
+            }
+        }
+        if (added > back) {
+            s.anchoredLiquidity += added - back;
+            s.anchor = _currentSqrtPrice();
+        }
+    }
+
+    /// @dev Book `removed` liquidity leaving sleeve `id`. The newest leaves first: plainly anchored liquidity, then
+    ///      dual-measured, then liquidity that was there at the mark. The last two may come back (`_joined`).
+    function _left(uint256 id, Sleeve storage s, uint128 removed) internal {
+        uint128 anchored = s.anchoredLiquidity;
+        uint128 dual = (_dualMask >> id) & 1 != 0 ? _dualLiquidity[id] : 0;
+        uint128 fromPlain = removed < anchored - dual ? removed : anchored - dual;
+        uint128 rest = removed - fromPlain;
+        uint128 fromDual = rest < dual ? rest : dual;
+        if (anchored != 0) {
+            anchored -= fromPlain + fromDual;
+            s.anchoredLiquidity = anchored;
+            if (anchored == 0) s.anchor = 0;
+        }
+        if (fromDual != 0) _dualLiquidity[id] = dual - fromDual;
+        // what leaves beyond the plainly anchored part was there at the mark, and may come back
+        if (rest != 0) {
+            Left storage left = _leftSinceMark[id];
+            uint64 current = SafeCast.toUint64(lastMarkedBlock);
+            if (left.markBlock != current) {
+                // the first exit of the interval: the range now is the one the liquidity had at the mark
+                left.liquidity = 0;
+                left.markBlock = current;
+                left.tickLower = s.tickLower;
+                left.tickUpper = s.tickUpper;
+            }
+            left.liquidity += rest;
+        }
     }
 
     // ---------------------------------------------------------------------------------------------------------------
@@ -550,6 +590,11 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     /// @notice A sleeve's current shape.
     function sleeve(uint256 sleeveId) external view returns (Sleeve memory) {
         return _sleeves[sleeveId];
+    }
+
+    /// @notice Liquidity of a sleeve that is dual-measured until the next mark (see the contract notes on re-ranging).
+    function dualLiquidity(uint256 sleeveId) external view returns (uint128) {
+        return (_dualMask >> sleeveId) & 1 != 0 ? _dualLiquidity[sleeveId] : 0;
     }
 
     /// @notice A sleeve's running totals.
@@ -694,6 +739,7 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     function _creditImpact(uint160 sqrtClose) internal {
         uint256 n = _sleeves.length;
         uint160 mark = lastPostMark;
+        uint8 dualMask = _dualMask;
         for (uint256 i; i < n; ++i) {
             Sleeve storage s = _sleeves[i];
             uint128 l = s.liquidity;
@@ -702,6 +748,8 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
             (uint160 lo, uint160 hi) = _bounds(s);
             uint256 credit = 0;
             if (l > anchored) credit = EdgeMath.impactCredit(l - anchored, mark, sqrtClose, lo, hi);
+            // dual-measured liquidity is credited at the mark instead, with the reading it is booked at
+            if ((dualMask >> i) & 1 != 0) anchored -= _dualLiquidity[i];
             if (anchored != 0) credit += EdgeMath.impactCredit(anchored, s.anchor, sqrtClose, lo, hi);
             if (credit != 0) _ledgers[i].userImpact += credit;
         }
@@ -753,40 +801,88 @@ contract UkiyoHook is BaseHook, Ownable, IUnlockCallback {
     ///      never raise Edge by more than the exact amount.
     function _chargeArbitrageLoss(uint160 sqrtPost, uint160 spikeFrom) internal {
         uint256 n = _sleeves.length;
-        uint160 mark = lastPostMark;
+        uint8 dualMask = _dualMask;
+        if (dualMask != 0) _dualMask = 0;
         for (uint256 i; i < n; ++i) {
-            Sleeve storage s = _sleeves[i];
-            uint128 l = s.liquidity;
-            uint128 anchored = s.anchoredLiquidity;
-            uint160 anchor = s.anchor;
-            if (anchor != 0) {
-                s.anchor = 0;
-                s.anchoredLiquidity = 0;
+            uint128 dual = 0;
+            if ((dualMask >> i) & 1 != 0) {
+                dual = _dualLiquidity[i];
+                delete _dualLiquidity[i];
             }
-            if (l == 0) {
-                delete _lastLeg[i];
-                continue;
-            }
-            (uint160 lo, uint160 hi) = _bounds(s);
-            Leg memory last = _lastLeg[i];
-            if (spikeFrom != 0 && anchored == 0 && last.liquidity == l) {
-                _netSpike(i, l, spikeFrom, sqrtPost, lo, hi, last.loss);
-                continue;
-            }
-            uint256 loss = 0;
-            if (l > anchored && mark != 0) loss = EdgeMath.rebalancingLoss(l - anchored, mark, sqrtPost, lo, hi);
-            if (anchored != 0) loss += EdgeMath.rebalancingLoss(anchored, anchor, sqrtPost, lo, hi);
-            if (loss != 0) _ledgers[i].arbLoss += loss;
-            // a leg that involved anchored liquidity, or had no previous mark, is never netted later
-            _lastLeg[i] = Leg({loss: SafeCast.toUint128(loss), liquidity: anchored == 0 && mark != 0 ? l : 0});
+            _chargeSleeve(i, sqrtPost, spikeFrom, dual);
         }
     }
 
-    /// @dev Charge sleeve `i` for the move `from -> to` around a spike, against `charged`, what the leg into the spike
-    ///      already cost it.
-    function _netSpike(uint256 i, uint128 l, uint160 from, uint160 to, uint160 lo, uint160 hi, uint256 charged)
+    /// @dev `_chargeArbitrageLoss` for one sleeve, which holds `dual` dual-measured liquidity. Anchored liquidity
+    ///      always has an anchor and the reverse, so the anchor is cleared exactly when there is anchored liquidity.
+    function _chargeSleeve(uint256 i, uint160 sqrtPost, uint160 spikeFrom, uint128 dual) internal {
+        Sleeve storage s = _sleeves[i];
+        uint128 l = s.liquidity;
+        if (l == 0) {
+            delete _lastLeg[i];
+            return;
+        }
+        uint128 anchored = s.anchoredLiquidity;
+        if (spikeFrom != 0 && anchored == 0 && _lastLeg[i].liquidity == l) {
+            _netSpike(i, l, spikeFrom, sqrtPost);
+            return;
+        }
+        (uint160 lo, uint160 hi) = _bounds(s);
+        uint160 mark = lastPostMark;
+        uint256 loss = 0;
+        if (l > anchored && mark != 0) loss = EdgeMath.rebalancingLoss(l - anchored, mark, sqrtPost, lo, hi);
+        if (anchored != 0) loss += _chargeAnchored(i, s, dual, sqrtPost);
+        if (loss != 0) _ledgers[i].arbLoss += loss;
+        // a leg that involved anchored liquidity, or had no previous mark, is never netted later
+        _lastLeg[i] = Leg({loss: SafeCast.toUint128(loss), liquidity: anchored == 0 && mark != 0 ? l : 0});
+    }
+
+    /// @dev Loss of a sleeve's anchored liquidity up to the new mark (its dual-measured part booked by `_bookDual`),
+    ///      and clear the anchor: from this mark on, all its liquidity is measured from the mark.
+    function _chargeAnchored(uint256 i, Sleeve storage s, uint128 dual, uint160 sqrtPost)
         internal
+        returns (uint256 loss)
     {
+        uint128 anchored = s.anchoredLiquidity;
+        uint160 anchor = s.anchor;
+        s.anchor = 0;
+        s.anchoredLiquidity = 0;
+        if (anchored > dual) {
+            (uint160 lo, uint160 hi) = _bounds(s);
+            loss = EdgeMath.rebalancingLoss(anchored - dual, anchor, sqrtPost, lo, hi);
+        }
+        if (dual != 0) loss += _bookDual(i, dual, anchor, sqrtPost);
+    }
+
+    /// @dev Book dual-measured liquidity at the lower of its two readings (see `_dualLiquidity`): from its anchor, or
+    ///      from the mark. Credits its impact up to the block's close (the price before this swap, the block's first)
+    ///      and returns the arbitrage loss of the chosen reading for the caller to charge.
+    function _bookDual(uint256 i, uint128 d, uint160 anchor, uint160 sqrtPost) internal returns (uint256 loss) {
+        (uint160 lo, uint160 hi) = _bounds(_sleeves[i]);
+        (uint256 credit, uint256 lossA) = _reading(d, anchor, sqrtPost, lo, hi);
+        (uint256 creditM, uint256 lossM) = _reading(d, lastPostMark, sqrtPost, lo, hi);
+        loss = lossA;
+        // book the mark's reading only when it is strictly lower: creditM - lossM < credit - lossA, kept unsigned
+        if (creditM + lossA < credit + lossM) (credit, loss) = (creditM, lossM);
+        if (credit != 0) _ledgers[i].userImpact += credit;
+    }
+
+    /// @dev One reading of `d` liquidity measured from `from`: its impact credit up to the block's close (the price
+    ///      before this swap, the block's first) and its arbitrage loss up to the new mark.
+    function _reading(uint128 d, uint160 from, uint160 sqrtPost, uint160 lo, uint160 hi)
+        internal
+        view
+        returns (uint256 credit, uint256 loss)
+    {
+        credit = EdgeMath.impactCredit(d, from, _sqrtPriceBeforeSwap, lo, hi);
+        loss = EdgeMath.rebalancingLoss(d, from, sqrtPost, lo, hi);
+    }
+
+    /// @dev Charge sleeve `i`, holding `l` liquidity, for the move `from -> to` around a spike, against what the leg
+    ///      into the spike already cost it.
+    function _netSpike(uint256 i, uint128 l, uint160 from, uint160 to) internal {
+        (uint160 lo, uint160 hi) = _bounds(_sleeves[i]);
+        uint256 charged = _lastLeg[i].loss;
         uint256 chord = EdgeMath.rebalancingLoss(l, from, to, lo, hi);
         Ledger storage g = _ledgers[i];
         if (chord >= charged) {

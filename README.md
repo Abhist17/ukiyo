@@ -317,7 +317,7 @@ that cannot take its slice is skipped and the slice returned. The app's **Invest
 
 ![The Ukiyo app: curator vaults ranked live by Edge, with deposit and redeem](assets/app.png)
 
-[`web/`](web/) is the frontend (Next.js, exported as a static site; wallet via wagmi and viem):
+[`web/`](web/) is the frontend (Next.js, exported as a static site; wallets through RainbowKit on wagmi and viem: browser wallets, and mobile wallets by QR code when a WalletConnect project id is set):
 
 | Page | What it does |
 | --- | --- |
@@ -563,7 +563,7 @@ No partner integrations.
   test routers
 - [hookmate](https://github.com/akshatmittal/hookmate): canonical PoolManager bytecode for tests
 - Project layout follows [Uniswap/v4-template](https://github.com/Uniswap/v4-template)
-- Site: [Next.js](https://nextjs.org), React, [wagmi](https://wagmi.sh) and [viem](https://viem.sh); fonts Geist and Geist Mono from Google Fonts
+- Site: [Next.js](https://nextjs.org), React, [wagmi](https://wagmi.sh), [viem](https://viem.sh) and [RainbowKit](https://rainbowkit.com) (with WalletConnect for mobile wallets); fonts Geist and Geist Mono from Google Fonts
 - Demo: v4-core's `PoolSwapTest` as the swap router, v4-periphery's `HookMiner` for the hook address, solmate's `MockERC20` for the faucet test tokens
 - Price data: [ff137/bitstamp-btcusd-minute-data](https://github.com/ff137/bitstamp-btcusd-minute-data); ETH/USDT minute klines from Binance's public data archive ([data.binance.vision](https://data.binance.vision))
 - Unichain swap data: the public RPC `mainnet.unichain.org`; contract verification labels from the

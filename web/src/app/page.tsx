@@ -151,7 +151,8 @@ export default function Home() {
           </div>
           <p className="big-cap" data-reveal>
             weekly error against each curator&apos;s true hedged P&amp;L. The obvious on-chain formula is off by{" "}
-            <b>{e.naive.rmse.toFixed(0)} bps</b>.
+            <b>{e.naive.rmse.toFixed(0)} bps</b>. Out of sample, on four years of ETH, Edge picks the true best curator{" "}
+            <b>every year</b>; fee income does once.
           </p>
           <div className="num-row" data-reveal="stagger">
             <div><b data-count>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>

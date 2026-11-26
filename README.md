@@ -17,7 +17,7 @@ Edge = user fees + user price impact − arbitrage loss
 Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and Curation*).
 
 **Live:** [ukiyo-ochre.vercel.app](https://ukiyo-ochre.vercel.app) · Unichain Sepolia hook
-[`0xDf718121e527ACcAd0D59FaA9D4BEF345948aAC0`](https://sepolia.uniscan.xyz/address/0xDf718121e527ACcAd0D59FaA9D4BEF345948aAC0) · **Reviewing?** Start with
+[`0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0`](https://sepolia.uniscan.xyz/address/0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0) · **Reviewing?** Start with
 [`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md). **Built when?**
 [`SUBMISSION.md`](SUBMISSION.md). **Feedback on v4:** [`FEEDBACK.md`](FEEDBACK.md).
 
@@ -335,17 +335,17 @@ straight from the public RPC. The test tokens sit at fixed CREATE2 addresses, so
 
 | Contract | Address |
 | --- | --- |
-| Hook (`UkiyoHook`) | [`0xDf718121e527ACcAd0D59FaA9D4BEF345948aAC0`](https://sepolia.uniscan.xyz/address/0xDf718121e527ACcAd0D59FaA9D4BEF345948aAC0) |
-| Factory (`UkiyoFactory`) | [`0x55aD00575622bD0FF3b22D8221c08208e46E9196`](https://sepolia.uniscan.xyz/address/0x55aD00575622bD0FF3b22D8221c08208e46E9196) |
-| Skill router (`UkiyoSkillRouter`) | [`0xC28cd92bde73F94cBfF0E5F138d89684a0611D4F`](https://sepolia.uniscan.xyz/address/0xC28cd92bde73F94cBfF0E5F138d89684a0611D4F) |
+| Hook (`UkiyoHook`) | [`0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0`](https://sepolia.uniscan.xyz/address/0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0) |
+| Factory (`UkiyoFactory`) | [`0x37Cb4E7af05b98A230843EFbd8d91d312532e0Bc`](https://sepolia.uniscan.xyz/address/0x37Cb4E7af05b98A230843EFbd8d91d312532e0Bc) |
+| Skill router (`UkiyoSkillRouter`) | [`0x5bF7c1e6f4195E8E700A6113F1deCDF529C4Fb63`](https://sepolia.uniscan.xyz/address/0x5bF7c1e6f4195E8E700A6113F1deCDF529C4Fb63) |
 | PoolManager (canonical v4) | [`0x00B036B58a818B1BC34d502D3fE730Db729e62AC`](https://sepolia.uniscan.xyz/address/0x00B036B58a818B1BC34d502D3fE730Db729e62AC) |
-| Swap router (`PoolSwapTest`) | [`0x5885E44F98675329f28e82c263A651A6aDbC6a0f`](https://sepolia.uniscan.xyz/address/0x5885E44F98675329f28e82c263A651A6aDbC6a0f) |
+| Swap router (`PoolSwapTest`) | [`0x6cd5bf3Fe9d217e961Ce8922AF0Bbdf879eCECe7`](https://sepolia.uniscan.xyz/address/0x6cd5bf3Fe9d217e961Ce8922AF0Bbdf879eCECe7) |
 | tBTC (test token, token0) | [`0xe4134d0bA75d9cc0a22dac01a11f589559434148`](https://sepolia.uniscan.xyz/address/0xe4134d0bA75d9cc0a22dac01a11f589559434148) |
 | tUSD (test token, token1) | [`0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db`](https://sepolia.uniscan.xyz/address/0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db) |
-| Vault: Passive Wide (`ukWIDE`) | [`0x9a02129A92F92B0e5751BF4062Acde67b30063f9`](https://sepolia.uniscan.xyz/address/0x9a02129A92F92B0e5751BF4062Acde67b30063f9) |
-| Vault: Passive Mid (`ukMID`) | [`0x3e269e7a7D1bCD9F869f39b88Fe3A11a8b430163`](https://sepolia.uniscan.xyz/address/0x3e269e7a7D1bCD9F869f39b88Fe3A11a8b430163) |
-| Vault: Tight Chaser (`ukTIGHT`) | [`0x24640442cd9D95c353b61d40F6EedeDAe9e5bb11`](https://sepolia.uniscan.xyz/address/0x24640442cd9D95c353b61d40F6EedeDAe9e5bb11) |
-| Vault: Vol Adaptive (`ukVOL`) | [`0x811FCAD038C91B3a5d1a2125f33A571E4FA21819`](https://sepolia.uniscan.xyz/address/0x811FCAD038C91B3a5d1a2125f33A571E4FA21819) |
+| Vault: Passive Wide (`ukWIDE`) | [`0xc1222A6aE1B3da671A1d0414ad8236B2640A6AdD`](https://sepolia.uniscan.xyz/address/0xc1222A6aE1B3da671A1d0414ad8236B2640A6AdD) |
+| Vault: Passive Mid (`ukMID`) | [`0x0b4757D1e5Aa18995b82d9FA78f4BF1Dcb18088e`](https://sepolia.uniscan.xyz/address/0x0b4757D1e5Aa18995b82d9FA78f4BF1Dcb18088e) |
+| Vault: Tight Chaser (`ukTIGHT`) | [`0xf47C1250Af533b2b0425EC8FE40803f5AeeB3F61`](https://sepolia.uniscan.xyz/address/0xf47C1250Af533b2b0425EC8FE40803f5AeeB3F61) |
+| Vault: Vol Adaptive (`ukVOL`) | [`0xA8778659Aa7832A08B91135e056c9231Ae3b7379`](https://sepolia.uniscan.xyz/address/0xA8778659Aa7832A08B91135e056c9231Ae3b7379) |
 
 Demo settings: 5 bps pool, classifier threshold 0.002 gwei, 10-minute epochs, 10% performance fee, curator bonds of
 $10K–$50K with a 25 bps per-epoch LVR budget. Test tokens only.

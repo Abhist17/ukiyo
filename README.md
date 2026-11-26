@@ -20,22 +20,47 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
 [`0xbe62a2D964ab8d81A203F2C05bDF0a96E6f7eac0`](https://sepolia.uniscan.xyz/address/0xbe62a2D964ab8d81A203F2C05bDF0a96E6f7eac0) · **Reviewing?** Start with
 [`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md).
 
+## Highlights
+
+1. **Skill measured on-chain, with no oracle.** The hook reads only its own pool's prices. On a full year of real
+   BTC/USD prices its Edge has a 0.987–0.999 correlation with each curator's true hedged P&L, and it ranks six curators in
+   exactly their true order. The obvious formula puts the wrong curator first ([backtest](#what-the-backtest-found-and-why-the-obvious-formula-is-wrong)).
+2. **It never flatters a curator.** Every rounding goes against the curator. A doubtful swap is booked as arbitrage. A
+   tipped price spike that is pushed back is charged once, not twice
+   ([`_isSpike`](src/UkiyoHook.sol#L736)). Liquidity is measured from where it joins, and a remove-and-re-add cannot reset
+   that ([`unlockCallback`](src/UkiyoHook.sol#L474)). Vaults refuse to add capital away from a price no single
+   transaction can set ([`_checkPrice`](src/UkiyoVault.sol#L1028)). A differential fuzz test replays every swap against an
+   independent model.
+3. **Curators are paid for Edge only.** A vault's performance fee is a share of Edge above a high-water mark. Fee
+   volume and a rising market earn nothing. An LVR bond pays depositors when an epoch loses more than the curator's
+   budget ([Curator vaults](#curator-vaults)).
+4. **Skill, not luck.** Each vault compounds a size-neutral Edge index and publishes a t-statistic of its epoch returns
+   ([`edgeTStat`](src/UkiyoVault.sol#L706)). At 2 or more, the Edge is statistically clear of zero. A curator whose
+   index falls past its drawdown limit goes on probation and cannot rebalance ([`onProbation`](src/UkiyoVault.sol#L851)).
+5. **Anyone can become a curator.** [`UkiyoFactory.launch`](src/UkiyoFactory.sol#L96) deploys a genuine vault (its
+   code is hash-checked), opens its sleeve and posts a permanent bond in one call, with no permission from the hook
+   owner.
+6. **Invest by evidence.** [`UkiyoSkillRouter`](src/UkiyoSkillRouter.sol#L92) splits one deposit across curators by
+   their skill tests. The depositor holds every share directly, and the router never holds anyone's funds.
+7. **Live and measured.** The live board runs on Unichain Sepolia, with a bot replaying 2024 BTC prices through the
+   pool. The classifier was measured on 6,714 real Unichain swaps, and the README reports where it falls short.
+
 ## Where the Uniswap v4 integration lives
 
 Ukiyo is a standard-curve v4 hook (no custom curve, no return deltas, static fee), so any v4 router can trade its pool.
 
 | What | Where | Notes |
 | --- | --- | --- |
-| **The hook** | [`src/UkiyoHook.sol:61`](src/UkiyoHook.sol#L61) | `UkiyoHook is BaseHook, Ownable, IUnlockCallback` (OpenZeppelin uniswap-hooks base) |
-| **Permissions** | [`src/UkiyoHook.sol:260`](src/UkiyoHook.sol#L260) | `beforeInitialize`, `beforeAddLiquidity`, `beforeRemoveLiquidity`, `beforeSwap`, `afterSwap`; no delta flags |
-| **Pool binding** | [`src/UkiyoHook.sol:545`](src/UkiyoHook.sol#L545) | One pool per hook, initialized by the owner only, dynamic fees refused (fee attribution needs a static LP fee) |
-| **Hook-exclusive liquidity** | [`src/UkiyoHook.sol:555`](src/UkiyoHook.sol#L555) | `beforeAdd/RemoveLiquidity` reject every sender but the hook: every position in the pool is a scored sleeve |
-| **Hook-owned positions** | [`src/UkiyoHook.sol:420`](src/UkiyoHook.sol#L420), [`:431`](src/UkiyoHook.sol#L431) | `modifySleeveLiquidity` → `PoolManager.unlock` → `unlockCallback` → `modifyLiquidity` (salt = sleeve id), settled with `CurrencySettler` |
-| **Classifier + impact credit** | [`src/UkiyoHook.sol:578`](src/UkiyoHook.sol#L578) | `beforeSwap`: tip = `tx.gasprice − block.basefee` against the threshold; the block's first swap credits the previous block's user impact; per-swap scratch in transient storage (EIP-1153) |
-| **Marks, loss, fees** | [`src/UkiyoHook.sol:607`](src/UkiyoHook.sol#L607) | `afterSwap`: reads `slot0` (price and protocol fee), books each sleeve's LP fee from the price path, marks the block's first swap and charges arbitrage loss |
+| **The hook** | [`src/UkiyoHook.sol:63`](src/UkiyoHook.sol#L63) | `UkiyoHook is BaseHook, Ownable, IUnlockCallback` (OpenZeppelin uniswap-hooks base) |
+| **Permissions** | [`src/UkiyoHook.sol:300`](src/UkiyoHook.sol#L300) | `beforeInitialize`, `beforeAddLiquidity`, `beforeRemoveLiquidity`, `beforeSwap`, `afterSwap`; no delta flags |
+| **Pool binding** | [`src/UkiyoHook.sol:606`](src/UkiyoHook.sol#L606) | One pool per hook, initialized by the owner only, dynamic fees refused (fee attribution needs a static LP fee) |
+| **Hook-exclusive liquidity** | [`src/UkiyoHook.sol:616`](src/UkiyoHook.sol#L616) | `beforeAdd/RemoveLiquidity` reject every sender but the hook: every position in the pool is a scored sleeve |
+| **Hook-owned positions** | [`src/UkiyoHook.sol:463`](src/UkiyoHook.sol#L463), [`:474`](src/UkiyoHook.sol#L474) | `modifySleeveLiquidity` → `PoolManager.unlock` → `unlockCallback` → `modifyLiquidity` (salt = sleeve id), settled with `CurrencySettler` |
+| **Classifier + impact credit** | [`src/UkiyoHook.sol:639`](src/UkiyoHook.sol#L639) | `beforeSwap`: tip = `tx.gasprice − block.basefee` against the threshold; the block's first swap credits the previous block's user impact; per-swap scratch in transient storage (EIP-1153) |
+| **Marks, loss, fees** | [`src/UkiyoHook.sol:668`](src/UkiyoHook.sol#L668) | `afterSwap`: reads `slot0` (price and protocol fee), books each sleeve's LP fee from the price path, marks the block's first swap and charges arbitrage loss |
 | **The maths** | [`src/libraries/EdgeMath.sol`](src/libraries/EdgeMath.sol#L61) | Closed forms: rebalancing loss, impact credit, the LP fee rate net of the protocol fee (mirrors `Pool.swap`), per-sleeve swap fee |
-| **Manipulation guard** | [`src/UkiyoHook.sol:511`](src/UkiyoHook.sol#L511) | `referenceSqrtPrice`: a post-arbitrage mark the current transaction cannot set; vaults refuse to add capital away from it |
-| **Vault swaps** | [`src/UkiyoVault.sol:650`](src/UkiyoVault.sol#L650) | `rebalanceWithSwap` swaps through the PoolManager (`unlock` → `swap`), capped at a 1% move and always booked as arbitrage |
+| **Manipulation guard** | [`src/UkiyoHook.sol:572`](src/UkiyoHook.sol#L572) | `referenceSqrtPrice`: a post-arbitrage mark the current transaction cannot set; vaults refuse to add capital away from it |
+| **Vault swaps** | [`src/UkiyoVault.sol:611`](src/UkiyoVault.sol#L611) | `rebalanceWithSwap` swaps through the PoolManager (`unlock` → `swap`), capped at a 1% move and always booked as arbitrage |
 | **CREATE2 deploy** | [`script/DeployUkiyo.s.sol:119`](script/DeployUkiyo.s.sol#L119) | `HookMiner` mines the salt so the permission flags are in the hook's address |
 | **One-call read** | [`src/UkiyoLens.sol:100`](src/UkiyoLens.sol#L100) | `scoreboard(hook)`: every sleeve's ledger, Edge, Edge index, skill test and vault terms in one `view` |
 

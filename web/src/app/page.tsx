@@ -174,6 +174,27 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="l-section" id="safeguards">
+        <div className="wrap l-split">
+          <div data-reveal>
+            <h2>Built to never flatter a curator</h2>
+            <p className="l-sub">
+              A scoreboard is only worth something if it cannot be gamed. Wherever the hook has to choose, it chooses
+              against the curator, so Edge can read low but never high.
+            </p>
+            <a className="btn ghost" href={`${REPO}/blob/main/THREAT_MODEL.md`} target="_blank" rel="noreferrer">Read the threat model ↗</a>
+          </div>
+          <ul className="l-list" data-reveal="stagger">
+            <li><b>Rounded against the curator.</b> Every loss rounds up and every credit rounds down.</li>
+            <li><b>When in doubt, arbitrage.</b> A swap that might be informed is booked as arbitrage, so no arbitrage passes as user flow.</li>
+            <li><b>Spikes charged once.</b> A tipped push that is pushed straight back is charged as one move, so a rival cannot make you look bad for free.</li>
+            <li><b>Measured from where it joins.</b> New liquidity gets no credit for moves before it arrived, and taking liquidity out and back cannot reset its starting point.</li>
+            <li><b>A price no transaction can set.</b> Vaults settle and rebalance only within 1% of the previous block&apos;s mark, so a sandwich cannot pick the price their capital goes in at.</li>
+            <li><b>Checked against a second model.</b> A fuzz test replays random swaps, deposits and protocol fees through an independent model and demands every ledger match to the wei.</li>
+          </ul>
+        </div>
+      </section>
+
       {/* grows from a card to the full width as it scrolls in */}
       <section className="l-dark" id="proof" data-scroll="view">
         <div className="wrap">
@@ -205,9 +226,11 @@ export default function Home() {
           <ul className="l-list" data-reveal="stagger">
             <li><b>Paid only for Edge.</b> The curator&apos;s fee is a share of Edge above a high-water mark: nothing for fee volume or a rising market, nothing until losses are earned back.</li>
             <li><b>Bonded against LVR.</b> Curators post a bond and a loss budget; an epoch that loses more pays the overshoot to depositors.</li>
-            <li><b>No oracle.</b> A deposit buys the same share of every token the vault holds; the rest is refunded.</li>
+            <li><b>Skill, not luck.</b> Each vault publishes a t-statistic of its epoch Edge returns. At 2 or more, a few lucky epochs no longer explain it.</li>
+            <li><b>Probation.</b> A curator whose Edge index falls past its drawdown limit cannot rebalance for three epochs, while depositors decide.</li>
+            <li><b>Open launches.</b> Anyone can become a curator in one call: the factory deploys a hash-checked vault and takes a permanent bond.</li>
+            <li><b>Invest by skill.</b> The skill router splits one deposit across curators by their skill tests, and the shares stay yours.</li>
             <li><b>Curators can&apos;t take funds.</b> Only the vault can move its sleeve, and removed liquidity always returns to it.</li>
-            <li><b>One-way hand-over.</b> The hook owner gives each sleeve to its vault once, with no way back in.</li>
           </ul>
         </div>
       </section>

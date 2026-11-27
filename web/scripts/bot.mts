@@ -1,5 +1,6 @@
 // Ukiyo replay bot: drives real BTC/USD 2024 prices through the deployed hook-exclusive pool, one hour of 2024 per
-// step, so the scoreboard has live activity to measure.
+// step, so the scoreboard has live activity to measure. After 31 Dec it runs back through the year, then forwards again,
+// so the price path never jumps.
 //
 // Each step, in one block:
 //   1. an arbitrageur moves the pool to the hour's Bitstamp close, stopping one fee-width short, and bids a priority
@@ -63,6 +64,16 @@ const dep = JSON.parse(readFileSync(new URL(`../src/deployments/${chainId}.json`
 const closes: number[] = JSON.parse(
   readFileSync(new URL("../src/data/btc2024_hourly.json", import.meta.url), "utf8"),
 ).close;
+/**
+ * The external price at replay hour `h`. Past the end of the year the replay runs backwards through it, then forwards
+ * again, so the path stays continuous: wrapping from 31 Dec (~$93k) to 1 Jan (~$42k) would move the pool 55% in one
+ * block, an arbitrage loss no curator could manage and a cliff in every chart.
+ */
+const closeAt = (h: number) => {
+  const n = closes.length;
+  const i = ((h % (2 * n)) + 2 * n) % (2 * n);
+  return closes[i < n ? i : 2 * n - 1 - i];
+};
 const STATE = new URL(`./.bot-state-${chainId}.json`, import.meta.url);
 
 // accept the key with or without its 0x prefix, as forge does
@@ -170,7 +181,7 @@ const nonceOf = (w: (typeof users)[number]) => pc.getTransactionCount({ address:
 const lognormal = (m: number, s: number) => m * Math.exp(s * Math.sqrt(-2 * Math.log(Math.random())) * Math.cos(2 * Math.PI * Math.random()));
 
 async function step(h: number) {
-  const ext = closes[h % closes.length];
+  const ext = closeAt(h);
   const block = await pc.getBlock();
   const base = block.baseFeePerGas ?? 0n;
   // every send of a step goes out together so they share a block; the priority fee then puts the arbitrage first
@@ -252,7 +263,7 @@ async function curate(h: number, tick: number, price: number) {
     if (v.name.includes("Tight") && outside) half = 150;
     if (v.name.includes("Vol") && h % 24 === 0 && h >= 168) {
       // width: 3 sigma of daily moves, from the last week of hourly closes
-      const w = closes.slice(h - 168, h);
+      const w = Array.from({ length: 168 }, (_, k) => closeAt(h - 168 + k));
       const r = w.slice(1).map((x, k) => Math.log(x / w[k]));
       const sd = Math.sqrt(r.reduce((a, b) => a + b * b, 0) / r.length) * Math.sqrt(24);
       const want = Math.max(60, Math.round((3 * sd) / 1e-4));
@@ -298,7 +309,7 @@ async function curate(h: number, tick: number, price: number) {
 
 await setup();
 let h = process.env.START_HOUR ? Number(process.env.START_HOUR) : existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")).hour : 0;
-console.log(`replaying BTC/USD 2024 from hour ${h} on chain ${chainId}, one hour per ${STEP_MS} ms`);
+console.log(`replaying BTC/USD 2024 (forwards, then backwards) from hour ${h} on chain ${chainId}, one hour per ${STEP_MS} ms`);
 for (;;) {
   const t0 = Date.now();
   try {

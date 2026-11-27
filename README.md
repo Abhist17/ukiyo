@@ -49,7 +49,8 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
 6. **Invest by evidence.** [`UkiyoSkillRouter`](src/UkiyoSkillRouter.sol#L92) splits one deposit across curators by
    their skill tests. The depositor holds every share directly, and the router never holds anyone's funds.
 7. **Live and measured.** The live board runs on Unichain Sepolia, with a bot replaying 2024 BTC prices through the
-   pool. The classifier was measured on 6,714 real Unichain swaps, and the README reports where it falls short.
+   pool (forwards, then backwards, so the price never jumps). The classifier was measured on 6,714 real Unichain
+   swaps, and the README reports where it falls short.
 8. **Developer kit.** [`sdk/`](sdk/) is a TypeScript SDK and `ukiyo` CLI: the scoreboard ranked any way, `explain <tx>`
    (how the hook booked a swap and why), Edge over any block range, a live feed, and the hook's maths ported to the
    wei. Foundry replays 400 SDK-generated vectors through `EdgeMath` and requires identical results

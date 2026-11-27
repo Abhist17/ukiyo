@@ -114,18 +114,47 @@ export default function Home() {
 
       <section className="l-hero">
         <div className="wrap hero-in">
+          <Link className="hero-tag" href="/app/">
+            <span className="hero-dot" aria-hidden />
+            Uniswap v4 hook · {CHAIN.id !== 31337 ? `live on ${CHAIN.name}` : "running locally"}
+          </Link>
           {/* each word rises out of its line's mask, one after another */}
-          <h1 aria-label="Rank curators by skill, not luck">
+          <h1 aria-label="Fee APR picks the wrong curator">
             <span className="ln" aria-hidden>
-              <W d={0}>Rank</W> <W d={1}>curators</W>
+              <W d={0}>Fee</W> <W d={1}>APR</W> <W d={2}>picks</W>
             </span>
             <span className="ln" aria-hidden>
-              <W d={2}>by</W> <W d={3}><em>skill</em>,</W> <W d={4}>not</W> <W d={5}>luck</W>
+              <W d={3}>the</W> <W d={4}><em>wrong</em></W> <W d={5}>curator</W>
             </span>
           </h1>
-          <p className="l-lede">An on-chain score for every Uniswap v4 liquidity curator.</p>
+          <p className="l-lede">
+            Curators manage Uniswap liquidity for depositors, and everyone ranks them by the fees they earn. But
+            arbitrageurs pay fees while taking more than they pay. Ukiyo is a v4 hook that tells the two apart on every
+            swap and keeps each curator&apos;s real score on-chain:
+          </p>
+          <div className="hero-formula" role="img" aria-label="Edge equals user fees plus user price impact minus arbitrage loss">
+            <div className="hf-term pos">
+              <b>User fees</b>
+              <small>paid by ordinary traders</small>
+            </div>
+            <div className="hf-term pos">
+              <span className="hf-op">+</span>
+              <b>User price impact</b>
+              <small>won back by the LPs</small>
+            </div>
+            <div className="hf-term neg">
+              <span className="hf-op">−</span>
+              <b>Arbitrage loss</b>
+              <small>taken by arbitrageurs</small>
+            </div>
+            <div className="hf-term edge">
+              <span className="hf-op">=</span>
+              <b>Edge</b>
+              <small>per curator, every block</small>
+            </div>
+          </div>
           <div className="l-cta">
-            <Link className="btn primary" href="/app/">Launch app</Link>
+            <Link className="btn primary" href="/app/">See the live scoreboard</Link>
             <a className="btn ghost-light" href="#how">How it works</a>
           </div>
           <div className="hero-card">

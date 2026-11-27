@@ -27,6 +27,12 @@ export interface Deployment {
   skillRouter?: Address;
   /** UkiyoLens: the whole scoreboard in one view call (absent on older deployments). */
   lens?: Address;
+  /** Bond in token1 wei that the factory takes from every new curator (absent on older deployments). */
+  launchBond?: string;
+  /** Share of Edge above the high-water mark paid to the demo curators, in bps. */
+  performanceFeeBps?: number;
+  /** Edge-index drawdown, in bps, that puts a demo vault on probation. */
+  probationBps?: number;
   vaults: { address: Address; sleeveId: number; name: string; symbol: string; style: string }[];
 }
 

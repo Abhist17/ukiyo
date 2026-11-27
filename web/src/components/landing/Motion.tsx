@@ -29,10 +29,24 @@ function countUp(el: HTMLElement) {
  * - `data-scroll`: gets `--p`, its scroll progress from 0 to 1 (`"view"` while it crosses the viewport, `"pin"`
  *   while a tall section scrolls past its sticky child, `"top"` over the first screen of the page), which CSS turns
  *   into transforms;
- * - `data-count`: counts up from zero when revealed.
+ * - `data-count`: counts up from zero when revealed;
+ * - the root gets `nav-float` while the page is scrolled, which turns the header into a floating pill.
  * With reduced motion everything is shown at once and nothing moves.
  */
 export function Motion() {
+  // The header detaches into a floating pill once the page leaves the top. Kept apart from the effect below so it
+  // still works with reduced motion (where it simply snaps instead of easing).
+  useEffect(() => {
+    const root = document.documentElement;
+    const onScroll = () => root.classList.toggle("nav-float", window.scrollY > 48);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      root.classList.remove("nav-float");
+    };
+  }, []);
+
   useEffect(() => {
     const root = document.documentElement;
     (window as unknown as { __motion?: boolean }).__motion = true;

@@ -7,10 +7,55 @@ import { Marquee, Motion } from "@/components/landing/Motion";
 import { BlockExplainer } from "@/components/landing/BlockExplainer";
 import { RankShift } from "@/components/RankShift";
 import { error } from "@/lib/data";
-import { CHAIN } from "@/lib/chain";
+import { CHAIN, DEP, EXPLORER, SOURCE_VERIFIED } from "@/lib/chain";
 import "@/components/landing/landing.css";
 
 const REPO = "https://github.com/Abhist17/ukiyo";
+
+const pct = (bps: number) => `${(bps / 100).toLocaleString("en-US")}%`;
+const mins = (s: number) => (s % 60 === 0 ? `${s / 60} min` : `${s} s`);
+
+/** The deployed contracts and the parameters they actually run with, read from the deployment file. */
+const SPECS = DEP
+  ? [
+      {
+        k: "UkiyoHook",
+        title: "Scores every swap",
+        addr: DEP.hook,
+        rows: [
+          ["Pool", `tBTC / tUSD · ${pct(DEP.fee / 100)}`],
+          ["Arbitrage if tip ≥", `${BigInt(DEP.threshold).toLocaleString("en-US")} wei`],
+          ["Raising that threshold", "waits 2 days"],
+          ["Spike netting", "8 fee widths"],
+          ["Oracles, keepers", "none"],
+        ],
+      },
+      {
+        k: `UkiyoVault × ${DEP.vaults.length}`,
+        title: "Pays curators for Edge only",
+        addr: DEP.vaults[0]?.address,
+        rows: [
+          ["Epoch", mins(DEP.epochLength)],
+          ["Performance fee", DEP.performanceFeeBps != null ? `${pct(DEP.performanceFeeBps)} of new Edge` : "share of new Edge"],
+          ["Probation after", DEP.probationBps != null ? `−${pct(DEP.probationBps)} Edge index` : "a drawdown"],
+          ["Settles within", "1% of the last mark"],
+          ["Skill test passes at", "t ≥ 2"],
+        ],
+      },
+      {
+        k: "UkiyoFactory + SkillRouter",
+        title: "Open to any curator",
+        addr: DEP.factory,
+        rows: [
+          ["Launch bond", DEP.launchBond ? `${(Number(BigInt(DEP.launchBond) / 10n ** 18n)).toLocaleString("en-US")} tUSD, kept` : "kept"],
+          ["Vault bytecode", "hash-checked"],
+          ["Curator can withdraw funds", "never"],
+          ["Router splits a deposit", "by skill test"],
+          ["Curators per pool", "up to 8"],
+        ],
+      },
+    ].filter((s) => s.addr)
+  : [];
 
 const STEPS = [
   {
@@ -194,6 +239,7 @@ export default function Home() {
 
       <section className="l-section" id="how">
         <div className="wrap">
+          <p className="l-eyebrow" data-reveal>How it works</p>
           <h2 data-reveal>One hook, three entries per swap</h2>
           <p className="l-sub" data-reveal>
             Every curator runs a sleeve in the same hook-exclusive pool. The hook keeps a ledger per sleeve, block by
@@ -225,6 +271,7 @@ export default function Home() {
       <section className="l-section" id="safeguards">
         <div className="wrap l-split">
           <div data-reveal>
+            <p className="l-eyebrow">Safeguards</p>
             <h2>Built to never flatter a curator</h2>
             <p className="l-sub">
               A scoreboard is only worth something if it cannot be gamed. Wherever the hook has to choose, it chooses
@@ -246,6 +293,7 @@ export default function Home() {
       {/* grows from a card to the full width as it scrolls in */}
       <section className="l-dark" id="proof" data-scroll="view">
         <div className="wrap">
+          <p className="l-eyebrow" data-reveal>Proof</p>
           <h2 data-reveal>Every yardstick tells a different story</h2>
           <p className="l-sub" data-reveal>
             The same six curators over 2024, ranked five ways. Fee income crowns the curator that trades most against
@@ -263,6 +311,7 @@ export default function Home() {
 
       <section className="l-section" id="impact">
         <div className="wrap">
+          <p className="l-eyebrow" data-reveal>Why it matters</p>
           <h2 data-reveal>Capital follows the scoreboard</h2>
           <p className="l-sub" data-reveal>
             On the 2024 replay, fee income ranks the tight chaser first by more than twice the runner-up; its true
@@ -284,6 +333,7 @@ export default function Home() {
       <section className="l-section">
         <div className="wrap l-split">
           <div data-reveal>
+            <p className="l-eyebrow">Vaults</p>
             <h2>A vault per curator, scored by the hook</h2>
             <p className="l-sub">
               Depositors back a curator through a <code>UkiyoVault</code>. Entries and exits settle at epoch boundaries,
@@ -303,9 +353,48 @@ export default function Home() {
         </div>
       </section>
 
+      {SPECS.length > 0 && (
+        <section className="l-section" id="contracts">
+          <div className="wrap">
+            <p className="l-eyebrow" data-reveal>On-chain</p>
+            <h2 data-reveal>The contracts, as deployed</h2>
+            <p className="l-sub" data-reveal>
+              Live on {CHAIN.name}. These are the parameters they run with, and every one is in the verified source.
+            </p>
+            <div className="l-specs" data-reveal="stagger">
+              {SPECS.map((c) => (
+                <div className="l-spec" key={c.k}>
+                  <span className="k">{c.k}</span>
+                  <h3>{c.title}</h3>
+                  <dl>
+                    {c.rows.map(([a, b]) => (
+                      <div key={a}>
+                        <dt>{a}</dt>
+                        <dd>{b}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  {EXPLORER && (
+                    <a className="l-spec-link" href={`${EXPLORER}/address/${c.addr}${SOURCE_VERIFIED ? "#code" : ""}`} target="_blank" rel="noreferrer">
+                      {SOURCE_VERIFIED ? "Read the verified code" : "View on the explorer"} <span aria-hidden>↗</span>
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="l-spec-note" data-reveal>
+              <Link href="/docs/#deployments">Every address</Link>
+              {" · "}
+              <code>npm run verify:live</code> checks the deployed bytecode against this repository.
+            </p>
+          </div>
+        </section>
+      )}
+
       <section className="l-section" id="faq">
         <div className="wrap l-faq">
           <div data-reveal>
+            <p className="l-eyebrow">FAQ</p>
             <h2>Questions</h2>
             <p className="l-sub">The rest is in the README, with every number traced to the script that produced it.</p>
           </div>

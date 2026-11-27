@@ -1591,3 +1591,152 @@
     transform: none;
   }
 }
+
+/* ================================================================================================================ */
+/* Floating header: once the page leaves the top, the full-width bar detaches into a pill.                          */
+/* ================================================================================================================ */
+
+.l-nav {
+  transition: padding 0.35s ease, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.l-nav-in {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  transition: max-width 0.35s ease, height 0.35s ease, margin 0.35s ease, padding 0.35s ease, background-color 0.3s ease,
+    border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.nav-float .l-nav {
+  padding-top: 10px;
+  background: transparent;
+  border-bottom-color: transparent;
+  backdrop-filter: none;
+}
+
+.nav-float .l-nav-in {
+  width: calc(100% - 24px);
+  max-width: 1000px;
+  height: 56px;
+  margin: 0 auto;
+  padding: 0 8px 0 18px;
+  background: color-mix(in srgb, var(--card) 86%, transparent);
+  backdrop-filter: blur(14px);
+  border-color: var(--line);
+  box-shadow: 0 12px 32px -14px rgba(11, 15, 28, 0.28);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .l-nav,
+  .l-nav-in {
+    transition: none;
+  }
+}
+
+/* Section eyebrows: a small mono label with the seal's square, so the long page reads as chapters. */
+.l-eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.l-eyebrow::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--seal);
+}
+
+.l-split .l-eyebrow,
+.l-faq .l-eyebrow {
+  justify-content: flex-start;
+}
+
+/* Deployed contracts: what each one is set to, with a link to its verified source. */
+.l-specs {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.l-spec {
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 24px;
+}
+
+.l-spec .k {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--seal-text);
+}
+
+.l-spec h3 {
+  font-size: 22px;
+  margin: 8px 0 18px;
+}
+
+.l-spec dl {
+  flex: 1;
+  margin: 0 0 20px;
+}
+
+.l-spec dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.l-spec dl div:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.l-spec dt {
+  color: var(--muted);
+}
+
+.l-spec dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 500;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.l-spec-link {
+  align-self: flex-start;
+  color: var(--seal-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.l-spec-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.l-spec-note {
+  margin: 24px 0 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.l-spec-note a {
+  color: var(--ink);
+}

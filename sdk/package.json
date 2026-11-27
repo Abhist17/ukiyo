@@ -1,0 +1,32 @@
+{
+  "name": "ukiyo-sdk",
+  "version": "0.1.0",
+  "description": "Read Ukiyo's curator scoreboard, explain how a swap was booked, follow Edge live, and reproduce the hook's accounting to the wei. With the `ukiyo` CLI.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./math": { "types": "./dist/math.d.ts", "default": "./dist/math.js" }
+  },
+  "bin": { "ukiyo": "./dist/cli.js" },
+  "files": ["dist", "src", "README.md"],
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "gen": "node scripts/gen.mjs",
+    "vectors": "node scripts/vectors.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "test": "node --test \"test/*.test.ts\"",
+    "ukiyo": "node src/cli.ts"
+  },
+  "peerDependencies": {
+    "viem": "^2.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.29",
+    "typescript": "5.9.3",
+    "viem": "2.57.16"
+  }
+}

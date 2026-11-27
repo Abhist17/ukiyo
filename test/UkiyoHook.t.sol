@@ -22,6 +22,7 @@ import {PoolModifyLiquidityTest} from "v4-core/src/test/PoolModifyLiquidityTest.
 
 import {UkiyoHook} from "../src/UkiyoHook.sol";
 import {EdgeMath} from "../src/libraries/EdgeMath.sol";
+import {IUkiyoEdge} from "../src/interfaces/IUkiyoEdge.sol";
 
 /// @notice End-to-end tests of the Ukiyo meter against the canonical PoolManager bytecode.
 contract UkiyoHookTest is Test {
@@ -396,6 +397,28 @@ contract UkiyoHookTest is Test {
         for (uint256 i; i < 2; ++i) {
             UkiyoHook.Ledger memory l = hook.ledger(i);
             assertEq(hook.edge(i), int256(l.userFees + l.userImpact) - int256(l.arbLoss));
+        }
+    }
+
+    /// @notice Integrators reading through IUkiyoEdge see exactly what the hook reports.
+    function test_interfaceReadsTheHook() public {
+        _swapTo(_atTick(60), ARB_TIP);
+        _swapTo(_atTick(-240), USER_TIP);
+        _nextBlock();
+        _swapTo(_atTick(0), ARB_TIP);
+
+        IUkiyoEdge e = IUkiyoEdge(address(hook));
+        assertEq(e.sleeveCount(), hook.sleeveCount());
+        assertEq(e.lastMarkedBlock(), hook.lastMarkedBlock());
+        assertEq(e.priorityFeeThreshold(), hook.priorityFeeThreshold());
+        assertEq(e.referenceSqrtPrice(), hook.referenceSqrtPrice());
+        for (uint256 i; i < hook.sleeveCount(); ++i) {
+            IUkiyoEdge.Ledger memory a = e.ledger(i);
+            UkiyoHook.Ledger memory b = hook.ledger(i);
+            assertEq(abi.encode(a), abi.encode(b));
+            assertEq(e.edge(i), hook.edge(i));
+            assertEq(e.sleeveManager(i), hook.sleeveManager(i));
+            assertGt(a.userFees + a.arbLoss, 0); // the swaps above did book something
         }
     }
 

@@ -18,6 +18,7 @@ const NAV = [
   ["edge", "What Edge measures"],
   ["solidity", "Read Edge in Solidity"],
   ["frontend", "Read Edge in a frontend"],
+  ["sdk", "SDK and CLI"],
   ["vaults", "Vaults and epochs"],
   ["fee-bond", "Performance fee and LVR bond"],
   ["classifier", "The classifier"],
@@ -35,16 +36,12 @@ function Code({ lang, children }: { lang: string; children: string }) {
 }
 
 const SOLIDITY = `
-// The two views a vault, a scoreboard or a fee contract needs. Amounts are raw token1 units.
-interface IUkiyoHook {
-    struct Ledger { uint256 userFees; uint256 userImpact; uint256 arbLoss; uint256 arbFees; }
-    function edge(uint256 sleeveId) external view returns (int256);
-    function ledger(uint256 sleeveId) external view returns (Ledger memory);
-}
+// forge install Abhist17/ukiyo: IUkiyoEdge is the hook's read side, with no Uniswap imports.
+import {IUkiyoEdge} from "ukiyo/src/interfaces/IUkiyoEdge.sol";
 
 contract CuratorScore {
-    IUkiyoHook public immutable hook;
-    constructor(IUkiyoHook hook_) { hook = hook_; }
+    IUkiyoEdge public immutable hook;
+    constructor(IUkiyoEdge hook_) { hook = hook_; }
 
     /// Edge earned between two snapshots, e.g. one fee period. Negative means arbitrage took more than users paid.
     function edgeSince(uint256 sleeveId, int256 snapshot) external view returns (int256) {
@@ -68,9 +65,25 @@ const l = await client.readContract({ address: hook, abi, functionName: "ledger"
 console.log("Edge", formatEther(edge), "= user fees", formatEther(l.userFees),
   "+ impact", formatEther(l.userImpact), "- arbitrage loss", formatEther(l.arbLoss));`;
 
+const SDK_CLI = `
+git clone ${REPO} && cd ukiyo/sdk && npm install && npm run build
+node dist/cli.js scoreboard --rank fees     # where fee APR would rank a curator above its Edge
+node dist/cli.js explain <swap tx hash>     # how the hook booked it, and why
+node dist/cli.js watch --edge               # swaps, marks and each curator's Edge, live
+node dist/cli.js cost --range 60000:80000 --from 70000 --to 70700   # what a move costs a range`;
+
+const SDK_TS = `
+import { createUkiyo, rank, misranked, math } from "ukiyo-sdk";
+
+const ukiyo = createUkiyo({ client });                // a viem public client on ${CHAIN.name}
+const { rows } = await ukiyo.scoreboard();
+const best = rank(rows, "index")[0];                  // size-neutral skill
+const period = await ukiyo.edgeBetween(0, fromBlock); // { userFees, userImpact, arbLoss, edge }
+const { narrative } = await ukiyo.explain(txHash);    // plain sentences`;
+
 const LOCAL = `
 git clone --recurse-submodules ${REPO} && cd ukiyo
-forge test                                   # 109 tests + 5 invariants
+forge test                                   # 113 tests + 5 invariants
 anvil --block-time 2                         # in another terminal
 EPOCH=120 forge script script/DeployUkiyo.s.sol --rpc-url http://127.0.0.1:8545 --broadcast \\
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80   # anvil's public dev key
@@ -153,6 +166,18 @@ export default function Docs() {
             <h2>Read Edge in a frontend</h2>
             <Code lang="ts">{VIEM}</Code>
             <p>The public Unichain Sepolia RPC serves at most 1,000 blocks of logs per request; read event history in chunks (the app&apos;s <code>web/src/lib/logs.ts</code> does this incrementally).</p>
+          </section>
+
+          <section id="sdk">
+            <h2>SDK and CLI</h2>
+            <p>
+              <a href={`${REPO}/tree/main/sdk`} target="_blank" rel="noreferrer"><code>sdk/</code></a> is a TypeScript SDK and
+              the <code>ukiyo</code> command: the scoreboard ranked any way, how any swap was booked and why, Edge over any
+              block range, and a live feed. Its maths is an exact port of <code>EdgeMath</code>; a Foundry test replays 400
+              of its vectors through the Solidity and requires the same wei.
+            </p>
+            <Code lang="bash">{SDK_CLI}</Code>
+            <Code lang="ts">{SDK_TS}</Code>
           </section>
 
           <section id="vaults">

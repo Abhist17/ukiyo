@@ -11,7 +11,7 @@ via_ir = false
 # Remappings come only from remappings.txt. Forge would otherwise add ones it infers from inside lib/, and editors
 # that resolve imports with simpler rules than forge (VS Code's Solidity extension) mis-resolve those.
 auto_detect_remappings = false
-fs_permissions = [{ access = "read-write", path = ".forge-snapshots/" }, { access = "read-write", path = "web/src/deployments/" }]
+fs_permissions = [{ access = "read-write", path = ".forge-snapshots/" }, { access = "read-write", path = "web/src/deployments/" }, { access = "read", path = "sdk/test/vectors.json" }]
 
 [fuzz]
 runs = 1024

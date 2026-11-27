@@ -15,6 +15,7 @@ Curator vaults, a permissionless launch factory and a skill-weighted deposit rou
 | Partner integrations | None |
 | Start here | [`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf) (one page, no maths), [`REVIEWERS.md`](REVIEWERS.md) (five minutes), then the [README](README.md) |
 | What's next | [`ROADMAP.md`](ROADMAP.md) |
+| Developer kit | [`sdk/`](sdk/): TypeScript SDK and `ukiyo` CLI |
 
 ## Built during the hookathon
 
@@ -31,6 +32,7 @@ TypeScript and Python in it was written after that, in public commits. Nothing p
 | 24 Nov | Skill t-statistic and probation; `UkiyoFactory` (permissionless launches) and `UkiyoSkillRouter`; security fixes from a full review (price guard on settle and rebalance, freed deposit slots, capped redeploys); `UkiyoLens`; wallet connect rework; line-anchored integration map |
 | 25 Nov | Spike-netted marks, backtested before shipping (estimator v7 against the v5 and a rejected v6) |
 | 26 Nov | Liquidity put back between marks can no longer be re-anchored, in the same range or a shifted one; impact section; this file and [`FEEDBACK.md`](FEEDBACK.md); an out-of-sample backtest on four years of ETH/USDT; [`ROADMAP.md`](ROADMAP.md); the one-page overview and the drawn explainer; wallets through RainbowKit, with WalletConnect for phones |
+| 27 Nov | The developer kit: [`sdk/`](sdk/), a TypeScript SDK and `ukiyo` CLI (scoreboard, `explain <tx>`, Edge over a period, live feed, the hook's maths to the wei), cross-checked against the Solidity by shared test vectors; [`IUkiyoEdge`](src/interfaces/IUkiyoEdge.sol) for contracts that read Edge |
 
 `git log --reverse` shows the full history, one focused commit at a time.
 
@@ -52,11 +54,13 @@ spike netting, the anchoring and dual-measurement rules, and the vault mechanics
 ## How to check the claims
 
 ```bash
-forge test                                   # 109 tests + 5 stateful invariants, canonical PoolManager bytecode
+forge test                                   # 113 tests + 5 stateful invariants, canonical PoolManager bytecode
 forge test --match-test test_gas -vv         # the README's gas table
 cd backtest && uv run --no-project --with numpy --with numba python experiments.py   # every BTC backtest number
 cd backtest && uv run --no-project --with numpy python fetch_eth.py && uv run --no-project --with numpy --with numba python multiyear.py   # four years of ETH
 cd web && npm test                           # the site's maths, the backtest claim it shows, the README's code links
+cd sdk && npm install && npm test            # the SDK; forge's EdgeMathVectors replays its vectors through Solidity
+cd sdk && npm run build && node dist/cli.js explain <any swap tx>   # how the live hook booked it, and why
 ```
 
 Every number in the README is produced by one of these commands. Known limitations are listed in the README and in

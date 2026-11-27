@@ -21,7 +21,8 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
 [`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md). **Built when?**
 [`SUBMISSION.md`](SUBMISSION.md). **Feedback on v4:** [`FEEDBACK.md`](FEEDBACK.md). **One page, no maths:**
 [`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf). **Drawn explainer** (open at excalidraw.com):
-[`pitch/ukiyo-explainer.excalidraw`](pitch/ukiyo-explainer.excalidraw). **What's next:** [`ROADMAP.md`](ROADMAP.md).
+[`pitch/ukiyo-explainer.excalidraw`](pitch/ukiyo-explainer.excalidraw). **What's next:** [`ROADMAP.md`](ROADMAP.md). **Building on it?**
+[`sdk/`](sdk/): TypeScript SDK and `ukiyo` CLI.
 
 ## Highlights
 
@@ -49,6 +50,11 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
    their skill tests. The depositor holds every share directly, and the router never holds anyone's funds.
 7. **Live and measured.** The live board runs on Unichain Sepolia, with a bot replaying 2024 BTC prices through the
    pool. The classifier was measured on 6,714 real Unichain swaps, and the README reports where it falls short.
+8. **Developer kit.** [`sdk/`](sdk/) is a TypeScript SDK and `ukiyo` CLI: the scoreboard ranked any way, `explain <tx>`
+   (how the hook booked a swap and why), Edge over any block range, a live feed, and the hook's maths ported to the
+   wei. Foundry replays 400 SDK-generated vectors through `EdgeMath` and requires identical results
+   ([Developer kit](#developer-kit-sdk-and-cli)). Contracts can read Edge through
+   [`IUkiyoEdge`](src/interfaces/IUkiyoEdge.sol) without importing the hook.
 
 ## Who it's for, and what it changes
 
@@ -360,6 +366,34 @@ recomputing anything, so the site and the backtest always agree.
 
 ![Same curators, five rankings: only Ukiyo Edge puts them in the order of their true hedged P&L](assets/rankings.png)
 
+## Developer kit: SDK and CLI
+
+[`sdk/`](sdk/) is for anyone building on the scoreboard: an aggregator ranking curators, a vault platform paying on
+Edge, a curator checking a strategy, or a reviewer checking the hook's books.
+
+```text
+$ ukiyo explain 0xa13a2dab…
+  moved the price from 70,271.86 to 70,591.87 tUSD per tBTC; its tip of 0 gwei is below the 0.002 gwei
+  threshold, so it is booked as user flow.
+  It paid the sleeves 30.8437 tUSD in fees, which count toward their Edge.
+  Over block 68914195 (with 2 other swaps), Edge changed by Ukiyo Tight Chaser +41.359 tUSD, …
+```
+
+| Command | What it does |
+| --- | --- |
+| `ukiyo scoreboard --rank edge\|index\|tstat\|fees` | Every curator's ledger and Edge, ranked, and where fee income would rank one differently |
+| `ukiyo explain <tx>` | Each swap's classification and why (tip vs threshold, or a vault trading for itself), fee per sleeve, the block's bookings |
+| `ukiyo edge <id> --from N` | Edge and its parts over any block range: pay or judge a curator for a period |
+| `ukiyo watch --edge` | Live feed: classifications, marks, netted spikes, each sleeve's Edge change |
+| `ukiyo cost --range LO:HI --from P0 --to P1` | What a price move costs a range, with the hook's formula (twice the move, four times the loss) |
+
+The same functions are a library (`createUkiyo`, `rank`, `misranked`, `math`). The maths is an exact bigint port of
+`EdgeMath` and v4's `TickMath`. Two checks keep it exact. [`EdgeMathVectors.t.sol`](test/EdgeMathVectors.t.sol) replays
+400 SDK-generated sleeves and moves, plus 127 ticks, through the Solidity libraries and requires the same wei. On live
+blocks, the per-swap fees `explain` computes add up exactly to what the hook booked. Contracts read Edge through
+[`IUkiyoEdge`](src/interfaces/IUkiyoEdge.sol), a dependency-free interface the hook is tested against. See
+[`sdk/README.md`](sdk/README.md).
+
 ## Live deployment: Unichain Sepolia
 
 Deployed at block 68,788,402 with [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) (transactions in
@@ -443,7 +477,8 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
-forge test                          # 109 tests + 5 stateful invariants: unit, fuzz, integration, differential
+forge test                          # 113 tests + 5 stateful invariants: unit, fuzz, integration, differential
+cd sdk && npm install && npm test   # SDK and CLI: 13 tests, no network
 forge test --match-test test_gas -vv
 ```
 
@@ -466,6 +501,7 @@ python export_web.py                       # refresh the site's data after exper
 | --- | --- |
 | `EdgeMath.t.sol` | The closed-form loss equals the exact holding-vs-position gap from Uniswap's amount math (1,024 fuzz runs); fee attribution matches `SqrtPriceMath`; credits never exceed losses |
 | `UkiyoHook.t.sol` | Against the canonical PoolManager bytecode: pool binding, hook-only liquidity, access control, classification, fee attribution matching the PoolManager's own fee growth, marks, loss, impact, round-trip immunity, anchors on range change and on added liquidity, liquidity taken out and put back rejoining as it was, and re-ranged liquidity booked at the lower of two readings (so neither a round trip nor a range shift can re-anchor it), fee attribution with a protocol fee switched on, `sleeveAmounts` equal to a full withdrawal to the wei, and a differential fuzz test where every ledger field equals an independent replay of random blocks of swaps, liquidity changes and protocol fees |
+| `EdgeMathVectors.t.sol` | Cross-language: 400 random sleeves and moves and 127 ticks, computed by the TypeScript SDK, come out of the Solidity `EdgeMath` and `TickMath` to the same wei (loss, impact credit, swap fee, fee rate) |
 | `UkiyoVault.t.sol` | On a 5 bps pool: one-time hand-over that locks the owner out, epoch gating, first-mint shares and dead shares, proportional deposits with refunds, pro-rata redemptions, fees reaching shareholders, per-epoch Edge snapshots, curator-only rebalancing, the depositor cap, the performance fee (a share of positive Edge, nothing on losses, losses earned back before any fee), the LVR bond (overshoot paid to depositors, capped at the bond, budgets deferred one epoch, withdrawals only after the penalty), the Edge index (exact per-epoch compounding, size-neutral across a 1× and a 10× vault), the skill test against the textbook t-statistic, probation and its release, the permanent bond, open launches end to end with fake code and weak terms rejected, the skill router (even split without evidence, weights in proportion to the skill test, probation excluded, refused slices returned), and fuzz tests that a deposit-redeem round trip never pays out more than went in and that the vault always holds what it owes plus the bond |
 | `invariant/UkiyoVault.invariant.t.sol` | Stateful: random sequences of deposits, cancels, redemptions, claims, user and arbitrage swaps, settlements, rebalances (with and without a swap) and bond moves, by four depositors and the curator. After every step the vault holds all it owes (escrows, refunds, payouts, bond), every share sits with a known holder, escrowed redemption shares are all there, and the high-water mark never goes negative |
 
@@ -501,7 +537,7 @@ first swap look about 35k (two sleeves) to 135k (eight) dearer than it is in a r
 | Original Idea (30%) | A new primitive: curator skill measured on-chain, with no oracle, from the decomposition `LVR_true ≈ LVR_pool + arbitrage fees`. The [backtest](#what-the-backtest-found-and-why-the-obvious-formula-is-wrong) shows why the obvious formula fails and this one does not |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook. Every rule that could flatter a curator is closed and tested: spike netting, anchoring, dual-measured re-ranging, the price guard ([Highlights](#highlights)) |
 | Impact (20%) | [Who it's for](#who-its-for-and-what-it-changes): fee income ranks the wrong curator first and hides a losing one, Edge does not. Depositors, curators and vault platforms each get something they cannot get today, live in vaults with an Edge-only performance fee, an LVR bond, a skill test, open launches and a skill-weighted router |
-| Functionality (15%) | 109 passing tests (10,000 fuzz runs each in CI), including a differential fuzz test against an independent model, and 5 stateful invariants over random sequences of every vault action; live on Unichain Sepolia with a replay bot; every tab of the app works against it |
+| Functionality (15%) | 113 passing tests (10,000 fuzz runs each in CI), including a differential fuzz test against an independent model, and 5 stateful invariants over random sequences of every vault action; live on Unichain Sepolia with a replay bot; every tab of the app works against it; an [SDK and CLI](#developer-kit-sdk-and-cli) whose maths matches the contracts to the wei |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min), [`SUBMISSION.md`](SUBMISSION.md) (what was built when, what is reused), [`FEEDBACK.md`](FEEDBACK.md) (developer feedback on v4), a one-page overview ([`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf)) and the [`ROADMAP.md`](ROADMAP.md) to real users |
 
@@ -563,6 +599,7 @@ No partner integrations.
   test routers
 - [hookmate](https://github.com/akshatmittal/hookmate): canonical PoolManager bytecode for tests
 - Project layout follows [Uniswap/v4-template](https://github.com/Uniswap/v4-template)
+- SDK: [viem](https://viem.sh); its `getSqrtPriceAtTick` is a port of v4-core's `TickMath` (same constants), and its fee and loss maths ports this repo's `EdgeMath` and v4-core's `FullMath` and `ProtocolFeeLibrary`
 - Site: [Next.js](https://nextjs.org), React, [wagmi](https://wagmi.sh), [viem](https://viem.sh) and [RainbowKit](https://rainbowkit.com) (with WalletConnect for mobile wallets); fonts Geist and Geist Mono from Google Fonts
 - Demo: v4-core's `PoolSwapTest` as the swap router, v4-periphery's `HookMiner` for the hook address, solmate's `MockERC20` for the faucet test tokens
 - Price data: [ff137/bitstamp-btcusd-minute-data](https://github.com/ff137/bitstamp-btcusd-minute-data); ETH/USDT minute klines from Binance's public data archive ([data.binance.vision](https://data.binance.vision))

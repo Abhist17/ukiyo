@@ -6,7 +6,8 @@ and what it needs. Nothing below is built unless it says so.
 ## At submission (December 2026)
 
 - **Built and live on Unichain Sepolia:** the hook, curator vaults (Edge-based fee, LVR bond, skill test, probation),
-  open launches, the skill router, the Lens and the app. 109 tests and 5 stateful invariants, a differential fuzz test
+  open launches, the skill router, the Lens, the app, and a developer kit (TypeScript SDK and `ukiyo` CLI, its maths
+  matching the contracts to the wei). 113 tests and 5 stateful invariants, a differential fuzz test
   against an independent model, a threat model, and backtests on BTC/USD 2024 and on four years of ETH/USDT.
 - **Not yet:** audited, on mainnet, or used by a real curator. The four curators on the live board are bots replaying
   2024 prices.
@@ -24,8 +25,8 @@ forms as in `EdgeMath`.
 holds no money. It is also the best way to win curators over: they see their own Edge before choosing to opt in
 on-chain.
 
-**Needs:** porting the hook's accounting to an indexer (the backtest's `sim.py` already implements it), and a public
-page per vault. The on-chain hook stays the version nobody has to trust.
+**Needs:** porting the hook's accounting to an indexer (the backtest's `sim.py` already implements it, and the SDK's
+`math` module already has the closed forms in exact bigint, checked against the Solidity), and a public page per vault. The on-chain hook stays the version nobody has to trust.
 
 ## 2. Security review
 

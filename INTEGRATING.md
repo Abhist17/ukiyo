@@ -2,6 +2,28 @@
 
 Ukiyo turns a curator's skill into on-chain numbers any protocol can read, rank by, or pay fees on.
 
+## From TypeScript or a terminal: the SDK
+
+[`sdk/`](sdk/) wraps everything below: `createUkiyo({ client })` gives the scoreboard, `edgeBetween`, `explain(tx)` and
+a live `watch`, and `math` has the hook's formulas in exact bigint. The `ukiyo` CLI runs the same from a terminal
+(`ukiyo scoreboard`, `ukiyo explain <tx>`, `ukiyo watch --edge`). See [`sdk/README.md`](sdk/README.md).
+
+## From a contract: `IUkiyoEdge`
+
+[`IUkiyoEdge`](src/interfaces/IUkiyoEdge.sol) is the hook's read side with no imports, for a contract that pays,
+ranks or gates curators on Edge:
+
+```solidity
+import {IUkiyoEdge} from "ukiyo/src/interfaces/IUkiyoEdge.sol"; // forge install Abhist17/ukiyo
+
+int256 start = IUkiyoEdge(hook).edge(sleeveId);   // at the start of a period
+// ...
+int256 earned = IUkiyoEdge(hook).edge(sleeveId) - start;  // Edge earned over it, raw token1
+```
+
+`EdgeMath` (`src/libraries/EdgeMath.sol`) is a plain library: a hook of your own can book the same loss, impact and fee
+terms.
+
 ## Read the scoreboard in one call
 
 [`UkiyoLens`](src/UkiyoLens.sol) returns the pool's state and one row per sleeve: ledger (user fees, user impact,

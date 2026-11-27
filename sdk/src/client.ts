@@ -1,5 +1,7 @@
 import {
   type Address,
+  type Chain,
+  type Transport,
   type Hash,
   type Log,
   type PublicClient,
@@ -125,9 +127,9 @@ export interface BlockActivity {
   edgeDelta?: { sleeveId: number; name: string; delta: bigint }[];
 }
 
-export interface UkiyoOptions {
-  /** A viem public client on the deployment's chain. */
-  client: PublicClient;
+export interface UkiyoOptions<C extends Chain | undefined = Chain | undefined> {
+  /** A viem public client on the deployment's chain (any chain type, OP-stack formatters included). */
+  client: PublicClient<Transport, C>;
   /** The hook; defaults to the known deployment on the client's chain. */
   hook?: Address;
   /** UkiyoLens; defaults to the deployment's. Without one the SDK reads the hook directly (vault fields left empty). */
@@ -154,8 +156,9 @@ const sub = (a: Ledger, b: Ledger): Ledger => ({
 });
 
 /** The Ukiyo client: the scoreboard, Edge over a period, a transaction's booking, and a live feed. */
-export function createUkiyo(opts: UkiyoOptions) {
-  const client = opts.client;
+export function createUkiyo<C extends Chain | undefined>(opts: UkiyoOptions<C>) {
+  // one concrete client type inside; callers keep their own chain type (unichainSepolia carries OP-stack formatters)
+  const client = opts.client as unknown as PublicClient;
   const chainId = client.chain?.id;
   const dep: Deployment | undefined = chainId !== undefined ? DEPLOYMENTS[chainId] : undefined;
   const hook = opts.hook ?? dep?.hook;
@@ -482,7 +485,7 @@ export function createUkiyo(opts: UkiyoOptions) {
   return { hook, lens, deployment: dep?.hook === hook ? dep : undefined, poolMeta, scoreboard, edgeAt, edgeBetween, explain, watch };
 }
 
-export type Ukiyo = ReturnType<typeof createUkiyo>;
+export type Ukiyo = ReturnType<typeof createUkiyo<Chain | undefined>>;
 
 /** Raw token amount → number, for display. */
 export function toNumber(raw: bigint, decimals = 18): number {

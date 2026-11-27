@@ -90,6 +90,21 @@ Pass `{ hook, lens }` for another one. Without a lens it reads the hook directly
 `scoreboard(block)`, `edgeBetween` and `explain` read past state, so they need an RPC that serves it (the public
 Unichain Sepolia one does).
 
+## Verify the live deployment
+
+```bash
+forge build && cd sdk && npm run verify:live
+```
+
+It checks the live Unichain Sepolia deployment against this repository, from public chain data only:
+
+1. Every deployed contract's runtime bytecode equals what `forge build` produces here (immutables masked).
+2. The Lens reports exactly what the hook does, and every curator's Edge = fees + impact − loss.
+3. Every swap in the last 2,000 blocks was classified by its real tip (from the receipt) against the threshold.
+4. An independent replay of recent blocks, from prices and liquidity alone, reproduces each curator's ledger change
+   to the wei. Blocks that use the rules this simple replay leaves to the Solidity tests (spike netting, anchored
+   liquidity, a liquidity change within the block) are counted and skipped.
+
 ## Develop
 
 ```bash

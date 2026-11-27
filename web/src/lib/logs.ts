@@ -36,8 +36,14 @@ let syncing: Promise<void> | undefined;
 
 type Client = NonNullable<ReturnType<typeof usePublicClient>>;
 
+// Launched vaults, re-read at most once a minute: a launch is rare, and the public RPC rate-limits each visitor's IP.
+let launchedAt = 0;
+let launchedCache: Address[] = [];
+const LAUNCHED_TTL_MS = 60_000;
+
 /** The demo's vaults plus every vault launched through the factory so far (at most 8 sleeves, so 8 speculative reads). */
 async function vaultAddresses(pc: Client): Promise<Address[]> {
+  if (Date.now() - launchedAt < LAUNCHED_TTL_MS) return [...DEP!.vaults.map((v) => v.address), ...launchedCache];
   const launched = DEP!.factory
     ? await Promise.all(
         Array.from({ length: 8 }, (_, k) =>
@@ -45,7 +51,9 @@ async function vaultAddresses(pc: Client): Promise<Address[]> {
         ),
       )
     : [];
-  return [...DEP!.vaults.map((v) => v.address), ...launched.filter((a): a is Address => !!a)];
+  launchedCache = launched.filter((a): a is Address => !!a);
+  launchedAt = Date.now();
+  return [...DEP!.vaults.map((v) => v.address), ...launchedCache];
 }
 
 /** Every vault event of one address up to `to`, from the indexer, a page of up to 1,000 at a time. */

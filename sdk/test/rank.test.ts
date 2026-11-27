@@ -56,3 +56,11 @@ test("an explanation narrates the classification rule it applied", () => {
   assert.match(vault, /never counts as Edge/);
   assert.match(narrateExplanation({ ...ex, swaps: [] })[0], /No swap/);
 });
+
+test("createUkiyo accepts a client typed with an OP-stack chain (compile-time check; no network)", async () => {
+  const { createPublicClient, http } = await import("viem");
+  const { unichainSepolia } = await import("viem/chains");
+  const { createUkiyo } = await import("../src/client.ts");
+  const u = createUkiyo({ client: createPublicClient({ chain: unichainSepolia, transport: http("http://127.0.0.1:9") }) });
+  assert.match(u.hook, /^0x[0-9a-fA-F]{40}$/);
+});

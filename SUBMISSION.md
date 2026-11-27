@@ -61,6 +61,7 @@ cd backtest && uv run --no-project --with numpy python fetch_eth.py && uv run --
 cd web && npm test                           # the site's maths, the backtest claim it shows, the README's code links
 cd sdk && npm install && npm test            # the SDK; forge's EdgeMathVectors replays its vectors through Solidity
 cd sdk && npm run build && node dist/cli.js explain <any swap tx>   # how the live hook booked it, and why
+cd sdk && npm run verify:live                # live contracts = this repo's bytecode; real blocks' books replayed to the wei
 ```
 
 Every number in the README is produced by one of these commands. Known limitations are listed in the README and in

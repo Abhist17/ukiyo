@@ -53,8 +53,8 @@ export const RPC = process.env.NEXT_PUBLIC_RPC_URL || CHAIN.rpcUrls.default.http
 export const EXPLORER =
   CHAIN.id === unichainSepolia.id ? "https://sepolia.uniscan.xyz" : CHAIN.blockExplorers?.default.url;
 
-/** Where the contracts' verified source can be read: Blockscout shows Sourcify's verifications, no API key needed. */
-export const SOURCE = CHAIN.id === unichainSepolia.id ? "https://unichain-sepolia.blockscout.com" : undefined;
+/** Every contract of the live deployment has verified source on the explorer (Uniscan, and Sourcify). */
+export const SOURCE_VERIFIED = CHAIN.id === unichainSepolia.id;
 
 export const BTC_IS_0 = !!DEP && DEP.btc.toLowerCase() === DEP.token0.toLowerCase();
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Wordmark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { CHAIN, DEP, EXPLORER, SOURCE } from "@/lib/chain";
+import { CHAIN, DEP, EXPLORER, SOURCE_VERIFIED } from "@/lib/chain";
 import "@/components/landing/landing.css";
 import "./docs.css";
 
@@ -92,18 +92,17 @@ npm run dev                                      # http://localhost:3000`;
 
 /** Developer docs: what Edge is, how to read it from a contract or a frontend, and how the vaults work. */
 export default function Docs() {
-  // [label, address, source verified on Sourcify (shown by Blockscout)]
-  const rows: [string, string, boolean][] = DEP
+  const rows: [string, string][] = DEP
     ? [
-        ["Hook (UkiyoHook)", DEP.hook, true],
-        ...(DEP.lens ? [["Lens (UkiyoLens)", DEP.lens, true] as [string, string, boolean]] : []),
-        ...(DEP.factory ? [["Factory (UkiyoFactory)", DEP.factory, true] as [string, string, boolean]] : []),
-        ...(DEP.skillRouter ? [["Skill router (UkiyoSkillRouter)", DEP.skillRouter, true] as [string, string, boolean]] : []),
-        ...DEP.vaults.map((v) => [`Vault ${v.sleeveId}: ${v.name.replace("Ukiyo ", "")}`, v.address, true] as [string, string, boolean]),
-        ["PoolManager (canonical v4)", DEP.poolManager, false],
-        ["Swap router (PoolSwapTest)", DEP.router, false],
-        ["tBTC (token0)", DEP.btc, false],
-        ["tUSD (token1)", DEP.usd, false],
+        ["Hook (UkiyoHook)", DEP.hook],
+        ...(DEP.lens ? [["Lens (UkiyoLens)", DEP.lens] as [string, string]] : []),
+        ...(DEP.factory ? [["Factory (UkiyoFactory)", DEP.factory] as [string, string]] : []),
+        ...(DEP.skillRouter ? [["Skill router (UkiyoSkillRouter)", DEP.skillRouter] as [string, string]] : []),
+        ...DEP.vaults.map((v) => [`Vault ${v.sleeveId}: ${v.name.replace("Ukiyo ", "")}`, v.address] as [string, string]),
+        ["PoolManager (canonical v4)", DEP.poolManager],
+        ["Swap router (PoolSwapTest)", DEP.router],
+        ["tBTC (token0)", DEP.btc],
+        ["tUSD (token1)", DEP.usd],
       ]
     : [];
 
@@ -231,19 +230,19 @@ export default function Docs() {
               <>
                 <p>
                   {CHAIN.name} (chain {CHAIN.id}), from block {DEP.deployBlock.toLocaleString("en-US")}. Test tokens only.
-                  Every Ukiyo contract&apos;s source is verified on Sourcify, and <code>npm run verify:live</code> in{" "}
+                  Every contract&apos;s source is verified on Uniscan, and <code>npm run verify:live</code> in{" "}
                   <code>sdk/</code> checks the deployed bytecode against this repository.
                 </p>
                 <table className="docs-table">
                   <thead><tr><th>Contract</th><th>Address</th><th>Source</th></tr></thead>
                   <tbody>
-                    {rows.map(([k, a, verified]) => (
+                    {rows.map(([k, a]) => (
                       <tr key={a}>
                         <td>{k}</td>
                         <td>{EXPLORER ? <a href={`${EXPLORER}/address/${a}`} target="_blank" rel="noreferrer"><code>{a}</code></a> : <code>{a}</code>}</td>
                         <td>
-                          {verified && SOURCE ? (
-                            <a href={`${SOURCE}/address/${a}?tab=contract`} target="_blank" rel="noreferrer">Verified ↗</a>
+                          {SOURCE_VERIFIED && EXPLORER ? (
+                            <a href={`${EXPLORER}/address/${a}#code`} target="_blank" rel="noreferrer">Verified ↗</a>
                           ) : (
                             "—"
                           )}

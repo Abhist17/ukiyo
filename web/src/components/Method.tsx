@@ -59,7 +59,7 @@ export function Method() {
                 <span style={{ fontSize: 14 }}>Pool LVR + arb fees</span>
                 <div className="decomp-bar">
                   <div style={{ width: `${(pool / max) * 100}%`, background: "var(--s1)" }}>{pool.toFixed(0)} pool</div>
-                  <div style={{ width: `${(arb / max) * 100}%`, background: "var(--seal)" }}>{arb.toFixed(0)} arb fees</div>
+                  <div style={{ width: `${(arb / max) * 100}%`, background: "var(--seal-text)" }}>{arb.toFixed(0)} arb fees</div>
                 </div>
               </div>
             </div>

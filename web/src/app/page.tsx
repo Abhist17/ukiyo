@@ -97,7 +97,7 @@ export default function Home() {
     <div className="landing">
       <header className="l-nav">
         <div className="wrap l-nav-in">
-          <Link className="wordmark-link" href="/" aria-label="Ukiyo home">
+          <Link className="wordmark-link" href="/" title="Ukiyo home">
             <Wordmark size={28} />
           </Link>
           <nav>

@@ -1,21 +1,20 @@
 "use client";
 
-import { Providers } from "@/components/app/Providers";
+import { ReadProviders } from "@/components/ReadProviders";
 import { useLive } from "@/lib/useUkiyo";
-import { useVaultLogs } from "@/lib/logs";
 import { CHAIN, DEP, EXPLORER, compactUsd, short, usd } from "@/lib/chain";
 
 /** The landing page's live band: what the deployed hook has measured so far, read straight from the chain. */
 function Numbers() {
   const { data: live } = useLive();
-  const { data: logs } = useVaultLogs();
   if (!live || !DEP || CHAIN.id === 31337) return null;
   const arbLoss = live.vaults.reduce((s, v) => s + v.arbLoss, 0);
   const arbFees = live.vaults.reduce((s, v) => s + v.arbFees, 0);
   const userFees = live.vaults.reduce((s, v) => s + v.userFees, 0);
   const bonds = live.vaults.reduce((s, v) => s + v.bond, 0);
-  const swaps = logs?.logs.filter((l) => l.name === "SwapClassified") ?? [];
-  const arb = swaps.filter((l) => l.args.isArbitrage).length;
+  // read from vault state, so the landing page never downloads the swap history (on a 1 s chain it grows every day)
+  const epochs = live.vaults.reduce((s, v) => s + v.epoch, 0);
+  const skilled = live.vaults.filter((v) => v.hasSkill).length;
   const hookLink = EXPLORER ? `${EXPLORER}/address/${DEP.hook}` : undefined;
 
   return (
@@ -31,9 +30,8 @@ function Numbers() {
         </p>
         <div className="num-row">
           <div>
-            {/* the swap history loads in 1,000-block chunks: show a placeholder, never a false zero */}
-            <b>{logs ? swaps.length.toLocaleString("en-US") : "…"}</b>
-            <span>{logs ? `swaps classified (${arb.toLocaleString("en-US")} arbitrage)` : "reading swap history"}</span>
+            <b>{epochs.toLocaleString("en-US")}</b>
+            <span>{`epochs settled and scored (${skilled} of ${live.vaults.length} curators pass the skill test)`}</span>
           </div>
           <div><b>{usd(userFees)}</b><span>user fees credited</span></div>
           <div><b>{compactUsd(live.tvl)}</b><span>in curator vaults</span></div>
@@ -47,8 +45,8 @@ function Numbers() {
 
 export function LiveNumbers() {
   return (
-    <Providers>
+    <ReadProviders>
       <Numbers />
-    </Providers>
+    </ReadProviders>
   );
 }

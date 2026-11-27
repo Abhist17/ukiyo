@@ -8,14 +8,16 @@
   --card-2: #f0f2f5;
   --ink: #0a0d14;
   --ink-2: #3a4152;
-  --muted: #687083;
+  --muted: #636b7d; /* 4.8:1 on --card-2, AA for small text */
   --line: #e4e7ec;
   --seal: #e8452c;
+  /* the accent as small text: the seal colour is 3.7:1 on paper, too faint to read at 13px */
+  --seal-text: #c23320;
   --seal-ink: #ffffff;
   --indigo: #1f2a55;
   --sea: #141a2e;
-  --good: #14905a;
-  --bad: #d63a2a;
+  --good: #0f7a4b;
+  --bad: #c23222;
   --rank-grey: #cdd1d9;
   --rank-bg: var(--card);
   --story-2: #3558a8;
@@ -50,6 +52,7 @@
     --muted: #7d84a0;
     --line: #222a47;
     --seal: #f0583d;
+    --seal-text: #f0583d;
     --seal-ink: #0b0e1a;
     --indigo: #9fb0e8;
     --sea: #141a2e;
@@ -81,6 +84,7 @@
   --muted: #7d84a0;
   --line: #222a47;
   --seal: #f0583d;
+  --seal-text: #f0583d;
   --seal-ink: #0b0e1a;
   --indigo: #9fb0e8;
   --sea: #141a2e;
@@ -276,7 +280,7 @@ a {
   font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--seal);
+  color: var(--seal-text);
   font-weight: 600;
 }
 

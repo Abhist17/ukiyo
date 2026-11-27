@@ -154,7 +154,7 @@ export function VaultPanel({ v, live }: { v: VaultLive; live: Live }) {
         </div>
       </div>
 
-      <div className="seg full" role="tablist">
+      <div className="seg full" role="group" aria-label="Deposit or redeem">
         <button aria-pressed={mode === "deposit"} onClick={() => setMode("deposit")}>Deposit</button>
         <button aria-pressed={mode === "redeem"} onClick={() => setMode("redeem")}>Redeem</button>
       </div>

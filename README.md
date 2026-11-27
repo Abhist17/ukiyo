@@ -334,6 +334,12 @@ that cannot take its slice is skipped and the slice returned. The app's **Invest
 | `/app` **Faucet** | Mint the demo's test tokens |
 | `/research` | The BTC/USD 2024 backtest: leaderboard, rank shift, the year week by week, the method |
 
+Audited with Lighthouse and Chrome DevTools (mobile profile). Accessibility, best practices and SEO score 100 on every
+page, in both light and dark themes. No page logs a console error, fails a request or scrolls sideways at 375 px. The
+landing page loads 0.5 MB. The app ships its vault history with each deploy (`scripts/history.mts`). After that, the
+public RPC supplies only the blocks since the deploy, and the trade tape reads only new blocks. A gap too large for
+the RPC comes from Blockscout's log API instead.
+
 **The on-chain demo.** [`script/DeployUkiyo.s.sol`](script/DeployUkiyo.s.sol) deploys two faucet test tokens (tBTC,
 tUSD), mines the hook address, opens a 5 bps pool at the 1 Jan 2024 BTC price, opens four sleeves (passive wide,
 passive mid, tight chaser, vol-adaptive) each run by its own `UkiyoVault` with a seed deposit, and a swap router. It

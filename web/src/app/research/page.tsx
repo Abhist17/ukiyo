@@ -17,7 +17,7 @@ export default function Research() {
     <>
       <header className="site-header">
         <div className="wrap">
-          <Link className="wordmark-link" href="/" aria-label="Ukiyo home">
+          <Link className="wordmark-link" href="/" title="Ukiyo home">
             <Wordmark size={28} />
           </Link>
           <nav className="nav">

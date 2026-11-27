@@ -23,7 +23,8 @@ export function Ticker() {
     <div className="ticker" aria-label="Facts about Ukiyo">
       <div className="ticker-track">
         {items}
-        <span aria-hidden className="ticker-dup">{items}</span>
+        {/* the copy only makes the loop seamless: hidden from screen readers and out of the tab order */}
+        <span aria-hidden inert className="ticker-dup">{items}</span>
       </div>
     </div>
   );

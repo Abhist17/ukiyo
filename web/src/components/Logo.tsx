@@ -22,9 +22,11 @@ export function Wordmark({ size = 28 }: { size?: number }) {
   return (
     <span className="wordmark" style={{ fontSize: size * 0.82 }}>
       <Logo size={size} />
-      <span className="wm-text" aria-label="ukiyo">
-        uk<span className="wm-i" aria-hidden>ı</span>yo
+      {/* drawn with a dotless ı under the logo's dot, so it is hidden and the name is given as plain text */}
+      <span className="wm-text" aria-hidden>
+        uk<span className="wm-i">ı</span>yo
       </span>
+      <span className="sr-only">Ukiyo</span>
     </span>
   );
 }

@@ -315,23 +315,34 @@ export function useLive() {
   });
 }
 
-/** The latest swaps in the pool, each tagged arbitrage or user as the hook classified it. */
-export function useTape(lookback = 900n) { // the public RPC serves at most 1,000 blocks of logs per call
+// The tape's rows so far and the last block read, for the page's lifetime: each poll reads only the blocks after it.
+const tape: { to: bigint; rows: TapeRow[] } = { to: -1n, rows: [] };
+
+/**
+ * The latest swaps in the pool, newest first, each tagged arbitrage or user as the hook classified it. The first read
+ * covers `lookback` blocks (the public RPC serves at most 1,000 per call); after that each poll asks only for the
+ * blocks since the last one, a few hundred bytes instead of re-reading the whole window every three seconds.
+ */
+// ~5 minutes on a 1 s chain: dozens of swaps, a fraction of the bytes of the 1,000 blocks one call could cover
+export function useTape(lookback = 300n) {
   const pc = usePublicClient({ chainId: CHAIN.id });
   return useQuery({
     queryKey: ["tape", CHAIN.id],
     enabled: !!pc && !!DEP && !!POOL_ID,
     refetchInterval: POLL_MS,
     queryFn: async (): Promise<TapeRow[]> => {
-      const latest = await pc!.getBlockNumber();
-      const fromBlock = latest > lookback ? latest - lookback : 0n;
+      // a block behind the head: the public RPC is load-balanced, and a node a block behind could answer short
+      const latest = (await pc!.getBlockNumber()) - 1n;
+      const floor = latest > lookback ? latest - lookback : 0n;
+      const fromBlock = tape.to + 1n > floor ? tape.to + 1n : floor;
+      if (fromBlock > latest) return tape.rows;
       const [swaps, classes] = await Promise.all([
         pc!.getLogs({ address: DEP!.poolManager, event: SWAP_EVENT, args: { id: POOL_ID }, fromBlock, toBlock: latest }),
         pc!.getLogs({ address: DEP!.hook, event: CLASSIFIED_EVENT, fromBlock, toBlock: latest }),
       ]);
       const byTx = new Map(classes.map((c) => [c.transactionHash, c.args]));
-      return swaps
-        .map((s) => {
+      const fresh = swaps
+        .map((s): TapeRow => {
           const c = byTx.get(s.transactionHash);
           const [b, u] = split(s.args.amount0!, s.args.amount1!);
           // v4 reports the swapper's balance delta: positive = received by the swapper
@@ -347,6 +358,9 @@ export function useTape(lookback = 900n) { // the public RPC serves at most 1,00
           };
         })
         .reverse();
+      tape.rows = fresh.concat(tape.rows.filter((r) => r.block >= floor));
+      tape.to = latest;
+      return tape.rows;
     },
   });
 }

@@ -9,14 +9,17 @@ import { useLive, useTape } from "@/lib/useUkiyo";
 import { Providers } from "./Providers";
 import { ConnectButton } from "./ConnectButton";
 import { VaultsTab } from "./VaultsTab";
-import { TradeTab } from "./TradeTab";
-import { AnalyticsTab } from "./AnalyticsTab";
-import { FaucetTab } from "./FaucetTab";
-import { PortfolioTab } from "./PortfolioTab";
-import { LaunchTab } from "./LaunchTab";
-import { InvestTab } from "./InvestTab";
+import dynamic from "next/dynamic";
 import { Ticker } from "./Ticker";
 import "./app.css";
+
+// Vaults is what the app opens on; the other tabs load when first opened, so the first visit downloads less.
+const TradeTab = dynamic(() => import("./TradeTab").then((m) => m.TradeTab));
+const AnalyticsTab = dynamic(() => import("./AnalyticsTab").then((m) => m.AnalyticsTab));
+const FaucetTab = dynamic(() => import("./FaucetTab").then((m) => m.FaucetTab));
+const PortfolioTab = dynamic(() => import("./PortfolioTab").then((m) => m.PortfolioTab));
+const LaunchTab = dynamic(() => import("./LaunchTab").then((m) => m.LaunchTab));
+const InvestTab = dynamic(() => import("./InvestTab").then((m) => m.InvestTab));
 
 const TABS = [
   { id: "vaults", label: "Vaults" },
@@ -66,6 +69,13 @@ function Body({ tab }: { tab: Tab }) {
     return (
       <div className="panel narrow">
         <h2>{isError ? "Can't reach the chain" : "Reading the hook…"}</h2>
+        {!isError && (
+          <p className="loading-lede">
+            Every curator here is ranked by <b>Edge</b>: the fees users paid it, plus the price impact they left, minus
+            what arbitrage took. The hook books it block by block; this page reads it straight from {CHAIN_LABEL}, which
+            takes a few seconds on the first visit.
+          </p>
+        )}
         {isError && <p className="fine">{(error as Error)?.message.split("\n")[0]}</p>}
         {isError && CHAIN.id === 31337 && <p className="fine">Start anvil, deploy, and run the replay bot (see the README).</p>}
       </div>
@@ -95,7 +105,7 @@ export function DApp() {
     <Providers>
       <header className="app-header">
         <div className="wrap wide app-header-in">
-          <Link className="wordmark-link" href="/" aria-label="Ukiyo home">
+          <Link className="wordmark-link" href="/" title="Ukiyo home">
             <Wordmark size={28} />
           </Link>
           <nav className="app-tabs" role="tablist">

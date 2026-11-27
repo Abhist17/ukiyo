@@ -107,7 +107,7 @@ export default function Docs() {
     <div className="landing docs-page">
       <header className="l-nav">
         <div className="wrap l-nav-in">
-          <Link className="wordmark-link" href="/" aria-label="Ukiyo home">
+          <Link className="wordmark-link" href="/" title="Ukiyo home">
             <Wordmark size={28} />
           </Link>
           <span className="docs-tag">Docs</span>

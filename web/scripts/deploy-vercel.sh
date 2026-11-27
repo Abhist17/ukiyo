@@ -4,6 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SITE="${NEXT_PUBLIC_SITE_URL:-https://ukiyo-ochre.vercel.app/}"
+# ship the vault history with the site, so a visit reads only the blocks since this deploy (skipped if it fails)
+node --experimental-strip-types --no-warnings scripts/history.mts || echo "history snapshot skipped"
 NEXT_PUBLIC_SITE_URL="$SITE" npm run -s build
 STAGE="$(mktemp -d)/ukiyo"
 cp -r out "$STAGE"

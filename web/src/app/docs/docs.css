@@ -3,8 +3,8 @@
 .docs-tag {
   margin-left: 10px;
   font-size: 13px;
-  color: #b6bcd3;
-  border-left: 1px solid rgba(238, 240, 248, 0.2);
+  color: var(--muted);
+  border-left: 1px solid var(--line);
   padding-left: 10px;
 }
 

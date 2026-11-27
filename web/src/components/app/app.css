@@ -1365,3 +1365,12 @@ table.acct {
   color: var(--ink);
   font-weight: 550;
 }
+
+/* What the board is, shown while the first read from the chain is under way */
+.loading-lede {
+  margin: 10px 0 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  max-width: 60ch;
+}

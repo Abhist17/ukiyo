@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The `ukiyo` command: Ukiyo's scoreboard and accounting from a terminal. Run `ukiyo help`.
 import { parseArgs } from "node:util";
-import { createPublicClient, http, isHash, type Address, type Chain } from "viem";
+import { createPublicClient, http, isHash, parseAbiItem, type Address, type Chain } from "viem";
 import { createUkiyo, toNumber, type Row, type Scoreboard } from "./client.ts";
 import { CHAINS, DEFAULT_CHAIN_ID, DEPLOYMENTS } from "./deployments.ts";
 import { impactCredit, priceToSqrt, rebalancingLoss } from "./math.ts";
@@ -11,7 +11,7 @@ const HELP = `ukiyo: an honest scoreboard for curated liquidity, from your termi
 
 Usage
   ukiyo scoreboard [--rank edge|index|tstat|fees] [--block N]   every curator's Edge, ranked
-  ukiyo explain <txHash>                                       how the hook booked a transaction, and why
+  ukiyo explain <txHash|latest|latest-user|latest-arb>         how the hook booked a transaction, and why
   ukiyo edge <sleeveId> --from N [--to N]                     Edge a curator earned between two blocks
   ukiyo watch [--edge]                                         follow swaps, marks and Edge live
   ukiyo cost --range LO:HI --from P0 --to P1 [--liquidity L]   what a price move costs a range (the hook's maths)
@@ -26,6 +26,7 @@ Options
 `;
 
 type Flags = Record<string, string | boolean | undefined>;
+const CLASSIFIED = parseAbiItem("event SwapClassified(uint256 indexed blockNumber, bool isArbitrage, uint256 priorityFeePerGas)");
 
 const { values: flags, positionals } = parseArgs({
   allowPositionals: true,
@@ -88,8 +89,12 @@ function connect() {
     chain: chain ?? ({ id, name: `chain ${id}`, nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, rpcUrls: { default: { http: [rpc!] } } } as Chain),
     transport: http(rpc, { batch: true, retryCount: 3 }),
   });
+  rpcClient = client;
   return createUkiyo({ client, hook: flags.hook as Address | undefined, lens: flags.lens as Address | undefined });
 }
+
+/** The client the last `connect()` made, for the CLI's own reads. */
+let rpcClient: ReturnType<typeof createPublicClient>;
 
 async function scoreboard() {
   const by = ((flags.rank as string) ?? "edge") as RankBy;
@@ -134,9 +139,19 @@ async function scoreboard() {
 }
 
 async function explain() {
-  const hash = positionals[1];
-  if (!hash || !isHash(hash)) die("usage: ukiyo explain <txHash>");
-  const ex = await connect().explain(hash as `0x${string}`);
+  let hash = positionals[1];
+  const u = connect();
+  if (hash === "latest" || hash === "latest-user" || hash === "latest-arb") {
+    // the newest swap through the hook (or the newest of one kind), so a demo needs no hash pasted
+    const want = hash === "latest-user" ? false : hash === "latest-arb" ? true : undefined;
+    const head = await rpcClient.getBlockNumber();
+    const logs = await rpcClient.getLogs({ address: u.hook, event: CLASSIFIED, fromBlock: head - 999n, toBlock: head });
+    const pick = logs.filter((l) => want === undefined || l.args.isArbitrage === want).at(-1);
+    if (!pick) die("no swap through the hook in the last 1,000 blocks");
+    hash = pick!.transactionHash!;
+  }
+  if (!hash || !isHash(hash)) die("usage: ukiyo explain <txHash | latest | latest-user | latest-arb>");
+  const ex = await u.explain(hash as `0x${string}`);
   if (flags.json) return console.log(json(ex));
   console.log(bold(`Transaction ${hash.slice(0, 10)}…`) + dim(` · block ${ex.blockNumber} · from ${ex.from}`));
   for (const line of ex.narrative) console.log("  " + line);

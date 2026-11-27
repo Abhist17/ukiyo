@@ -483,6 +483,7 @@ overstates in 25% of weeks.
 ```bash
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
+./demo.sh                           # everything below, then the live hook, in one command (--no-pause, --offline)
 forge test                          # 113 tests + 5 stateful invariants: unit, fuzz, integration, differential
 cd sdk && npm install && npm test   # SDK and CLI: 14 tests, no network
 cd sdk && npm run verify:live       # the live deployment: bytecode = this repo, classification, books replayed to the wei

@@ -107,15 +107,15 @@
 
 .code {
   position: relative;
-  background: #0b0f1c;
-  color: #dfe3f2;
+  background: #1c1a16;
+  color: #f3eee5;
   border-radius: 12px;
   padding: 16px 18px;
   overflow-x: auto;
   font-size: 13px;
   line-height: 1.6;
   margin: 12px 0;
-  border: 1px solid #222a47;
+  border: 1px solid #33302a;
 }
 
 .code code {

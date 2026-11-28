@@ -1742,3 +1742,18 @@
 .l-spec-note a {
   color: var(--ink);
 }
+
+/* Dark theme: the hero keeps its warm sun glow but drops the cool one beneath it, so the night stays warm charcoal. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .l-hero {
+    background:
+      radial-gradient(46% 38% at 50% 0%, color-mix(in srgb, var(--seal) 16%, transparent), transparent 70%),
+      linear-gradient(180deg, var(--hero-a) 0%, var(--hero-b) 100%);
+  }
+}
+
+:root[data-theme="dark"] .l-hero {
+  background:
+    radial-gradient(46% 38% at 50% 0%, color-mix(in srgb, var(--seal) 16%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--hero-a) 0%, var(--hero-b) 100%);
+}

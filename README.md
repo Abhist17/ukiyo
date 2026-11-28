@@ -24,7 +24,7 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
 
 **Live:** [ukiyo-ochre.vercel.app](https://ukiyo-ochre.vercel.app) · Unichain Sepolia hook
 [`0x8040bd84e07EAfc25D5ED8053AB7ad3F99a9eAc0`](https://sepolia.uniscan.xyz/address/0x8040bd84e07EAfc25D5ED8053AB7ad3F99a9eAc0) · **Reviewing?** Start with
-[`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md). **Built when?**
+[`REVIEWERS.md`](REVIEWERS.md) (the short path). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md). **Built when?**
 [`SUBMISSION.md`](SUBMISSION.md). **Feedback on v4:** [`FEEDBACK.md`](FEEDBACK.md). **One page, no maths:**
 [`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf). **Drawn explainer** (open at excalidraw.com):
 [`pitch/ukiyo-explainer.excalidraw`](pitch/ukiyo-explainer.excalidraw). **What's next:** [`ROADMAP.md`](ROADMAP.md). **Building on it?**

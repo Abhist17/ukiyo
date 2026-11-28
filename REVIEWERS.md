@@ -1,4 +1,4 @@
-# Reviewing Ukiyo in five minutes
+# Reviewing Ukiyo
 
 **The idea.** Fee APR and "did it beat holding" mostly measure the market, not the curator. The skill in an LP's P&L
 is *fees − LVR* (Milionis et al.), but the naive on-chain version, fees minus LVR at pool prices, overstates every
@@ -26,13 +26,21 @@ Sepolia (arbitrage with a priority fee, users without).
 - **Launch**: anyone can become a curator; the factory enforces depositor protections.
 - **Faucet**: free test tokens, then deposit, trade or launch yourself.
 
-## 2. Check the claims (two minutes)
+## 2. Check the claims (a few minutes)
+
+```bash
+git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
+./demo.sh --no-pause                         # everything below plus the live hook, in one command (needs Foundry, Node)
+```
+
+Or one piece at a time:
 
 ```bash
 forge test                                   # 118 tests + 6 stateful invariants, canonical PoolManager bytecode
 forge test --match-test testFuzz_ledgersMatchReferenceReplay   # differential fuzz: hook ledgers = independent replay
 forge test --isolate --match-test test_gas -vv # gas of the swap path and the vault paths
-cd backtest && python experiments.py         # the backtest behind the numbers above
+cd sdk && npm install && npm run verify:live # the live deployment is this repo's code, its books replayed to the wei
+cd backtest && pip install -r requirements.txt && python fetch_data.py && python experiments.py   # the backtest (~94 MB download)
 ```
 
 ## 3. Where to look (one minute)

@@ -317,7 +317,9 @@ for (;;) {
     h++;
     writeFileSync(STATE, JSON.stringify({ hour: h }));
   } catch (e) {
-    console.error(`h${h} failed:`, (e as Error).message.split("\n")[0]);
+    // viem's first line is generic ("Transaction creation failed."); the cause is in `details`
+    const err = e as Error & { details?: string; shortMessage?: string };
+    console.error(`h${h} failed:`, err.shortMessage ?? err.message.split("\n")[0], err.details ? `(${err.details})` : "");
   }
   await new Promise((r) => setTimeout(r, Math.max(0, STEP_MS - (Date.now() - t0))));
 }

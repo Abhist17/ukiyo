@@ -5,6 +5,7 @@ Four calendar years with very different markets: the 2021 bull run, the 2022 cra
 """
 import csv
 import io
+import time
 import urllib.request
 import zipfile
 
@@ -14,8 +15,20 @@ URL = "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1m/ETHUSDT-1
 YEARS = range(2021, 2025)
 
 
+def download(url):
+    """The archive occasionally resets a connection; try a month three times before giving up."""
+    for attempt in range(1, 4):
+        try:
+            return urllib.request.urlopen(url, timeout=60).read()
+        except OSError as e:
+            if attempt == 3:
+                raise
+            print(f"download failed ({e}); retrying in {5 * attempt} s")
+            time.sleep(5 * attempt)
+
+
 def month(y, m):
-    raw = urllib.request.urlopen(URL.format(y=y, m=m), timeout=60).read()
+    raw = download(URL.format(y=y, m=m))
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
         rows = list(csv.reader(io.TextIOWrapper(z.open(z.namelist()[0]))))
     # columns: open time (ms), open, high, low, close, volume, ...

@@ -18,8 +18,8 @@ function snap(t: number, up: boolean): number {
 /**
  * Become a curator: launch your own vault through UkiyoFactory. One transaction deploys a genuine UkiyoVault, opens its
  * sleeve in the hook-exclusive pool, hands the sleeve to the vault for good and posts the launch bond. The factory
- * enforces the depositor protections (epoch length, probation, a permanent bond), so a launched vault is as safe to
- * deposit in as the demo's own.
+ * enforces the depositor protections (epoch length, probation, a permanent bond, and a deposit cap when it runs a
+ * guarded pilot), so a launched vault is as safe to deposit in as the demo's own.
  */
 export function LaunchTab({ live }: { live: Live }) {
   const { address, isConnected, chainId } = useAccount();
@@ -31,6 +31,8 @@ export function LaunchTab({ live }: { live: Live }) {
   const { data: minBond } = useReadContract({ ...read, address: factory, abi: factoryAbi, functionName: "minLaunchBond" });
   const { data: minEpoch } = useReadContract({ ...read, address: factory, abi: factoryAbi, functionName: "minEpochLength" });
   const { data: maxProb } = useReadContract({ ...read, address: factory, abi: factoryAbi, functionName: "maxProbationBps" });
+  // 0 lets a launch choose any cap or none; above 0, every launch must set a cap of at most that (a guarded pilot)
+  const { data: maxCap } = useReadContract({ ...read, address: factory, abi: factoryAbi, functionName: "maxDepositCap" });
   const { data: count } = useReadContract({ chainId: CHAIN.id, address: DEP?.hook, abi: hookAbi, functionName: "sleeveCount" });
   const { data: max } = useReadContract({ chainId: CHAIN.id, address: DEP?.hook, abi: hookAbi, functionName: "MAX_SLEEVES" });
   const { data: allowance } = useReadContract({
@@ -48,6 +50,7 @@ export function LaunchTab({ live }: { live: Live }) {
   const [fee, setFee] = useState("10");
   const [probation, setProbation] = useState("5");
   const [bond, setBond] = useState("");
+  const [cap, setCap] = useState("");
 
   if (!factory) {
     return (
@@ -70,6 +73,8 @@ export function LaunchTab({ live }: { live: Live }) {
   const probBps = Math.round(Number(probation) * 100);
   const maxProbBps = maxProb !== undefined ? Number(maxProb) : 0;
   const slotsLeft = count !== undefined && max !== undefined ? Number(max - count) : undefined;
+  const maxCapUsd = maxCap !== undefined ? Number(formatEther(maxCap)) : 0;
+  const capUsd = cap.trim() === "" ? 0 : Number(cap);
 
   const problem =
     !name.trim() || !symbol.trim()
@@ -82,7 +87,11 @@ export function LaunchTab({ live }: { live: Live }) {
             ? `Probation must be between 0.01% and ${maxProbBps / 100}%.`
             : !(bondUsd >= minBondUsd)
               ? `The bond must be at least ${usd(minBondUsd)}.`
-              : slotsLeft === 0
+              : !(capUsd >= 0) || (maxCapUsd > 0 && !(capUsd > 0 && capUsd <= maxCapUsd))
+                ? maxCapUsd > 0
+                  ? `This factory runs a guarded pilot: set a deposit cap of at most ${usd(maxCapUsd)}.`
+                  : "The deposit cap must be a number of tUSD, or empty for none."
+                : slotsLeft === 0
                 ? "The pool's sleeve slots are full."
                 : null;
 
@@ -102,7 +111,13 @@ export function LaunchTab({ live }: { live: Live }) {
         VAULT_CODE,
         tickLower,
         tickUpper,
-        { epochLength: minEpoch ?? 0n, performanceFeeBps: BigInt(feeBps), probationBps: BigInt(probBps), minBond: bondWei },
+        {
+          epochLength: minEpoch ?? 0n,
+          performanceFeeBps: BigInt(feeBps),
+          probationBps: BigInt(probBps),
+          minBond: bondWei,
+          depositCap: parseEther(String(capUsd)),
+        },
         name.trim(),
         symbol.trim(),
       ],
@@ -146,11 +161,16 @@ export function LaunchTab({ live }: { live: Live }) {
           <span>Permanent bond, tUSD <em>at least {usd(minBondUsd)}</em></span>
           <input inputMode="decimal" placeholder={String(minBondUsd)} value={bond} onChange={(e) => setBond(e.target.value)} />
         </label>
+        <label className="field">
+          <span>Deposit cap, tUSD <em>{maxCapUsd > 0 ? `required, at most ${usd(maxCapUsd)}` : "optional; empty for none"}</em></span>
+          <input inputMode="decimal" placeholder={maxCapUsd > 0 ? String(maxCapUsd) : "none"} value={cap} onChange={(e) => setCap(e.target.value)} />
+        </label>
       </div>
       <ul className="fine launch-terms">
         <li>Epochs of {minEpoch !== undefined ? `${Number(minEpoch) / 60} minutes` : "…"}: deposits and exits settle in batches.</li>
         <li>If your Edge index falls {probBps / 100 || "—"}% below its peak, you cannot rebalance for 3 epochs.</li>
         <li>The bond stays in the vault for its life. If an epoch loses more than the LVR budget you promise, the bond pays depositors.</li>
+        {capUsd > 0 && <li>Deposits stop once the vault holds {usd(capUsd)}; cancels and redemptions make room again.</li>}
       </ul>
       <button className="btn" disabled={!ready || !!problem || tx.state.status === "pending"} onClick={launch}>
         Launch vault

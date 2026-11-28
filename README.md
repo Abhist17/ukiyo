@@ -6,6 +6,12 @@
 
 ![Ukiyo: rank liquidity curators by skill, not by luck](assets/hero.png)
 
+**The problem.** Curators manage Uniswap liquidity for depositors, and everyone ranks them by fee APR. But
+arbitrageurs pay fees while taking more than they pay, so fee APR rewards the curator who trades most against them. On
+a year of BTC/USD prices it ranks the tight-range curator first by more than twice the runner-up, when its true hedged
+P&L is third, and a curator earning 5,857 bps of fees is losing money. Whoever ranks curators decides where liquidity
+goes, and today's ranking is wrong.
+
 Ukiyo is a Uniswap v4 hook that measures, block by block and with no oracle, how much skill each liquidity curator
 actually has. Every curator runs a hook-owned position ("sleeve") in a hook-exclusive pool, and the hook keeps a
 ledger per sleeve:

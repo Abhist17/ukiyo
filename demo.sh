@@ -39,7 +39,10 @@ if [ ! -f sdk/dist/cli.js ] || [ -n "$(find sdk/src -newer sdk/dist/cli.js -prin
 
 step "Every test" \
   "118 tests + 6 stateful invariants against Uniswap's canonical PoolManager bytecode, incl. a differential fuzz test"
-forge test --summary 2>&1 | awk '/Test Suite/ { print prev; p = 1 } p; { prev = $0 }'
+forge test --summary 2>&1 | tee "${TMPDIR:-/tmp}/ukiyo-demo-tests.log" | awk '/Test Suite/ { print prev; p = 1 } p; { prev = $0 }'
+# forge counts the invariant suite as one row; name the invariants it checked
+echo "The invariant suite's row is these $(grep -c '\[PASS\] invariant_' "${TMPDIR:-/tmp}/ukiyo-demo-tests.log") invariants, each over 128 random runs of 64 vault actions:"
+grep -E '\[(PASS|FAIL)[^]]*\] invariant_' "${TMPDIR:-/tmp}/ukiyo-demo-tests.log" | sed 's/^/  /' || true
 
 step "The off-chain maths equals the Solidity, to the wei" \
   "400 sleeves and moves plus 127 ticks, computed by the TypeScript SDK, replayed through EdgeMath and TickMath"

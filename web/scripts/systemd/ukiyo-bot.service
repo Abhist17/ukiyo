@@ -1,0 +1,18 @@
+# Keeps the replay bot running: restarts it whenever it exits (it exits on purpose when it wedges), and starts it at
+# boot when lingering is on (`loginctl enable-linger`). Install: bash scripts/systemd/install.sh
+[Unit]
+Description=Ukiyo replay bot (BTC/USD 2024 through the Unichain Sepolia pool)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+WorkingDirectory=%h/Desktop/ukiyo/web
+ExecStart=/usr/bin/node --env-file=../.env scripts/bot.mts
+Restart=always
+RestartSec=15
+StandardOutput=append:%h/Desktop/ukiyo/web/scripts/.bot-1301.log
+StandardError=append:%h/Desktop/ukiyo/web/scripts/.bot-1301.log
+
+[Install]
+WantedBy=default.target

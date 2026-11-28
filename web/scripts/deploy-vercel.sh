@@ -9,4 +9,11 @@ node --experimental-strip-types --no-warnings scripts/history.mts || echo "histo
 NEXT_PUBLIC_SITE_URL="$SITE" npm run -s build
 STAGE="$(mktemp -d)/ukiyo"
 cp -r out "$STAGE"
-cd "$STAGE" && npx -y vercel@latest deploy --prod --yes
+WEB="$PWD"
+OUT="$(cd "$STAGE" && npx -y vercel@latest deploy --prod --yes 2>&1 | tee /dev/stderr)"
+# remember this deployment once the live site serves from it, so scripts/health.sh can roll back to it
+DEPLOYED="$(grep -oE 'https://ukiyo-[a-z0-9]+-[a-z0-9-]+\.vercel\.app' <<<"$OUT" | head -1 || true)"
+if [ -n "$DEPLOYED" ] && [ "$(curl -s -m 20 -o /dev/null -w '%{http_code}' "$SITE")" = 200 ]; then
+  echo "${DEPLOYED#https://}" >"$WEB/.last-good-deploy"
+  echo "last good deploy: ${DEPLOYED#https://}"
+fi

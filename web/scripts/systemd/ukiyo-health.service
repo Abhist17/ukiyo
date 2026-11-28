@@ -1,0 +1,6 @@
+[Unit]
+Description=Ukiyo health check (stalled bot, site down)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash %h/Desktop/ukiyo/web/scripts/health.sh

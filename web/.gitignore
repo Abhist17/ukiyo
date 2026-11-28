@@ -7,3 +7,5 @@ scripts/.bot-state-*.json
 scripts/.bot-*.log
 scripts/.anvil-*.log
 public/history-*.json
+scripts/.health.log*
+.last-good-deploy

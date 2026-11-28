@@ -12,11 +12,16 @@
 //   node scripts/bot.mts                         # anvil, default keys
 //   RPC_URL=https://sepolia.unichain.org PRIVATE_KEY=0x... node scripts/bot.mts
 //
-// Env: RPC_URL, PRIVATE_KEY (deployer = arbitrageur = curator), STEP_MS (default 4000), START_HOUR (default: resume).
+// Env: RPC_URL, PRIVATE_KEY (deployer = arbitrageur = curator), STEP_MS (default 4000), START_HOUR (default: resume),
+// RPC_FALLBACK (comma-separated RPCs tried when RPC_URL fails; publicnode by default on Unichain Sepolia).
+//
+// It exits (code 1) after MAX_FAILS failed steps in a row or a step that hangs past STEP_TIMEOUT_MS, so that a
+// supervisor (scripts/ukiyo-bot.service) restarts it with fresh clients: a restart is what clears a wedged nonce.
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import {
   createPublicClient,
   createWalletClient,
+  fallback,
   http,
   keccak256,
   encodeFunctionData,
@@ -55,7 +60,16 @@ const ANVIL_KEYS: Hex[] = [
 // Poll for receipts at about the block time (viem's default is 4 s; Unichain makes a block every second, and a step
 // waits for several receipts in turn).
 const POLL_MS = Number(process.env.POLL_MS ?? 750);
-const pc = createPublicClient({ transport: http(RPC), pollingInterval: POLL_MS });
+// the public RPC rate-limits by IP, so reads and sends fall back to a second provider instead of failing the step
+const RPCS = [
+  RPC,
+  ...(process.env.RPC_FALLBACK ?? (RPC.includes("sepolia.unichain.org") ? "https://unichain-sepolia-rpc.publicnode.com" : ""))
+    .split(",")
+    .map((u) => u.trim())
+    .filter(Boolean),
+];
+const transport = () => (RPCS.length > 1 ? fallback(RPCS.map((u) => http(u))) : http(RPC));
+const pc = createPublicClient({ transport: transport(), pollingInterval: POLL_MS });
 // Sends a step's signed transactions in one JSON-RPC batch, so the sequencer receives them together.
 const burst = createPublicClient({ transport: http(RPC, { batch: { wait: 20 } }) });
 const chainId = await pc.getChainId();
@@ -84,8 +98,8 @@ if (!mainKey) throw new Error("set PRIVATE_KEY");
 // Users need their own accounts so their swaps land in the same block as the arbitrage, ordered by priority fee.
 const userKeys: Hex[] =
   chainId === 31337 ? ANVIL_KEYS.slice(1) : [1, 2, 3].map((i) => keccak256(encodePacked(["bytes32", "uint256"], [mainKey, BigInt(i)])));
-const main = createWalletClient({ account: privateKeyToAccount(mainKey), chain, transport: http(RPC), pollingInterval: POLL_MS });
-const users = userKeys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: http(RPC), pollingInterval: POLL_MS }));
+const main = createWalletClient({ account: privateKeyToAccount(mainKey), chain, transport: transport(), pollingInterval: POLL_MS });
+const users = userKeys.map((k) => createWalletClient({ account: privateKeyToAccount(k), chain, transport: transport(), pollingInterval: POLL_MS }));
 
 const hook = dep.hook as Address;
 const router = dep.router as Address;
@@ -310,13 +324,29 @@ async function curate(h: number, tick: number, price: number) {
 await setup();
 let h = process.env.START_HOUR ? Number(process.env.START_HOUR) : existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")).hour : 0;
 console.log(`replaying BTC/USD 2024 (forwards, then backwards) from hour ${h} on chain ${chainId}, one hour per ${STEP_MS} ms`);
+const MAX_FAILS = Number(process.env.MAX_FAILS ?? 12);
+const STEP_TIMEOUT_MS = Number(process.env.STEP_TIMEOUT_MS ?? 180_000);
+process.on("unhandledRejection", (e) => {
+  console.error("unhandled rejection, exiting for a clean restart:", (e as Error)?.message?.split("\n")[0]);
+  process.exit(1);
+});
+let fails = 0;
 for (;;) {
   const t0 = Date.now();
   try {
-    await step(h);
+    let timer: NodeJS.Timeout | undefined;
+    await Promise.race([
+      step(h),
+      new Promise((_, reject) => (timer = setTimeout(() => reject(new Error(`step hung for ${STEP_TIMEOUT_MS} ms`)), STEP_TIMEOUT_MS))),
+    ]).finally(() => clearTimeout(timer));
     h++;
+    fails = 0;
     writeFileSync(STATE, JSON.stringify({ hour: h }));
   } catch (e) {
+    if (++fails >= MAX_FAILS || (e as Error).message.startsWith("step hung")) {
+      console.error(`h${h} failed ${fails} time(s) in a row (${(e as Error).message.split("\n")[0]}); exiting so the supervisor restarts it fresh`);
+      process.exit(1);
+    }
     // viem's first line is generic ("Transaction creation failed."); the cause is in `details`
     const err = e as Error & { details?: string; shortMessage?: string };
     console.error(`h${h} failed:`, err.shortMessage ?? err.message.split("\n")[0], err.details ? `(${err.details})` : "");

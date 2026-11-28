@@ -3,7 +3,8 @@ import { Logo, Wordmark } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { HeroRank } from "@/components/landing/HeroRank";
 import { LiveNumbers } from "@/components/landing/LiveNumbers";
-import { Marquee, Motion } from "@/components/landing/Motion";
+import { Motion } from "@/components/landing/Motion";
+import { InkWave } from "@/components/landing/InkWave";
 import { BlockExplainer } from "@/components/landing/BlockExplainer";
 import { RankShift } from "@/components/RankShift";
 import { error } from "@/lib/data";
@@ -159,61 +160,50 @@ export default function Home() {
 
       <section className="l-hero">
         <div className="wrap hero-in">
-          <Link className="hero-tag" href="/app/">
-            <span className="hero-dot" aria-hidden />
-            Uniswap v4 hook · {CHAIN.id !== 31337 ? `live on ${CHAIN.name}` : "running locally"}
-          </Link>
-          {/* each word rises out of its line's mask, one after another */}
-          <h1 aria-label="Fee APR picks the wrong curator">
-            <span className="ln" aria-hidden>
-              <W d={0}>Fee</W> <W d={1}>APR</W> <W d={2}>picks</W>
-            </span>
-            <span className="ln" aria-hidden>
-              <W d={3}>the</W> <W d={4}><em>wrong</em></W> <W d={5}>curator</W>
-            </span>
-          </h1>
-          <p className="l-lede">
-            Curators manage Uniswap liquidity for depositors, and everyone ranks them by the fees they earn. But
-            arbitrageurs pay fees while taking more than they pay. Ukiyo is a v4 hook that tells the two apart on every
-            swap and keeps each curator&apos;s real score on-chain:
-          </p>
-          <div className="hero-formula" role="img" aria-label="Edge equals user fees plus user price impact minus arbitrage loss">
-            <div className="hf-term pos">
-              <b>User fees</b>
-              <small>paid by ordinary traders</small>
+          <div className="hero-copy">
+            <p className="imprint">
+              <span className="hanko" aria-hidden>浮世</span>
+              <span>
+                A Uniswap v4 hook
+                <br />
+                {CHAIN.id !== 31337 ? (
+                  <Link href="/app/">live on {CHAIN.name} ↗</Link>
+                ) : (
+                  "running locally"
+                )}
+              </span>
+            </p>
+            <h1>
+              Fee APR picks the <em>wrong</em> curator.
+            </h1>
+            <p className="l-lede">
+              Curators manage Uniswap liquidity for depositors, and everyone ranks them by the fees they earn. But
+              arbitrageurs pay fees while taking more than they pay. Ukiyo is a v4 hook that tells the two apart on
+              every swap and keeps each curator&apos;s real score on-chain.
+            </p>
+            <div className="l-cta">
+              <Link className="btn primary" href="/app/">See the live scoreboard</Link>
+              <a className="btn ghost" href="#how">How it works</a>
             </div>
-            <div className="hf-term pos">
-              <span className="hf-op">+</span>
-              <b>User price impact</b>
-              <small>won back by the LPs</small>
-            </div>
-            <div className="hf-term neg">
-              <span className="hf-op">−</span>
-              <b>Arbitrage loss</b>
-              <small>taken by arbitrageurs</small>
-            </div>
-            <div className="hf-term edge">
-              <span className="hf-op">=</span>
-              <b>Edge</b>
-              <small>per curator, every block</small>
-            </div>
-          </div>
-          <div className="l-cta">
-            <Link className="btn primary" href="/app/">See the live scoreboard</Link>
-            <a className="btn ghost-light" href="#how">How it works</a>
           </div>
           <div className="hero-card">
-            {/* tilted back at first, it flattens to face the reader over the first third of a screen of scrolling */}
-            <div className="hero-tilt" data-scroll="top">
-              <HeroRank />
-            </div>
+            <HeroRank />
           </div>
+        </div>
+        <div className="wrap">
+          <p className="hero-eq" role="img" aria-label="Edge equals user fees plus user price impact minus arbitrage loss">
+            <span className="t edge"><b>Edge</b><small>per curator, every block</small></span>
+            <span className="op">=</span>
+            <span className="t pos"><b>user fees</b><small>paid by ordinary traders</small></span>
+            <span className="op">+</span>
+            <span className="t pos"><b>user price impact</b><small>won back by the LPs</small></span>
+            <span className="op">−</span>
+            <span className="t neg"><b>arbitrage loss</b><small>taken by arbitrage bots</small></span>
+          </p>
         </div>
       </section>
 
-      <section className="l-marquee" data-scroll="view">
-        <Marquee quiet="Fee APR rewards volume · Beat-HODL rewards the market" loud="Edge rewards skill" />
-      </section>
+      <InkWave />
 
       <LiveNumbers />
 
@@ -221,7 +211,7 @@ export default function Home() {
         <div className="wrap">
           <p className="l-kicker" data-reveal>Backtested on a full year of real BTC/USD prices</p>
           <div className="big-num" data-reveal>
-            <b data-count>{e.edge.rmse.toFixed(0)}</b> <span>bps</span>
+            <b>{e.edge.rmse.toFixed(0)}</b> <span>bps</span>
           </div>
           <p className="big-cap" data-reveal>
             weekly error against each curator&apos;s true hedged P&amp;L. The obvious on-chain formula is off by{" "}
@@ -229,17 +219,17 @@ export default function Home() {
             <b>every year</b>; fee income does once.
           </p>
           <div className="num-row" data-reveal="stagger">
-            <div><b data-count>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>
-            <div><b data-count>6 / 6</b><span>curators in the true order</span></div>
+            <div><b>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>
+            <div><b>6 / 6</b><span>curators in the true order</span></div>
             <div><b>0</b><span>oracles or keepers</span></div>
-            <div><b data-count>118</b><span>tests + 6 stateful invariants</span></div>
+            <div><b>118</b><span>tests + 6 stateful invariants</span></div>
           </div>
         </div>
       </section>
 
       <section className="l-section" id="how">
         <div className="wrap">
-          <p className="l-eyebrow" data-reveal>How it works</p>
+          <p className="l-eyebrow" data-n="一" data-reveal>How it works</p>
           <h2 data-reveal>One hook, three entries per swap</h2>
           <p className="l-sub" data-reveal>
             Every curator runs a sleeve in the same hook-exclusive pool. The hook keeps a ledger per sleeve, block by
@@ -271,7 +261,7 @@ export default function Home() {
       <section className="l-section" id="safeguards">
         <div className="wrap l-split">
           <div data-reveal>
-            <p className="l-eyebrow">Safeguards</p>
+            <p className="l-eyebrow" data-n="二">Safeguards</p>
             <h2>Built to never flatter a curator</h2>
             <p className="l-sub">
               A scoreboard is only worth something if it cannot be gamed. Wherever the hook has to choose, it chooses
@@ -290,10 +280,9 @@ export default function Home() {
         </div>
       </section>
 
-      {/* grows from a card to the full width as it scrolls in */}
-      <section className="l-dark" id="proof" data-scroll="view">
+      <section className="l-dark" id="proof">
         <div className="wrap">
-          <p className="l-eyebrow" data-reveal>Proof</p>
+          <p className="l-eyebrow" data-n="三" data-reveal>Proof</p>
           <h2 data-reveal>Every yardstick tells a different story</h2>
           <p className="l-sub" data-reveal>
             The same six curators over 2024, ranked five ways. Fee income crowns the curator that trades most against
@@ -311,7 +300,7 @@ export default function Home() {
 
       <section className="l-section" id="impact">
         <div className="wrap">
-          <p className="l-eyebrow" data-reveal>Why it matters</p>
+          <p className="l-eyebrow" data-n="四" data-reveal>Why it matters</p>
           <h2 data-reveal>Capital follows the scoreboard</h2>
           <p className="l-sub" data-reveal>
             On the 2024 replay, fee income ranks the tight chaser first by more than twice the runner-up; its true
@@ -333,7 +322,7 @@ export default function Home() {
       <section className="l-section">
         <div className="wrap l-split">
           <div data-reveal>
-            <p className="l-eyebrow">Vaults</p>
+            <p className="l-eyebrow" data-n="五">Vaults</p>
             <h2>A vault per curator, scored by the hook</h2>
             <p className="l-sub">
               Depositors back a curator through a <code>UkiyoVault</code>. Entries and exits settle at epoch boundaries,
@@ -356,7 +345,7 @@ export default function Home() {
       {SPECS.length > 0 && (
         <section className="l-section" id="contracts">
           <div className="wrap">
-            <p className="l-eyebrow" data-reveal>On-chain</p>
+            <p className="l-eyebrow" data-n="六" data-reveal>On-chain</p>
             <h2 data-reveal>The contracts, as deployed</h2>
             <p className="l-sub" data-reveal>
               Live on {CHAIN.name}. These are the parameters they run with, and every one is in the verified source.
@@ -394,7 +383,7 @@ export default function Home() {
       <section className="l-section" id="faq">
         <div className="wrap l-faq">
           <div data-reveal>
-            <p className="l-eyebrow">FAQ</p>
+            <p className="l-eyebrow" data-n="七">FAQ</p>
             <h2>Questions</h2>
             <p className="l-sub">The rest is in the README, with every number traced to the script that produced it.</p>
           </div>
@@ -429,14 +418,5 @@ export default function Home() {
       </footer>
       <Motion />
     </div>
-  );
-}
-
-/** One headline word, wrapped so it can rise out of its line. */
-function W({ d, children }: { d: number; children: React.ReactNode }) {
-  return (
-    <span className="wd">
-      <span style={{ ["--d" as string]: d }}>{children}</span>
-    </span>
   );
 }

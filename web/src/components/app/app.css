@@ -53,7 +53,7 @@
   background: transparent;
   border: 0;
   padding: 8px 12px;
-  border-radius: 9px;
+  border-radius: var(--r);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -116,7 +116,7 @@
 .btn.sm {
   padding: 7px 12px;
   font-size: 14px;
-  border-radius: 9px;
+  border-radius: var(--r);
 }
 
 .btn.wide {
@@ -223,7 +223,7 @@
 .kpi {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--r);
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
@@ -280,7 +280,7 @@
 .panel {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--r);
   padding: 18px;
   box-shadow: var(--shadow);
   min-width: 0;
@@ -363,7 +363,7 @@ table.vt {
   place-items: center;
   width: 26px;
   height: 26px;
-  border-radius: 8px;
+  border-radius: var(--r);
   font-weight: 700;
   font-size: 13px;
   background: var(--card-2);
@@ -436,7 +436,7 @@ table.vt {
 
 .mini-stats div {
   background: var(--card-2);
-  border-radius: 10px;
+  border-radius: var(--r);
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
@@ -472,7 +472,7 @@ table.vt {
   gap: 6px;
   background: var(--card-2);
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--r);
   padding: 10px 12px;
 }
 
@@ -542,7 +542,7 @@ table.vt {
   z-index: 1;
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--r);
   border: 3px solid var(--card);
   background: var(--card-2);
   color: var(--ink);
@@ -609,7 +609,7 @@ table.vt {
   font-size: 13px;
   margin: 10px 0 0;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: var(--r);
   background: var(--card-2);
   word-break: break-word;
 }
@@ -669,7 +669,7 @@ table.vt {
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 2px 7px;
-  border-radius: 6px;
+  border-radius: var(--r);
 }
 
 .badge.arb {
@@ -774,7 +774,7 @@ table.vt {
   display: flex;
   gap: 2px;
   height: 14px;
-  border-radius: 6px;
+  border-radius: var(--r);
   overflow: hidden;
   background: var(--card-2);
 }
@@ -829,7 +829,7 @@ table.vt {
   justify-content: space-between;
   align-items: center;
   background: var(--card-2);
-  border-radius: 12px;
+  border-radius: var(--r);
   padding: 12px 14px;
 }
 
@@ -858,7 +858,7 @@ table.vt {
 
 .terms-box div {
   border: 1px dashed var(--line);
-  border-radius: 10px;
+  border-radius: var(--r);
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
@@ -918,7 +918,7 @@ table.acct {
 
 .cls-bar {
   height: 12px;
-  border-radius: 6px;
+  border-radius: var(--r);
   background: var(--good);
   overflow: hidden;
 }
@@ -945,7 +945,7 @@ table.acct {
 
 .cls-stats div {
   background: var(--card-2);
-  border-radius: 10px;
+  border-radius: var(--r);
   padding: 8px 10px;
 }
 
@@ -1031,7 +1031,7 @@ table.acct {
 .callout {
   margin: 12px 0 0;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--r);
   font-size: 13px;
   background: color-mix(in srgb, var(--seal) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--seal) 25%, transparent);
@@ -1040,7 +1040,7 @@ table.acct {
 /* Swap receipt */
 .receipt {
   margin-top: 14px;
-  border-radius: 14px;
+  border-radius: var(--r);
   border: 1px solid var(--line);
   padding: 14px;
   background: var(--card-2);
@@ -1283,7 +1283,7 @@ table.acct {
   width: 290px;
   padding: 12px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--r);
   background: var(--card);
   box-shadow: var(--shadow);
   white-space: normal;
@@ -1302,7 +1302,7 @@ table.acct {
   width: 100%;
   padding: 9px 10px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r);
   background: var(--card-2);
   color: var(--ink);
   font: inherit;
@@ -1318,7 +1318,7 @@ table.acct {
 .wallet-blank {
   width: 22px;
   height: 22px;
-  border-radius: 6px;
+  border-radius: var(--r);
   flex: none;
 }
 .wallet-blank {
@@ -1349,7 +1349,7 @@ table.acct {
   padding: 14px 18px;
   border: 1px solid var(--line);
   border-left: 3px solid var(--seal);
-  border-radius: 12px;
+  border-radius: var(--r);
   background: var(--card);
 }
 .narration p {
@@ -1373,4 +1373,140 @@ table.acct {
   line-height: 1.6;
   color: var(--ink-2);
   max-width: 60ch;
+}
+
+/* ================================================================================================================ */
+/* The print, in the app: the same paper and ink as the landing page. Panels are framed by ink rules instead of    */
+/* floating on shadows, titles are set in the serif, figures stay in mono, and the leader wears the seal.          */
+/* ================================================================================================================ */
+
+.app-header {
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--ink);
+}
+
+.app-tabs button {
+  font-family: var(--serif);
+  font-size: 16px;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  padding: 8px 10px 6px;
+}
+
+.app-tabs button:hover {
+  background: transparent;
+  color: var(--ink);
+}
+
+.app-tabs button[aria-selected="true"] {
+  background: transparent;
+  border-bottom-color: var(--seal);
+  font-weight: 600;
+}
+
+.chain-pill {
+  border-radius: var(--r);
+}
+
+.livebar {
+  border-bottom-color: var(--ink);
+}
+
+.panel {
+  border: 1px solid var(--ink);
+  box-shadow: none;
+}
+
+.panel h2 {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.kpi {
+  border: 0;
+  border-top: 2px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  padding: 12px 0 4px;
+}
+
+.kpi b {
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 32px;
+}
+
+.kpi.accent {
+  border-color: var(--seal);
+  background: transparent;
+}
+
+.narration {
+  border: 0;
+  border-left: 3px solid var(--seal);
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 0 4px 16px;
+}
+
+.narration p {
+  font-family: var(--serif);
+  font-size: 17px;
+}
+
+.seg {
+  background: transparent;
+  border: 1px solid var(--ink);
+  padding: 0;
+  gap: 0;
+}
+
+.seg button {
+  border-radius: 0;
+}
+
+.seg button + button {
+  border-left: 1px solid var(--ink);
+}
+
+.seg button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: none;
+}
+
+.vt th {
+  border-bottom: 1px solid var(--ink);
+}
+
+.vt tbody tr.sel {
+  background: color-mix(in srgb, var(--seal) 7%, transparent);
+}
+
+.rank {
+  background: transparent;
+  border: 1px solid var(--ink);
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.rank.first {
+  background: var(--seal);
+  border-color: var(--seal);
+  color: var(--paper);
+  transform: rotate(-4deg);
+}
+
+.mini-stats div,
+.terms-box div,
+.field {
+  border-radius: var(--r);
+}
+
+.btn:hover {
+  transform: none;
 }

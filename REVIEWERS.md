@@ -19,7 +19,8 @@ Sepolia (arbitrage with a priority fee, users without).
 
 - **Vaults**: curators ranked by *Edge return* (Edge over the capital that earned it, so size does not win), with
   each one's skill test (a t-statistic: "skill" only when Edge is statistically clear of zero). Switch to *Fee
-  income* to see the ranking the market uses today flip.
+  income* to compare the ranking the market uses today. With only four demo curators the two can agree on the live
+  board; where they part is on `/research`, the BTC 2024 backtest with six curators.
 - **Analytics**: every swap as the hook classified it, and what each curator's Edge is made of.
 - **Invest**: one deposit split across curators by their skill tests.
 - **Launch**: anyone can become a curator; the factory enforces depositor protections.
@@ -28,9 +29,9 @@ Sepolia (arbitrage with a priority fee, users without).
 ## 2. Check the claims (two minutes)
 
 ```bash
-forge test                                   # 113 tests + 5 stateful invariants, canonical PoolManager bytecode
+forge test                                   # 118 tests + 6 stateful invariants, canonical PoolManager bytecode
 forge test --match-test testFuzz_ledgersMatchReferenceReplay   # differential fuzz: hook ledgers = independent replay
-forge test --match-test test_gas -vv         # gas of the swap path and the vault paths
+forge test --isolate --match-test test_gas -vv # gas of the swap path and the vault paths
 cd backtest && python experiments.py         # the backtest behind the numbers above
 ```
 
@@ -47,7 +48,13 @@ cd backtest && python experiments.py         # the backtest behind the numbers a
 
 - The classifier is the priority fee. On real Unichain flow about 7% of informed swaps pay no tip; a 5 bps pool
   tolerates that (about 25% error), a 30 bps pool would not. Measured, not assumed: see the README.
-- Edge errs low, never high, by design; someone paying fees can still make a rival's Edge read lower than it is, but
-  since spike-netted marks only by about 4× what it costs them (it was unbounded). See the README's backtest section
+- Every rule errs against the curator: roundings, doubtful swaps, and griefing, which can only make a rival's Edge
+  read lower than it is (since spike-netted marks, by at most about 4× what it costs them; it was unbounded). Edge as a
+  whole can still read high, because arbitrage that pays no tip counts as user flow: over whole backtest years, by up to
+  7.6 bps a week on a 5 bps pool (ETH 2021) and up to about 25 bps on a 30 bps pool. See the README's backtest section
   and the threat model.
+- A short record cannot pick a curator. Edge measures what a curator earned accurately, but a few weeks of true P&L
+  are themselves a noisy read of skill: over 1–13 weeks of BTC 2024, even true hedged P&L orders curators as their
+  full-year skill does only 71–73% of the time (fee income: 79–80%), and the skill test needs about 17–20 weeks for
+  the replay's best curators and 60 or more for the rest (`backtest/track_record.py`).
 - Unaudited hackathon code on a testnet.

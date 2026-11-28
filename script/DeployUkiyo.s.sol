@@ -82,6 +82,8 @@ contract DeployUkiyo is Script {
         uint256 lvrBudgetBps;
         uint256 probationBps;
         uint256 launchBond;
+        uint256 depositCap;
+        uint256 maxDepositCap;
         address curator;
         address deployer;
     }
@@ -96,6 +98,9 @@ contract DeployUkiyo is Script {
             lvrBudgetBps: vm.envOr("LVR_BUDGET_BPS", uint256(25)),
             probationBps: vm.envOr("PROBATION_BPS", uint256(300)),
             launchBond: vm.envOr("LAUNCH_BOND", uint256(5000 ether)),
+            // deposit cap of each demo vault and the largest one a launch may set, in tUSD; 0 for none (the testnet)
+            depositCap: vm.envOr("DEPOSIT_CAP", uint256(0)),
+            maxDepositCap: vm.envOr("MAX_DEPOSIT_CAP", uint256(0)),
             curator: vm.envOr("CURATOR", msg.sender),
             deployer: msg.sender
         });
@@ -138,7 +143,7 @@ contract DeployUkiyo is Script {
 
         d.router = new PoolSwapTest(IPoolManager(d.manager));
         // Anyone can launch a further curator vault through the factory, on at least the demo's epoch length.
-        d.factory = new UkiyoFactory(d.hook, c.epochLength, c.launchBond, 2000);
+        d.factory = new UkiyoFactory(d.hook, c.epochLength, c.launchBond, 2000, c.maxDepositCap);
         d.hook.setLauncher(address(d.factory));
         // One deposit split across the demo's and any launched curators by their skill tests.
         address[] memory core = new address[](d.vaults.length);
@@ -172,7 +177,8 @@ contract DeployUkiyo is Script {
                 epochLength: c.epochLength,
                 performanceFeeBps: c.performanceFeeBps,
                 probationBps: c.probationBps,
-                minBond: 0
+                minBond: 0,
+                depositCap: c.depositCap
             }),
             s.name,
             s.symbol

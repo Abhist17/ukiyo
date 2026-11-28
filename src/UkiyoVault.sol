@@ -71,11 +71,14 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @param performanceFeeBps Performance fee in bps of Edge above the high-water mark, at most 20%.
     /// @param probationBps Drawdown of `edgeIndex` from its peak, in bps, that puts the curator on probation; 0 never.
     /// @param minBond token1 bond the curator can never withdraw below (penalties still take from it).
+    /// @param depositCap Most capital, in token1 at the hook's reference price, that deposit requests may bring the
+    ///        vault to (its capital plus every deposit escrowed this epoch); 0 for no cap.
     struct Terms {
         uint256 epochLength;
         uint256 performanceFeeBps;
         uint256 probationBps;
         uint256 minBond;
+        uint256 depositCap;
     }
 
     /// @notice A pair of token amounts.
@@ -146,6 +149,11 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @notice Bond the curator must keep posted: withdrawals never take the bond below it.
     uint256 public immutable minBond;
 
+    /// @notice Most capital, in token1 at the hook's reference price, that deposit requests may bring the vault to: its
+    ///         capital (`valueAtMark`) plus every deposit escrowed this epoch (`pendingDeposits`). 0 for no cap. It
+    ///         limits new money only: Edge and price moves may carry the vault above it, and then it takes no deposits.
+    uint256 public immutable depositCap;
+
     /// @notice Epochs a probation lasts. During them the curator cannot move the range, so the vault holds still and
     ///         depositors have time to leave on their own terms.
     uint256 public constant PROBATION_EPOCHS = 3;
@@ -184,6 +192,9 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @notice Tokens held for users and not part of the vault's capital: escrowed deposits, refunds and
     ///         redemption payouts waiting to be claimed.
     Amounts public reserved;
+
+    /// @notice Every deposit escrowed for the current epoch, counted against `depositCap`; cleared at settlement.
+    Amounts public pendingDeposits;
 
     /// @notice Escrowed deposit of `user` in `epoch`.
     mapping(uint256 epoch => mapping(address user => Amounts)) public pendingDeposit;
@@ -348,6 +359,11 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
     /// @notice A fee or budget is above its cap.
     error AboveCap(uint256 bps, uint256 cap);
 
+    /// @notice The deposit would take the vault's capital plus this epoch's escrowed deposits above `depositCap`.
+    /// @param value That total, in token1 at the hook's reference price, had the deposit been accepted.
+    /// @param cap The vault's `depositCap`.
+    error DepositCapReached(uint256 value, uint256 cap);
+
     // ---------------------------------------------------------------------------------------------------------------
     // Construction
     // ---------------------------------------------------------------------------------------------------------------
@@ -388,6 +404,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         performanceFeeBps = terms_.performanceFeeBps;
         probationBps = terms_.probationBps;
         minBond = terms_.minBond;
+        depositCap = terms_.depositCap;
         poolManager = hook_.poolManager();
         _fee = fee;
         _tickSpacing = spacing;
@@ -441,9 +458,20 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         d.amount1 += amount1;
         reserved.amount0 += amount0;
         reserved.amount1 += amount1;
+        Amounts storage p = pendingDeposits;
+        p.amount0 += amount0;
+        p.amount1 += amount1;
+        // logged before the external calls below; if the deposit cap rejects the request, the log reverts with it
+        emit DepositRequested(e, receiver, amount0, amount1);
         if (amount0 != 0) token0.safeTransferFrom(msg.sender, address(this), amount0);
         if (amount1 != 0) token1.safeTransferFrom(msg.sender, address(this), amount1);
-        emit DepositRequested(e, receiver, amount0, amount1);
+        if (depositCap != 0) {
+            // After the transfers: capital is the balance less `reserved`, which already holds this request. Valued
+            // like `valueAtMark`, at a price this transaction cannot set, so no one can make room by moving the pool.
+            uint160 m = hook.referenceSqrtPrice();
+            uint256 value = valueAtMark() + p.amount1 + Math.mulDiv(Math.mulDiv(p.amount0, m, 1 << 96), m, 1 << 96);
+            if (value > depositCap) revert DepositCapReached(value, depositCap);
+        }
     }
 
     /// @notice Take back this epoch's escrowed deposit before it settles.
@@ -454,6 +482,8 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
         delete pendingDeposit[e][msg.sender];
         reserved.amount0 -= d.amount0;
         reserved.amount1 -= d.amount1;
+        pendingDeposits.amount0 -= d.amount0;
+        pendingDeposits.amount1 -= d.amount1;
         // free the slot, so requesting and cancelling cannot fill the epoch's queue for nothing
         _freeSlot(e, msg.sender);
         _pay(msg.sender, d.amount0, d.amount1);
@@ -533,6 +563,7 @@ contract UkiyoVault is ERC20, ReentrancyGuard, IUnlockCallback {
 
         uint256 burned = _settleRedemptions(e, liq);
         uint256 minted = _settleDeposits(e);
+        delete pendingDeposits;
         _deployIdle(false);
         _payBondWithdrawal();
         lvrBudgetBps = nextLvrBudgetBps;

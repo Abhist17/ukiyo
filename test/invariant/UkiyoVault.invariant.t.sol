@@ -235,7 +235,7 @@ contract UkiyoVaultInvariantTest is Test {
 
         address curator = makeAddr("curator");
         hook.openSleeve(curator, -1000, 1000);
-        vault = new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(1 days, 1000, 10, 0), "v", "v"); // probation at 0.1%
+        vault = new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(1 days, 1000, 10, 0, 1e25), "v", "v"); // probation at 0.1%, capped near ten max deposits
         hook.setSleeveManager(1, address(vault));
         hook.modifySleeveLiquidity(0, 1e21);
         vm.fee(1 gwei);
@@ -275,6 +275,22 @@ contract UkiyoVaultInvariantTest is Test {
     /// @notice Shares handed in for redemption stay escrowed in the vault until their epoch settles.
     function invariant_redemptionsEscrowed() public view {
         assertGe(vault.balanceOf(address(vault)), vault.totalRedeem(vault.epoch()), "escrowed shares missing");
+    }
+
+    /// @notice The total counted against the deposit cap is exactly the current epoch's queue: requests add to it,
+    ///         cancels take theirs back, settlement empties it.
+    function invariant_pendingDepositsMatchTheQueue() public view {
+        address[] memory h = handler.holders();
+        uint256 e = vault.epoch();
+        (uint256 s0, uint256 s1) = (0, 0);
+        for (uint256 i; i < h.length; ++i) {
+            (uint256 a0, uint256 a1) = vault.pendingDeposit(e, h[i]);
+            s0 += a0;
+            s1 += a1;
+        }
+        (uint256 p0, uint256 p1) = vault.pendingDeposits();
+        assertEq(p0, s0, "token0 counted against the cap differs from the queue");
+        assertEq(p1, s1, "token1 counted against the cap differs from the queue");
     }
 
     /// @notice Edge per share can sit below the high-water mark (losses to earn back) but the mark itself never goes

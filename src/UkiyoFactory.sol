@@ -22,7 +22,9 @@ import {UkiyoVault} from "./UkiyoVault.sol";
 ///        - epochs of at least `minEpochLength`, so entries and exits settle in batches;
 ///        - a probation drawdown between 1 bp and `maxProbationBps`, so a curator on a losing streak is stopped;
 ///        - a permanent bond of at least `minLaunchBond` token1, which the curator can never withdraw. It also prices
-///          the hook's limited sleeve slots, so they cannot be filled for free.
+///          the hook's limited sleeve slots, so they cannot be filled for free;
+///        - when `maxDepositCap` is set (a guarded pilot), a deposit cap of at most that, so no launch takes unlimited
+///          money before the code has a track record.
 contract UkiyoFactory {
     using SafeERC20 for IERC20;
 
@@ -43,6 +45,10 @@ contract UkiyoFactory {
 
     /// @notice Largest probation drawdown a launched vault may choose, in bps of its Edge index.
     uint256 public immutable maxProbationBps;
+
+    /// @notice Largest deposit cap (`UkiyoVault.Terms.depositCap`, token1) a launched vault may choose; every launch
+    ///         must then set one. 0 lets launches choose any cap, or none.
+    uint256 public immutable maxDepositCap;
 
     /// @notice Every vault launched here, in order.
     address[] public vaults;
@@ -71,7 +77,14 @@ contract UkiyoFactory {
     /// @param minEpochLength_ Shortest epoch a launched vault may have, in seconds.
     /// @param minLaunchBond_ Smallest permanent curator bond, in token1.
     /// @param maxProbationBps_ Largest probation drawdown a launched vault may choose, in bps.
-    constructor(UkiyoHook hook_, uint256 minEpochLength_, uint256 minLaunchBond_, uint256 maxProbationBps_) {
+    /// @param maxDepositCap_ Largest deposit cap a launched vault may choose, in token1; 0 for no limit.
+    constructor(
+        UkiyoHook hook_,
+        uint256 minEpochLength_,
+        uint256 minLaunchBond_,
+        uint256 maxProbationBps_,
+        uint256 maxDepositCap_
+    ) {
         if (maxProbationBps_ == 0 || maxProbationBps_ >= 10_000) revert BadTerms();
         hook = hook_;
         vaultCodeHash = keccak256(type(UkiyoVault).creationCode);
@@ -82,6 +95,7 @@ contract UkiyoFactory {
         minEpochLength = minEpochLength_;
         minLaunchBond = minLaunchBond_;
         maxProbationBps = maxProbationBps_;
+        maxDepositCap = maxDepositCap_;
     }
 
     /// @notice Launch a curator vault with the caller as its curator. Pulls `terms.minBond` token1 from the caller as
@@ -105,6 +119,7 @@ contract UkiyoFactory {
         if (
             terms.epochLength < minEpochLength || terms.minBond < minLaunchBond || terms.probationBps == 0
                 || terms.probationBps > maxProbationBps
+                || (maxDepositCap != 0 && (terms.depositCap == 0 || terms.depositCap > maxDepositCap))
         ) revert BadTerms();
 
         // The vault is built for the sleeve the hook will open next; checked below.

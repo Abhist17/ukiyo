@@ -19,7 +19,7 @@ is still open. Below: every finding from our own reviews, the fix, and the test 
 ## Open, and documented
 
 - Tipped push-and-revert swaps smaller than 8 fee-widths still make in-range sleeves' Edge read lower than it is
-  (Edge errs low, never high), by at most about 4× what the attacker pays. Larger spikes are netted since 25 Nov.
+  (it can only lower a rival's Edge, never raise it), by at most about 4× what the attacker pays. Larger spikes are netted since 25 Nov.
 - Liquidity removed between two marks and not put back is neither credited nor charged for that block's move up to
   its removal (one block, one sleeve). Removing and putting it back, into the same range or a shifted one, cannot
   re-anchor it any more (26 Nov).

@@ -66,7 +66,9 @@ end, exactly as `UkiyoVault` does each epoch for its performance fee (`epochStar
 `UkiyoFactory.launch(vaultCode, tickLower, tickUpper, terms, name, symbol)`, where `vaultCode` is exactly
 `type(UkiyoVault).creationCode` (it is passed in because it is too large for the factory to embed; the factory checks
 its hash). Approve the factory for `terms.minBond` of token1 first. The factory requires epochs of at least
-`minEpochLength`, probation between 0.01% and `maxProbationBps`, and a permanent bond of at least `minLaunchBond`.
+`minEpochLength`, probation between 0.01% and `maxProbationBps`, and a permanent bond of at least `minLaunchBond`. `terms.depositCap` caps the vault's
+capital (token1, at the hook's reference price; 0 for none); if the factory's `maxDepositCap` is set, every launch must
+set a cap of at most that.
 
 ## Route deposits by skill
 

@@ -33,6 +33,7 @@ TypeScript and Python in it was written after that, in public commits. Nothing p
 | 25 Nov | Spike-netted marks, backtested before shipping (estimator v7 against the v5 and a rejected v6) |
 | 26 Nov | Liquidity put back between marks can no longer be re-anchored, in the same range or a shifted one; impact section; this file and [`FEEDBACK.md`](FEEDBACK.md); an out-of-sample backtest on four years of ETH/USDT; [`ROADMAP.md`](ROADMAP.md); the one-page overview and the drawn explainer; wallets through RainbowKit, with WalletConnect for phones |
 | 27 Nov | The developer kit: [`sdk/`](sdk/), a TypeScript SDK and `ukiyo` CLI (scoreboard, `explain <tx>`, Edge over a period, live feed, the hook's maths to the wei), cross-checked against the Solidity by shared test vectors; [`IUkiyoEdge`](src/interfaces/IUkiyoEdge.sol) for contracts that read Edge; a Lighthouse and DevTools pass on the site (accessibility, best practices and SEO 100 on every page in both themes; the landing page down from 5.6 MB to 0.5 MB, because the app no longer re-reads the swap history on every visit) |
+| 28 Nov | A per-vault deposit cap that the factory can require of every launch, for a guarded pilot (not yet deployed); `backtest/track_record.py` and a README section on how long a record takes to show skill; the docs corrected where they overstated (test counts, "never high", the live board's fee ranking) |
 
 `git log --reverse` shows the full history, one focused commit at a time.
 
@@ -54,10 +55,11 @@ spike netting, the anchoring and dual-measurement rules, and the vault mechanics
 ## How to check the claims
 
 ```bash
-forge test                                   # 113 tests + 5 stateful invariants, canonical PoolManager bytecode
-forge test --match-test test_gas -vv         # the README's gas table
+forge test                                   # 118 tests + 6 stateful invariants, canonical PoolManager bytecode
+forge test --isolate --match-test test_gas -vv # the README's gas table
 cd backtest && uv run --no-project --with numpy --with numba python experiments.py   # every BTC backtest number
 cd backtest && uv run --no-project --with numpy python fetch_eth.py && uv run --no-project --with numpy --with numba python multiyear.py   # four years of ETH
+cd backtest && python track_record.py         # how long a record takes to show skill (reads the results above)
 cd web && npm test                           # the site's maths, the backtest claim it shows, the README's code links
 cd sdk && npm install && npm test            # the SDK; forge's EdgeMathVectors replays its vectors through Solidity
 cd sdk && npm run build && node dist/cli.js explain <any swap tx>   # how the live hook booked it, and why

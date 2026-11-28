@@ -38,7 +38,7 @@ if [ ! -d sdk/node_modules ]; then (cd sdk && npm install --silent --no-audit --
 if [ ! -f sdk/dist/cli.js ] || [ -n "$(find sdk/src -newer sdk/dist/cli.js -print -quit)" ]; then (cd sdk && npm run -s build); fi
 
 step "Every test" \
-  "113 tests + 5 stateful invariants against Uniswap's canonical PoolManager bytecode, incl. a differential fuzz test"
+  "118 tests + 6 stateful invariants against Uniswap's canonical PoolManager bytecode, incl. a differential fuzz test"
 forge test --summary 2>&1 | awk '/Test Suite/ { print prev; p = 1 } p; { prev = $0 }'
 
 step "The off-chain maths equals the Solidity, to the wei" \
@@ -47,7 +47,7 @@ forge test --match-contract EdgeMathVectors 2>&1 | grep -E "PASS|FAIL|Suite"
 
 step "Gas, against a plain v4 pool" \
   "a whole swap transaction as a user pays it, with and without the hook"
-forge test --match-test test_gas -vv 2>&1 | grep "gas:"
+forge test --isolate --match-test test_gas -vv 2>&1 | grep "gas:"
 
 step "Why the loss is quadratic" \
   "what a move costs a range, with the hook's own formula: half the move, a quarter of the loss"

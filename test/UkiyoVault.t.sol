@@ -75,7 +75,8 @@ contract UkiyoVaultTest is Test {
         manager.initialize(key, SQRT_PRICE_1_1);
 
         hook.openSleeve(curator, -1000, 1000); // about +-10%
-        vault = new UkiyoVault(hook, 0, curator, UkiyoVault.Terms(EPOCH, FEE_BPS, 0, 0), "Ukiyo curator vault", "uCV");
+        vault =
+            new UkiyoVault(hook, 0, curator, UkiyoVault.Terms(EPOCH, FEE_BPS, 0, 0, 0), "Ukiyo curator vault", "uCV");
         hook.setSleeveManager(0, address(vault));
 
         _fund(alice);
@@ -221,7 +222,7 @@ contract UkiyoVaultTest is Test {
 
     function test_constructorChecks() public {
         vm.expectRevert(UkiyoVault.ZeroCurator.selector);
-        new UkiyoVault(hook, 0, address(0), UkiyoVault.Terms(EPOCH, 0, 0, 0), "x", "x");
+        new UkiyoVault(hook, 0, address(0), UkiyoVault.Terms(EPOCH, 0, 0, 0, 0), "x", "x");
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -523,7 +524,7 @@ contract UkiyoVaultTest is Test {
 
     function test_constructorCapsTheFee() public {
         vm.expectRevert(abi.encodeWithSelector(UkiyoVault.AboveCap.selector, 2001, 2000));
-        new UkiyoVault(hook, 0, curator, UkiyoVault.Terms(EPOCH, 2001, 0, 0), "x", "x");
+        new UkiyoVault(hook, 0, curator, UkiyoVault.Terms(EPOCH, 2001, 0, 0, 0), "x", "x");
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -643,7 +644,7 @@ contract UkiyoVaultTest is Test {
     ///         the same index: the index ranks skill, not size.
     function test_edgeIndexIsSizeNeutral() public {
         hook.openSleeve(curator, -1000, 1000);
-        UkiyoVault big = new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(EPOCH, FEE_BPS, 0, 0), "Big", "BIG");
+        UkiyoVault big = new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(EPOCH, FEE_BPS, 0, 0, 0), "Big", "BIG");
         hook.setSleeveManager(1, address(big));
         vm.startPrank(alice);
         token0.approve(address(big), type(uint256).max);
@@ -746,7 +747,7 @@ contract UkiyoVaultTest is Test {
     function _vaultWith(uint256 probationBps, uint256 minBond) internal returns (UkiyoVault v) {
         hook.openSleeve(curator, -1000, 1000);
         uint256 id = hook.sleeveCount() - 1;
-        v = new UkiyoVault(hook, id, curator, UkiyoVault.Terms(EPOCH, FEE_BPS, probationBps, minBond), "P", "P");
+        v = new UkiyoVault(hook, id, curator, UkiyoVault.Terms(EPOCH, FEE_BPS, probationBps, minBond, 0), "P", "P");
         hook.setSleeveManager(id, address(v));
         vm.startPrank(alice);
         token0.approve(address(v), type(uint256).max);
@@ -823,7 +824,7 @@ contract UkiyoVaultTest is Test {
     // ------------------------------------------------------------------------------------------------------------
 
     function _factory() internal returns (UkiyoFactory f) {
-        f = new UkiyoFactory(hook, EPOCH, 1000e18, 2000);
+        f = new UkiyoFactory(hook, EPOCH, 1000e18, 2000, 0);
         hook.setLauncher(address(f));
         vm.startPrank(alice);
         token1.approve(address(f), type(uint256).max);
@@ -831,7 +832,9 @@ contract UkiyoVaultTest is Test {
     }
 
     function _terms() internal pure returns (UkiyoVault.Terms memory) {
-        return UkiyoVault.Terms({epochLength: EPOCH, performanceFeeBps: 1000, probationBps: 500, minBond: 1000e18});
+        return UkiyoVault.Terms({
+            epochLength: EPOCH, performanceFeeBps: 1000, probationBps: 500, minBond: 1000e18, depositCap: 0
+        });
     }
 
     /// @notice Anyone can launch a vault in one call: sleeve opened and handed over, launch bond posted, and the vault
@@ -894,6 +897,122 @@ contract UkiyoVaultTest is Test {
         vm.expectRevert();
         hook.setLauncher(stranger);
         vm.stopPrank();
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Deposit cap
+    // ------------------------------------------------------------------------------------------------------------
+
+    /// @dev A vault on a new sleeve with deposit cap `cap`, alice and bob approved for it.
+    function _cappedVault(uint256 cap) internal returns (UkiyoVault v) {
+        hook.openSleeve(curator, -1000, 1000);
+        uint256 id = hook.sleeveCount() - 1;
+        v = new UkiyoVault(hook, id, curator, UkiyoVault.Terms(EPOCH, FEE_BPS, 0, 0, cap), "C", "C");
+        hook.setSleeveManager(id, address(v));
+        address[2] memory users = [alice, bob];
+        for (uint256 i; i < 2; ++i) {
+            vm.startPrank(users[i]);
+            token0.approve(address(v), type(uint256).max);
+            token1.approve(address(v), type(uint256).max);
+            vm.stopPrank();
+        }
+    }
+
+    /// @notice Requests are taken while the vault's capital plus this epoch's escrow stays within the cap, up to it
+    ///         exactly; one past it reverts and leaves nothing escrowed. Capital counts once settled.
+    function test_depositCapLimitsNewMoney() public {
+        UkiyoVault v = _cappedVault(100e18); // at the 1:1 price, 100 token1 of capital
+        vm.prank(alice);
+        v.requestDeposit(40e18, 40e18);
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(UkiyoVault.DepositCapReached.selector, 110e18, 100e18));
+        v.requestDeposit(15e18, 15e18);
+        vm.prank(bob);
+        v.requestDeposit(10e18, 10e18); // exactly at the cap
+        (uint256 p0, uint256 p1) = v.pendingDeposits();
+        assertEq(p0 + p1, 100e18, "both requests count against the cap");
+
+        _settleVault(v);
+        (p0, p1) = v.pendingDeposits();
+        assertEq(p0 + p1, 0, "settlement empties the queue");
+        assertApproxEqRel(v.valueAtMark(), 100e18, 1e15, "the deposits are now capital");
+        vm.prank(bob);
+        vm.expectPartialRevert(UkiyoVault.DepositCapReached.selector);
+        v.requestDeposit(1e18, 1e18);
+    }
+
+    /// @notice Room comes back when a request is cancelled or capital is redeemed.
+    function test_cancelAndRedemptionMakeRoom() public {
+        UkiyoVault v = _cappedVault(100e18);
+        vm.prank(alice);
+        v.requestDeposit(50e18, 50e18);
+        vm.startPrank(bob);
+        vm.expectPartialRevert(UkiyoVault.DepositCapReached.selector);
+        v.requestDeposit(1e18, 1e18);
+        vm.stopPrank();
+        vm.prank(alice);
+        v.cancelDeposit();
+        vm.prank(bob);
+        v.requestDeposit(50e18, 50e18); // the cancelled request's room
+        _settleVault(v);
+
+        vm.startPrank(bob);
+        vm.expectPartialRevert(UkiyoVault.DepositCapReached.selector);
+        v.requestDeposit(10e18, 10e18);
+        v.requestRedeem(v.balanceOf(bob) / 2);
+        vm.stopPrank();
+        _settleVault(v);
+        vm.prank(alice);
+        v.requestDeposit(24e18, 24e18); // half the capital left (plus rounding dust), so about 50 more fits
+    }
+
+    /// @notice The cap values the vault at the hook's reference price, like `valueAtMark`: a swap that pushes spot
+    ///         within the block (here making the vault's token0 cheap) cannot make room for a deposit.
+    function test_depositCapIgnoresAPriceMovedThisBlock() public {
+        UkiyoVault v = _cappedVault(100e18);
+        vm.prank(alice);
+        v.requestDeposit(49e18, 49e18);
+        _settleVault(v);
+        vm.roll(vm.getBlockNumber() + 1);
+        _arb(true, 1e18); // the block's mark
+        uint256 before = v.valueAtMark();
+        _swap(true, 20e18); // a big push after it, in the same block
+        assertLt(hook.sqrtPriceX96(), hook.referenceSqrtPrice(), "spot is below the reference price");
+        assertEq(v.valueAtMark(), before, "the cap's measure did not move");
+        vm.prank(bob);
+        vm.expectPartialRevert(UkiyoVault.DepositCapReached.selector);
+        v.requestDeposit(2e18, 2e18); // fits only if the vault were valued at the pushed spot price
+    }
+
+    /// @notice A vault at its cap refuses the router's slice, which goes straight back to the depositor.
+    function test_routerSkipsAFullVault() public {
+        (UkiyoSkillRouter r, UkiyoVault[] memory list) = _router(_cappedVault(5e18));
+        uint256 b0 = token0.balanceOf(bob);
+        vm.prank(bob);
+        (uint256[] memory a0,) = r.deposit(list, 10e18, 10e18);
+        assertEq(a0[0], 5e18, "the uncapped vault took its half");
+        assertEq(a0[1], 0, "the capped vault refused its slice");
+        assertEq(b0 - token0.balanceOf(bob), 5e18, "bob paid only for what was escrowed");
+        assertEq(token0.balanceOf(address(r)) + token1.balanceOf(address(r)), 0, "the router keeps nothing");
+    }
+
+    /// @notice A factory with `maxDepositCap` set (a guarded pilot) only launches vaults with a cap of at most that.
+    function test_factoryCanRequireADepositCap() public {
+        UkiyoFactory f = new UkiyoFactory(hook, EPOCH, 1000e18, 2000, 500e18);
+        hook.setLauncher(address(f));
+        bytes memory code = type(UkiyoVault).creationCode;
+        UkiyoVault.Terms memory t = _terms();
+        vm.startPrank(alice);
+        token1.approve(address(f), type(uint256).max);
+        vm.expectRevert(UkiyoFactory.BadTerms.selector);
+        f.launch(code, -500, 500, t, "X", "X"); // no cap
+        t.depositCap = 500e18 + 1;
+        vm.expectRevert(UkiyoFactory.BadTerms.selector);
+        f.launch(code, -500, 500, t, "X", "X"); // above the factory's
+        t.depositCap = 500e18;
+        UkiyoVault v = f.launch(code, -500, 500, t, "X", "X");
+        vm.stopPrank();
+        assertEq(v.depositCap(), 500e18);
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -1007,7 +1126,7 @@ contract UkiyoVaultTest is Test {
     function test_routerRejectsBadLists() public {
         (UkiyoSkillRouter r, UkiyoVault[] memory list) = _router(_vaultWith(0, 0));
         hook.openSleeve(curator, -1000, 1000);
-        UkiyoVault stray = new UkiyoVault(hook, 3, curator, UkiyoVault.Terms(EPOCH, 0, 0, 0), "S", "S");
+        UkiyoVault stray = new UkiyoVault(hook, 3, curator, UkiyoVault.Terms(EPOCH, 0, 0, 0, 0), "S", "S");
         UkiyoVault[] memory bad = new UkiyoVault[](1);
         bad[0] = stray;
         vm.expectRevert(abi.encodeWithSelector(UkiyoSkillRouter.NotEligible.selector, address(stray)));
@@ -1078,7 +1197,7 @@ contract UkiyoVaultTest is Test {
     /// @notice The minimum deposit must be met in a token the vault holds: dust of a token it has none of is refused.
     function test_minimumIsMetInAHeldToken() public {
         hook.openSleeve(curator, 1000, 2000); // entirely above the price: the position holds token0 only
-        UkiyoVault v = new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(EPOCH, 0, 0, 0), "A", "A");
+        UkiyoVault v = new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(EPOCH, 0, 0, 0, 0), "A", "A");
         hook.setSleeveManager(1, address(v));
         vm.startPrank(alice);
         token0.approve(address(v), type(uint256).max);
@@ -1126,7 +1245,7 @@ contract UkiyoVaultTest is Test {
         uint256 delay = hook.THRESHOLD_RAISE_DELAY();
         hook.openSleeve(curator, -1000, 1000);
         vm.expectRevert(abi.encodeWithSelector(UkiyoVault.EpochTooLong.selector, delay, delay));
-        new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(delay, 0, 0, 0), "L", "L");
+        new UkiyoVault(hook, 1, curator, UkiyoVault.Terms(delay, 0, 0, 0, 0), "L", "L");
     }
 
     // ------------------------------------------------------------------------------------------------------------

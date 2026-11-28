@@ -7,8 +7,9 @@ and what it needs. Nothing below is built unless it says so.
 
 - **Built and live on Unichain Sepolia:** the hook, curator vaults (Edge-based fee, LVR bond, skill test, probation),
   open launches, the skill router, the Lens, the app, and a developer kit (TypeScript SDK and `ukiyo` CLI, its maths
-  matching the contracts to the wei). 113 tests and 5 stateful invariants, a differential fuzz test
+  matching the contracts to the wei). 118 tests and 6 stateful invariants, a differential fuzz test
   against an independent model, a threat model, and backtests on BTC/USD 2024 and on four years of ETH/USDT.
+- **Built since:** a per-vault deposit cap, which the factory can require of every launch (28 Nov; not yet deployed).
 - **Not yet:** audited, on mainnet, or used by a real curator. The four curators on the live board are bots replaying
   2024 prices.
 - **The main limit on adoption:** every scored curator must sit in Ukiyo's own hook-exclusive pool. A v4 hook is fixed
@@ -46,7 +47,9 @@ for.
 **Unlocks:** a real track record, which is the product: Edge and its skill test only mean something once real
 curators have run for months.
 
-**Needs:** a per-vault deposit cap (a small vault change), curators willing to run in the pilot, and monitoring.
+**Needs:** curators willing to run in the pilot, and monitoring. The per-vault deposit cap is built (28 Nov):
+`depositCap` in each vault's terms, and `maxDepositCap` on the factory so every open launch in the pilot must set one.
+It is not yet deployed to the testnet.
 
 ## 4. Scoring positions in any Ukiyo pool, not just exclusive sleeves
 

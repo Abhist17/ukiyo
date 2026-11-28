@@ -232,7 +232,7 @@ export default function Home() {
             <div><b data-count>{e.edge.corr.toFixed(3)}</b><span>correlation with true P&amp;L</span></div>
             <div><b data-count>6 / 6</b><span>curators in the true order</span></div>
             <div><b>0</b><span>oracles or keepers</span></div>
-            <div><b data-count>113</b><span>tests + 5 stateful invariants</span></div>
+            <div><b data-count>118</b><span>tests + 6 stateful invariants</span></div>
           </div>
         </div>
       </section>
@@ -275,7 +275,7 @@ export default function Home() {
             <h2>Built to never flatter a curator</h2>
             <p className="l-sub">
               A scoreboard is only worth something if it cannot be gamed. Wherever the hook has to choose, it chooses
-              against the curator, so Edge can read low but never high.
+              against the curator: every rounding and every doubtful swap makes Edge read lower, not higher.
             </p>
             <a className="btn ghost" href={`${REPO}/blob/main/THREAT_MODEL.md`} target="_blank" rel="noreferrer">Read the threat model ↗</a>
           </div>

@@ -31,19 +31,19 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
    exactly their true order. The obvious formula puts the wrong curator first ([backtest](#what-the-backtest-found-and-why-the-obvious-formula-is-wrong)).
    Out of sample, on four years of ETH (2021–2024), it picks the true best curator every year; fee income does so once
    ([four years of ETH](#out-of-sample-four-years-of-ethusdt)).
-2. **It never flatters a curator.** Every rounding goes against the curator. A doubtful swap is booked as arbitrage. A
+2. **Every rule errs against the curator.** Every rounding goes against the curator. A doubtful swap is booked as arbitrage. A
    tipped price spike that is pushed back is charged once, not twice
    ([`_isSpike`](src/UkiyoHook.sol#L785)). Liquidity is measured from where it joins, and a remove-and-re-add cannot reset
    that ([`unlockCallback`](src/UkiyoHook.sol#L488)). Vaults refuse to add capital away from a price no single
-   transaction can set ([`_checkPrice`](src/UkiyoVault.sol#L1028)). A differential fuzz test replays every swap against an
+   transaction can set ([`_checkPrice`](src/UkiyoVault.sol#L1059)). A differential fuzz test replays every swap against an
    independent model.
 3. **Curators are paid for Edge only.** A vault's performance fee is a share of Edge above a high-water mark. Fee
    volume and a rising market earn nothing. An LVR bond pays depositors when an epoch loses more than the curator's
    budget ([Curator vaults](#curator-vaults)).
 4. **Skill, not luck.** Each vault compounds a size-neutral Edge index and publishes a t-statistic of its epoch returns
-   ([`edgeTStat`](src/UkiyoVault.sol#L706)). At 2 or more, the Edge is statistically clear of zero. A curator whose
-   index falls past its drawdown limit goes on probation and cannot rebalance ([`onProbation`](src/UkiyoVault.sol#L851)).
-5. **Anyone can become a curator.** [`UkiyoFactory.launch`](src/UkiyoFactory.sol#L96) deploys a genuine vault (its
+   ([`edgeTStat`](src/UkiyoVault.sol#L737)). At 2 or more, the Edge is statistically clear of zero. A curator whose
+   index falls past its drawdown limit goes on probation and cannot rebalance ([`onProbation`](src/UkiyoVault.sol#L882)).
+5. **Anyone can become a curator.** [`UkiyoFactory.launch`](src/UkiyoFactory.sol#L110) deploys a genuine vault (its
    code is hash-checked), opens its sleeve and posts a permanent bond in one call, with no permission from the hook
    owner.
 6. **Invest by evidence.** [`UkiyoSkillRouter`](src/UkiyoSkillRouter.sol#L92) splits one deposit across curators by
@@ -97,8 +97,8 @@ Ukiyo is a standard-curve v4 hook (no custom curve, no return deltas, static fee
 | **Marks, loss, fees** | [`src/UkiyoHook.sol:714`](src/UkiyoHook.sol#L714) | `afterSwap`: reads `slot0` (price and protocol fee), books each sleeve's LP fee from the price path, marks the block's first swap and charges arbitrage loss |
 | **The maths** | [`src/libraries/EdgeMath.sol`](src/libraries/EdgeMath.sol#L61) | Closed forms: rebalancing loss, impact credit, the LP fee rate net of the protocol fee (mirrors `Pool.swap`), per-sleeve swap fee |
 | **Manipulation guard** | [`src/UkiyoHook.sol:618`](src/UkiyoHook.sol#L618) | `referenceSqrtPrice`: a post-arbitrage mark the current transaction cannot set; vaults refuse to add capital away from it |
-| **Vault swaps** | [`src/UkiyoVault.sol:611`](src/UkiyoVault.sol#L611) | `rebalanceWithSwap` swaps through the PoolManager (`unlock` → `swap`), capped at a 1% move and always booked as arbitrage |
-| **CREATE2 deploy** | [`script/DeployUkiyo.s.sol:119`](script/DeployUkiyo.s.sol#L119) | `HookMiner` mines the salt so the permission flags are in the hook's address |
+| **Vault swaps** | [`src/UkiyoVault.sol:642`](src/UkiyoVault.sol#L642) | `rebalanceWithSwap` swaps through the PoolManager (`unlock` → `swap`), capped at a 1% move and always booked as arbitrage |
+| **CREATE2 deploy** | [`script/DeployUkiyo.s.sol:124`](script/DeployUkiyo.s.sol#L124) | `HookMiner` mines the salt so the permission flags are in the hook's address |
 | **One-call read** | [`src/UkiyoLens.sol:100`](src/UkiyoLens.sol#L100) | `scoreboard(hook)`: every sleeve's ledger, Edge, Edge index, skill test and vault terms in one `view` |
 
 Tests run against the canonical PoolManager bytecode (hookmate's `V4PoolManagerDeployer`), and the live deployment uses
@@ -177,6 +177,9 @@ Edge's weekly error is 9–17% of how much true P&L itself moves week to week, a
 across very different markets. Where it does not order a year exactly, the curators it swaps are near-ties (14 bps
 apart over all of 2023) or a curator it understates (the tight chaser in 2024). What does not hold up as well:
 
+- **Edge can read high on a 5 bps pool too.** Over the 2021 bull run it overstated by 7.6 bps a week (2022: −53.5,
+  2023: −2.2, 2024: −5.1). Each of the hook's rules errs low, but the 3% of arbitrage the simulated classifier misses
+  is booked as user flow and pushes the other way, most where arbitrage volume is largest.
 - **Volatile years have large absolute errors.** In 2021 and 2022 true weekly P&L swings by about 750 bps, and Edge's
   weekly error is 107–128 bps. It still ranks both years exactly.
 - **30 bps pools overstate.** With 3% of arbitrage misclassified, Edge on a 30 bps pool overstates by 5–25 bps a week
@@ -186,6 +189,31 @@ apart over all of 2023) or a curator it understates (the tight chaser in 2024). 
 
 ```bash
 cd backtest && uv run --no-project --with numpy python fetch_eth.py && uv run --no-project --with numpy --with numba python multiyear.py   # ~1 minute
+```
+
+### How long a track record has to be
+
+Edge measures what a curator earned, closely. It cannot make a short record say more than it does. Over a few weeks
+even a curator's true hedged P&L is a noisy read of its skill, and that caps any score, Edge included. On the BTC/USD
+2024 replay (5 bps pool), the share of curator pairs each score orders as their full-year skill does:
+
+| Window | Fee income | Fees − pool LVR | **Ukiyo Edge** | True hedged P&L |
+| --- | --- | --- | --- | --- |
+| 1 week | 79% | 78% | 72% | 71% |
+| 4 weeks | 79% | 79% | 72% | 72% |
+| 13 weeks | 80% | 80% | 73% | 73% |
+
+Over short windows on BTC 2024, fee income orders more pairs than the true P&L itself: on this replay fee income
+mostly rises with skill, though it puts the tight chaser first. It never picks the best curator in a single week, and on the synthetic paths
+it orders 48% of pairs whatever the window, against Edge's 57–70%. The vault's skill test (`hasSkill`, t ≥ 2) is
+equally patient: from each curator's weekly mean and spread, it needs about 17–20 weeks for the replay's two
+vol-adaptive curators and 60 weeks or more for the rest (557 for the tight chaser, whose weekly results swing by
+300 bps), and on the synthetic paths over two years for the best. The skill router weights curators by the same statistic, so
+in a vault's first months its share of routed deposits rests on a record that says little. Judge curators by Edge over
+months, not weeks.
+
+```bash
+cd backtest && python track_record.py   # reads results/results.json, recomputes nothing
 ```
 
 ## How the hook works
@@ -272,6 +300,13 @@ back in. Removals pay the caller, so an owner who could re-point the manager cou
 - **Probation.** If a vault's Edge index falls `probationBps` below its peak, the curator cannot move the range for
   three epochs: the vault holds still while depositors decide whether to stay (`test_probationStopsALosingCurator`).
 - **Permanent bond.** `minBond` is bond the curator can never withdraw; penalties can still take it.
+- **Deposit cap.** `depositCap` (a term, fixed at construction; 0 for none) is the most capital, in token1, that
+  deposit requests may bring the vault to: its capital plus every deposit escrowed this epoch, valued at the hook's
+  reference price, so no price set in the same transaction can make room. A request past it reverts with
+  `DepositCapReached`; cancels and redemptions make room again. It limits new money only: Edge and the market can
+  carry a vault above its cap, and it then takes no deposits (`test_depositCapLimitsNewMoney`,
+  `test_cancelAndRedemptionMakeRoom`, `test_depositCapIgnoresAPriceMovedThisBlock`). A guarded pilot uses it to keep
+  each vault small while the code earns a track record.
 - **Epochs.** Entries and exits settle in batches at the boundary, so the share price is fixed within an epoch. The
   Edge recorded for an epoch belongs to exactly the shares that held it, and no one can enter just before fees are
   collected and leave right after.
@@ -306,6 +341,7 @@ the one launcher it names), and posts the curator's bond. The factory only launc
 | Epochs | At least `minEpochLength` |
 | Probation | Between 0.01% and `maxProbationBps` of the Edge index |
 | Bond | At least `minLaunchBond` tUSD, kept for the vault's life. It also prices the hook's eight sleeve slots, so they cannot be filled for free |
+| Deposit cap | If the factory's `maxDepositCap` is set (a guarded pilot), a `depositCap` of at most that; otherwise any, or none (`test_factoryCanRequireADepositCap`) |
 
 The app's **Launch** tab does this from a wallet, and launched vaults appear on the scoreboard beside the demo's.
 
@@ -352,7 +388,7 @@ the hook, live.
 
 ```bash
 # local: anvil + deploy + bot + site
-anvil --block-time 2
+anvil --block-time 2 --gas-limit 100000000   # the deploy needs more than anvil's default 30M block gas limit
 EPOCH=120 forge script script/DeployUkiyo.s.sol --rpc-url http://127.0.0.1:8545 --broadcast \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80   # anvil's public dev key
 cd web && npm ci && npm run abi && npm run bot      # leave running
@@ -408,6 +444,12 @@ Deployed at block 68,788,402 with [`script/DeployUkiyo.s.sol`](script/DeployUkiy
 straight from the public RPC. The test tokens sit at fixed CREATE2 addresses, so they carry over between deployments.
 Every contract's source is verified on Uniscan (and on [Sourcify](https://sourcify.dev)), and
 [`npm run verify:live`](sdk/README.md#verify-the-live-deployment) checks the deployed bytecode against this repository.
+
+**This repository is one change ahead of the deployment.** The deposit cap (28 Nov) changed `UkiyoVault` and
+`UkiyoFactory`, so until the next deploy `verify:live` reports those two as different from this repository; the hook,
+Lens and skill router compile to the deployed bytecode unchanged. The generated ABIs and vault code the app and SDK ship
+(`web/src/lib/abi.ts`, `web/src/lib/vaultCode.ts`, `sdk/src/abi.ts`) stay at the deployed version, so the live
+Launch tab keeps working; regenerate them (`npm run abi` in `web/`, `npm run gen` in `sdk/`) with the redeploy.
 
 | Contract | Address | Verified source |
 | --- | --- | --- |
@@ -488,10 +530,10 @@ overstates in 25% of weeks.
 git clone --recurse-submodules https://github.com/Abhist17/ukiyo && cd ukiyo
 forge build
 ./demo.sh                           # everything below, then the live hook, in one command (--no-pause, --offline)
-forge test                          # 113 tests + 5 stateful invariants: unit, fuzz, integration, differential
+forge test                          # 118 tests + 6 stateful invariants: unit, fuzz, integration, differential
 cd sdk && npm install && npm test   # SDK and CLI: 14 tests, no network
 cd sdk && npm run verify:live       # the live deployment: bytecode = this repo, classification, books replayed to the wei
-forge test --match-test test_gas -vv
+forge test --isolate --match-test test_gas -vv
 ```
 
 `forge test --gas-report` runs each call as an isolated transaction, and Foundry's `vm.txGasPrice` cheat does not carry
@@ -514,10 +556,10 @@ python export_web.py                       # refresh the site's data after exper
 | `EdgeMath.t.sol` | The closed-form loss equals the exact holding-vs-position gap from Uniswap's amount math (1,024 fuzz runs); fee attribution matches `SqrtPriceMath`; credits never exceed losses |
 | `UkiyoHook.t.sol` | Against the canonical PoolManager bytecode: pool binding, hook-only liquidity, access control, classification, fee attribution matching the PoolManager's own fee growth, marks, loss, impact, round-trip immunity, anchors on range change and on added liquidity, liquidity taken out and put back rejoining as it was, and re-ranged liquidity booked at the lower of two readings (so neither a round trip nor a range shift can re-anchor it), fee attribution with a protocol fee switched on, `sleeveAmounts` equal to a full withdrawal to the wei, and a differential fuzz test where every ledger field equals an independent replay of random blocks of swaps, liquidity changes and protocol fees |
 | `EdgeMathVectors.t.sol` | Cross-language: 400 random sleeves and moves and 127 ticks, computed by the TypeScript SDK, come out of the Solidity `EdgeMath` and `TickMath` to the same wei (loss, impact credit, swap fee, fee rate) |
-| `UkiyoVault.t.sol` | On a 5 bps pool: one-time hand-over that locks the owner out, epoch gating, first-mint shares and dead shares, proportional deposits with refunds, pro-rata redemptions, fees reaching shareholders, per-epoch Edge snapshots, curator-only rebalancing, the depositor cap, the performance fee (a share of positive Edge, nothing on losses, losses earned back before any fee), the LVR bond (overshoot paid to depositors, capped at the bond, budgets deferred one epoch, withdrawals only after the penalty), the Edge index (exact per-epoch compounding, size-neutral across a 1× and a 10× vault), the skill test against the textbook t-statistic, probation and its release, the permanent bond, open launches end to end with fake code and weak terms rejected, the skill router (even split without evidence, weights in proportion to the skill test, probation excluded, refused slices returned), and fuzz tests that a deposit-redeem round trip never pays out more than went in and that the vault always holds what it owes plus the bond |
-| `invariant/UkiyoVault.invariant.t.sol` | Stateful: random sequences of deposits, cancels, redemptions, claims, user and arbitrage swaps, settlements, rebalances (with and without a swap) and bond moves, by four depositors and the curator. After every step the vault holds all it owes (escrows, refunds, payouts, bond), every share sits with a known holder, escrowed redemption shares are all there, and the high-water mark never goes negative |
+| `UkiyoVault.t.sol` | On a 5 bps pool: one-time hand-over that locks the owner out, epoch gating, first-mint shares and dead shares, proportional deposits with refunds, pro-rata redemptions, fees reaching shareholders, per-epoch Edge snapshots, curator-only rebalancing, the depositor cap, the performance fee (a share of positive Edge, nothing on losses, losses earned back before any fee), the LVR bond (overshoot paid to depositors, capped at the bond, budgets deferred one epoch, withdrawals only after the penalty), the Edge index (exact per-epoch compounding, size-neutral across a 1× and a 10× vault), the skill test against the textbook t-statistic, probation and its release, the permanent bond, open launches end to end with fake code and weak terms rejected, the skill router (even split without evidence, weights in proportion to the skill test, probation excluded, refused slices and full vaults' slices returned), the deposit cap (up to it exactly, room back on cancel and redemption, valued at the reference price, required by a pilot factory), and fuzz tests that a deposit-redeem round trip never pays out more than went in and that the vault always holds what it owes plus the bond |
+| `invariant/UkiyoVault.invariant.t.sol` | Stateful: random sequences of deposits, cancels, redemptions, claims, user and arbitrage swaps, settlements, rebalances (with and without a swap) and bond moves, by four depositors and the curator. After every step the vault holds all it owes (escrows, refunds, payouts, bond), every share sits with a known holder, escrowed redemption shares are all there, the total counted against the deposit cap is exactly the epoch's queue, and the high-water mark never goes negative |
 
-### Gas (`forge test --match-test test_gas -vv`)
+### Gas (`forge test --isolate --match-test test_gas -vv`)
 
 Each figure is a whole transaction as a user pays it: Foundry meters every call from a test as its own transaction, so
 the 21,000 base cost and cold storage reads are included. Swaps are measured after three blocks of history, so no
@@ -533,8 +575,8 @@ no hook.
 
 | Vault path | Gas |
 | --- | --- |
-| `requestDeposit` (including the minimum-deposit check) | ~189k |
-| `settleEpoch` with a performance fee, one redemption and one deposit | ~723k |
+| `requestDeposit` (including the minimum-deposit check and the deposit cap's running total) | ~200k |
+| `settleEpoch` with a performance fee, one redemption and one deposit | ~733k |
 | `rebalance` (remove, move range, redeploy) | ~456k |
 
 The hook's per-swap work loops over the sleeves (at most 8), so a swap's cost grows with the sleeve count; a sleeve's
@@ -549,7 +591,7 @@ first swap look about 35k (two sleeves) to 135k (eight) dearer than it is in a r
 | Original Idea (30%) | A new primitive: curator skill measured on-chain, with no oracle, from the decomposition `LVR_true ≈ LVR_pool + arbitrage fees`. The [backtest](#what-the-backtest-found-and-why-the-obvious-formula-is-wrong) shows why the obvious formula fails and this one does not |
 | Unique Execution (25%) | Two marks per block, a priority-fee classifier and exact per-sleeve fee attribution, all inside the hook. Every rule that could flatter a curator is closed and tested: spike netting, anchoring, dual-measured re-ranging, the price guard ([Highlights](#highlights)) |
 | Impact (20%) | [Who it's for](#who-its-for-and-what-it-changes): fee income ranks the wrong curator first and hides a losing one, Edge does not. Depositors, curators and vault platforms each get something they cannot get today, live in vaults with an Edge-only performance fee, an LVR bond, a skill test, open launches and a skill-weighted router |
-| Functionality (15%) | 113 passing tests (10,000 fuzz runs each in CI), including a differential fuzz test against an independent model, and 5 stateful invariants over random sequences of every vault action; live on Unichain Sepolia with a replay bot; every tab of the app works against it; an [SDK and CLI](#developer-kit-sdk-and-cli) whose maths matches the contracts to the wei |
+| Functionality (15%) | 118 passing tests (10,000 fuzz runs each in CI), including a differential fuzz test against an independent model, and 6 stateful invariants over random sequences of every vault action; live on Unichain Sepolia with a replay bot; every tab of the app works against it; an [SDK and CLI](#developer-kit-sdk-and-cli) whose maths matches the contracts to the wei |
 | Security | [`THREAT_MODEL.md`](THREAT_MODEL.md): every actor's powers, mitigations and what is still open |
 | Presentation (10%) | Live app and landing page ([`web/`](web/)), demo video (≤ 5 min), [`SUBMISSION.md`](SUBMISSION.md) (what was built when, what is reused), [`FEEDBACK.md`](FEEDBACK.md) (developer feedback on v4), a one-page overview ([`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf)) and the [`ROADMAP.md`](ROADMAP.md) to real users |
 
@@ -575,7 +617,7 @@ No partner integrations.
 
 - A tipped push smaller than 8 fee-widths that the next block pushes back is still charged as two arbitrage moves, so
   someone paying fees can make a rival's Edge read lower than it is, by at most about 4 times what it costs them.
-  Larger spikes are netted (see *Spike-netted marks* above). Edge errs low, never high.
+  Larger spikes are netted (see *Spike-netted marks* above). This griefing can only make Edge read low, never high.
 - Liquidity removed between two marks, and not put back, is neither credited nor charged for that block's move up to
   its removal (bounded to one block for one sleeve). Put back, it cannot be used to re-anchor: into the same range it
   rejoins as it was (`test_takingLiquidityOutAndBackIsANoOp`); into another range it is booked at the next mark at the
@@ -586,7 +628,7 @@ No partner integrations.
   (`test_addedLiquidityIsMeasuredFromWhereItJoined`).
 - Each block is marked after its first swap, whatever its class, so an arbitrage the classifier misses at the top of a
   block is still charged. The cost: when a user swap opens a block, its own price impact is charged as arbitrage loss
-  once arbitrage reverts it. Edge errs low, never high, by about the square of that swap's impact, which is negligible
+  once arbitrage reverts it. This rule makes Edge err low, never high, by about the square of that swap's impact, which is negligible
   for trades that are small against the pool's depth. (The testnet bot gives its users a 0.6% slippage limit for this
   reason; with uncapped swaps on thin liquidity it understated every curator.)
 - On real Unichain flow the priority fee does not separate informed from uninformed swaps: even at 1 wei, ~7% of
@@ -595,6 +637,12 @@ No partner integrations.
 - A vault swaps only through `rebalanceWithSwap`, bounded to a 1% price move. Its swaps are booked as arbitrage,
   so if one is the first swap of a block, other sleeves are charged for a move they did not lose to (conservative,
   and bounded by the 1% limit and the curator's own swap cost).
+- A short record cannot pick a curator: over a few weeks even true P&L is a noisy read of skill, and the skill test
+  needs months for the best curators in the backtest and years for most (see *How long a track record has to be*).
+- A deposit cap is checked when a deposit is requested, counting every request escrowed this epoch at its full amount,
+  so a large request holds room until it is settled or cancelled, even the part settlement will refund. Someone can
+  fill a capped vault's room for an epoch at the cost of escrowing that much. The router skips a full vault whole
+  rather than filling what room is left.
 - At most 32 new depositors per epoch, to bound the settlement loop, each bringing at least 0.01% of the vault's
   holdings of one token; the rest wait for the next epoch.
 - The LVR bond is judged on the epoch's Edge, which includes market volatility the curator does not control; the budget

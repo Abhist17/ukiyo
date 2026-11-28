@@ -27,7 +27,8 @@ Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and C
 [`REVIEWERS.md`](REVIEWERS.md) (the short path). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md). **Built when?**
 [`SUBMISSION.md`](SUBMISSION.md). **Feedback on v4:** [`FEEDBACK.md`](FEEDBACK.md). **One page, no maths:**
 [`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf). **Drawn explainer** (open at excalidraw.com):
-[`pitch/ukiyo-explainer.excalidraw`](pitch/ukiyo-explainer.excalidraw). **What's next:** [`ROADMAP.md`](ROADMAP.md). **Building on it?**
+[`pitch/ukiyo-explainer.excalidraw`](pitch/ukiyo-explainer.excalidraw), or as slides:
+[`pitch/ukiyo-explainer.pdf`](pitch/ukiyo-explainer.pdf). **What's next:** [`ROADMAP.md`](ROADMAP.md). **Building on it?**
 [`sdk/`](sdk/): TypeScript SDK and `ukiyo` CLI.
 
 ## Highlights

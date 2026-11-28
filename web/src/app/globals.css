@@ -1,32 +1,32 @@
-/* Ukiyo: a woodblock print. Washi paper, sumi ink, Prussian blue and one vermilion seal; thin ink rules instead of
-   floating cards. Dark mode is the same print at night, chosen step by step, not inverted. */
+/* Ukiyo: cool neutrals and near-black ink with one vermilion accent. Dark mode is night indigo, chosen step by step,
+   not inverted. */
 
 :root {
   /* light: cool neutrals and near-black ink, vermilion only as the accent */
-  --paper: #f3ecdf;
-  --card: #faf6ee;
-  --card-2: #ebe2d1;
-  --ink: #1b1915;
-  --ink-2: #433d34;
-  --muted: #685f52; /* 4.8:1 on --card-2, AA for small text */
-  --line: #d9ceb8;
-  --seal: #c8402a;
+  --paper: #f6f7f9;
+  --card: #ffffff;
+  --card-2: #f0f2f5;
+  --ink: #0a0d14;
+  --ink-2: #3a4152;
+  --muted: #636b7d; /* 4.8:1 on --card-2, AA for small text */
+  --line: #e4e7ec;
+  --seal: #e8452c;
   /* the accent as small text: the seal colour is 3.7:1 on paper, too faint to read at 13px */
-  --seal-text: #a3301c;
+  --seal-text: #c23320;
   --seal-ink: #ffffff;
-  --indigo: #1e3150;
-  --sea: #1e3150;
-  --good: #1d6a44;
-  --bad: #b0301f;
-  --rank-grey: #cfc4ad;
+  --indigo: #1f2a55;
+  --sea: #141a2e;
+  --good: #0f7a4b;
+  --bad: #c23222;
+  --rank-grey: #cdd1d9;
   --rank-bg: var(--card);
   --story-2: #3558a8;
-  --grid: rgba(27, 25, 21, 0.06);
-  --shadow: none;
-  --texture-opacity: 0.22;
+  --grid: rgba(10, 13, 20, 0.06);
+  --shadow: 0 1px 2px rgba(10, 13, 20, 0.05), 0 12px 32px -16px rgba(10, 13, 20, 0.16);
+  --texture-opacity: 0;
   /* the landing hero follows the theme: white fading into the page in light, night indigo in dark */
-  --hero-a: #f3ecdf;
-  --hero-b: #f3ecdf;
+  --hero-a: #ffffff;
+  --hero-b: #f6f7f9;
 
   /* Categorical order, validated (scripts/validate_palette.js) on #F4EBDC. Colour follows the curator, never rank. */
   --s1: #3558a8;
@@ -36,9 +36,7 @@
   --s5: #8e4c9e;
   --s6: #4f8a2a;
 
-  --serif: var(--font-serif), Georgia, serif;
-  /* print corners: a cut block, not a pill */
-  --r: 3px;
+  --serif: var(--font-sans), system-ui, sans-serif;
   --sans: var(--font-sans), system-ui, sans-serif;
   --mono: var(--font-mono), ui-monospace, monospace;
   color-scheme: light;
@@ -46,27 +44,27 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #0f131d;
-    --card: #151a27;
-    --card-2: #1b2131;
-    --ink: #ece3d1;
-    --ink-2: #c4baa7;
-    --muted: #938a79;
-    --line: #2a3144;
-    --seal: #e8603f;
-    --seal-text: #e8603f;
-    --seal-ink: #0f131d;
-    --indigo: #a7b6e6;
-    --sea: #1e3150;
-    --good: #5cbf8a;
-    --bad: #f06a55;
-    --rank-grey: #353d52;
+    --paper: #090c16;
+    --card: #10152a;
+    --card-2: #161c34;
+    --ink: #eef0f8;
+    --ink-2: #b6bcd3;
+    --muted: #7d84a0;
+    --line: #222a47;
+    --seal: #f0583d;
+    --seal-text: #f0583d;
+    --seal-ink: #0b0e1a;
+    --indigo: #9fb0e8;
+    --sea: #141a2e;
+    --good: #3fcb86;
+    --bad: #ff6b57;
+    --rank-grey: #39415c;
     --story-2: #7b9be8;
-    --hero-a: #0f131d;
-    --hero-b: #0f131d;
-    --grid: rgba(236, 227, 209, 0.06);
-    --shadow: none;
-    --texture-opacity: 0.18;
+    --hero-a: #090c16;
+    --hero-b: #0d1224;
+    --grid: rgba(238, 240, 248, 0.07);
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 40px -18px rgba(0, 0, 0, 0.7);
+    --texture-opacity: 0;
     --s1: #5f82d6;
     --s2: #dd5a3a;
     --s3: #14998a;
@@ -78,27 +76,27 @@
 }
 
 :root[data-theme="dark"] {
-  --paper: #0f131d;
-  --card: #151a27;
-  --card-2: #1b2131;
-  --ink: #ece3d1;
-  --ink-2: #c4baa7;
-  --muted: #938a79;
-  --line: #2a3144;
-  --seal: #e8603f;
-  --seal-text: #e8603f;
-  --seal-ink: #0f131d;
-  --indigo: #a7b6e6;
-  --sea: #1e3150;
-  --good: #5cbf8a;
-  --bad: #f06a55;
-  --rank-grey: #353d52;
+  --paper: #090c16;
+  --card: #10152a;
+  --card-2: #161c34;
+  --ink: #eef0f8;
+  --ink-2: #b6bcd3;
+  --muted: #7d84a0;
+  --line: #222a47;
+  --seal: #f0583d;
+  --seal-text: #f0583d;
+  --seal-ink: #0b0e1a;
+  --indigo: #9fb0e8;
+  --sea: #141a2e;
+  --good: #3fcb86;
+  --bad: #ff6b57;
+  --rank-grey: #39415c;
   --story-2: #7b9be8;
-  --hero-a: #0f131d;
-  --hero-b: #0f131d;
-  --grid: rgba(236, 227, 209, 0.06);
-  --shadow: none;
-  --texture-opacity: 0.18;
+  --hero-a: #090c16;
+  --hero-b: #0d1224;
+  --grid: rgba(238, 240, 248, 0.07);
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 40px -18px rgba(0, 0, 0, 0.7);
+  --texture-opacity: 0;
   --s1: #5f82d6;
   --s2: #dd5a3a;
   --s3: #14998a;
@@ -224,7 +222,7 @@ a {
   color: var(--ink-2);
   font-size: 14px;
   padding: 6px 10px;
-  border-radius: var(--r);
+  border-radius: 8px;
 }
 
 .nav a:hover {
@@ -244,7 +242,7 @@ a {
   color: var(--ink);
   width: 34px;
   height: 34px;
-  border-radius: var(--r);
+  border-radius: 9px;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -324,7 +322,7 @@ a {
   padding: 10px 14px;
   border: 1px solid var(--line);
   background: var(--card);
-  border-radius: var(--r);
+  border-radius: 10px;
 }
 
 .formula b {
@@ -344,7 +342,7 @@ a {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  border-radius: var(--r);
+  border-radius: 10px;
   font-weight: 600;
   font-size: 15px;
   text-decoration: none;
@@ -377,7 +375,7 @@ a {
 .stat {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--r);
+  border-radius: 14px;
   padding: 18px 18px 16px;
   box-shadow: var(--shadow);
 }
@@ -442,7 +440,7 @@ section.block {
 .card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--r);
+  border-radius: 16px;
   box-shadow: var(--shadow);
   padding: 20px;
 }
@@ -486,7 +484,7 @@ section.block {
   flex-wrap: wrap;
   background: var(--card-2);
   border: 1px solid var(--line);
-  border-radius: var(--r);
+  border-radius: 10px;
   padding: 3px;
   gap: 2px;
 }
@@ -498,7 +496,7 @@ section.block {
   font: inherit;
   font-size: 14px;
   padding: 6px 12px;
-  border-radius: var(--r);
+  border-radius: 7px;
   cursor: pointer;
 }
 
@@ -566,7 +564,7 @@ table.board {
 .rank-seal {
   width: 28px;
   height: 28px;
-  border-radius: var(--r);
+  border-radius: 7px;
   display: inline-grid;
   place-items: center;
   font-family: var(--serif);
@@ -728,7 +726,7 @@ table.board {
   pointer-events: none;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--r);
+  border-radius: 10px;
   box-shadow: var(--shadow);
   padding: 10px 12px;
   font-size: 13px;
@@ -789,7 +787,7 @@ table.board {
 .step {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--r);
+  border-radius: 16px;
   padding: 18px;
   box-shadow: var(--shadow);
 }
@@ -797,7 +795,7 @@ table.board {
 .step .n {
   width: 30px;
   height: 30px;
-  border-radius: var(--r);
+  border-radius: 8px;
   background: var(--seal);
   color: var(--seal-ink);
   display: grid;
@@ -995,7 +993,7 @@ details.table-view th {
 /* Edge breakdown in the vault panel: fees and impact stack up, arbitrage loss comes off the top, Edge is what is left */
 .eb {
   border: 1px solid var(--line);
-  border-radius: var(--r);
+  border-radius: 14px;
   padding: 12px 14px;
   margin-bottom: 12px;
   background: var(--card-2);

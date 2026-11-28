@@ -1,11 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 const sans = Geist({ subsets: ["latin"], variable: "--font-sans" });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
-// The print's typeface: headlines and prose set like a printed page, with optical sizes for display and text.
-const serif = Newsreader({ subsets: ["latin"], variable: "--font-serif", style: ["normal", "italic"], axes: ["opsz"] });
 
 // Where the site is published (Vercel; set at build time by scripts/deploy-vercel.sh); link previews need absolute URLs.
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://ukiyo-ochre.vercel.app/";
@@ -26,8 +24,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f3ecdf" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f131d" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f7f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#090c16" },
   ],
 };
 
@@ -39,7 +37,7 @@ try{if(!matchMedia("(prefers-reduced-motion: reduce)").matches){var d=document.d
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable} ${serif.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

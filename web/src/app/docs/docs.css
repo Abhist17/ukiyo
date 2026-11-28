@@ -44,7 +44,7 @@
   color: var(--ink-2);
   text-decoration: none;
   padding: 6px 10px;
-  border-radius: var(--r);
+  border-radius: 8px;
 }
 
 .docs-nav a:hover {
@@ -109,7 +109,7 @@
   position: relative;
   background: #0b0f1c;
   color: #dfe3f2;
-  border-radius: var(--r);
+  border-radius: 12px;
   padding: 16px 18px;
   overflow-x: auto;
   font-size: 13px;

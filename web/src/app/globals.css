@@ -3,7 +3,7 @@
 
 :root {
   /* light: cool neutrals and near-black ink, vermilion only as the accent */
-  --paper: #f6f7f9;
+  --paper: #f3ecdf; /* warm paper */
   --card: #ffffff;
   --card-2: #f0f2f5;
   --ink: #0a0d14;
@@ -26,7 +26,7 @@
   --texture-opacity: 0;
   /* the landing hero follows the theme: white fading into the page in light, night indigo in dark */
   --hero-a: #ffffff;
-  --hero-b: #f6f7f9;
+  --hero-b: #f3ecdf;
 
   /* Categorical order, validated (scripts/validate_palette.js) on #F4EBDC. Colour follows the curator, never rank. */
   --s1: #3558a8;

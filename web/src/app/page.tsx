@@ -290,8 +290,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* grows from a card to the full width as it scrolls in */}
-      <section className="l-dark" id="proof" data-scroll="view">
+      <section className="l-section" id="proof">
         <div className="wrap">
           <p className="l-eyebrow" data-reveal>Proof</p>
           <h2 data-reveal>Every yardstick tells a different story</h2>
@@ -303,8 +302,8 @@ export default function Home() {
             <RankShift tier="5bps" />
           </div>
           <div className="l-cta center">
-            <Link className="btn light" href="/research/">See the full backtest</Link>
-            <a className="btn ghost-light" href={`${REPO}/tree/main/backtest`} target="_blank" rel="noreferrer">Run it yourself ↗</a>
+            <Link className="btn primary" href="/research/">See the full backtest</Link>
+            <a className="btn ghost" href={`${REPO}/tree/main/backtest`} target="_blank" rel="noreferrer">Run it yourself ↗</a>
           </div>
         </div>
       </section>

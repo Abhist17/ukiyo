@@ -614,8 +614,9 @@
 }
 
 .dark-card {
-  background: #10152a;
-  border: 1px solid #222a47;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
   border-radius: 20px;
   padding: 24px 20px 12px;
 }

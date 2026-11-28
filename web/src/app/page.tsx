@@ -5,6 +5,7 @@ import { HeroRank } from "@/components/landing/HeroRank";
 import { LiveNumbers } from "@/components/landing/LiveNumbers";
 import { Marquee, Motion } from "@/components/landing/Motion";
 import { BlockExplainer } from "@/components/landing/BlockExplainer";
+import { SwapSorter } from "@/components/landing/SwapSorter";
 import { RankShift } from "@/components/RankShift";
 import { error } from "@/lib/data";
 import { CHAIN, DEP, EXPLORER, SOURCE_VERIFIED } from "@/lib/chain";
@@ -208,6 +209,23 @@ export default function Home() {
               <HeroRank />
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="l-section l-sort" id="sort">
+        <div className="wrap">
+          <p className="l-eyebrow" data-reveal>The idea, in motion</p>
+          <h2 data-reveal>Fee income counts every swap. Edge sorts them.</h2>
+          <p className="l-sub" data-reveal>
+            Each block, arbitrageurs pay a priority fee to trade first. The hook reads that tip at the door, charges the
+            curator what arbitrage took, and credits only what ordinary traders paid.
+          </p>
+          <div data-reveal>
+            <SwapSorter />
+          </div>
+          <p className="l-spec-note" data-reveal>
+            Illustrative flow in the proportions of the BTC 2024 backtest. The live numbers come from the hook, below.
+          </p>
         </div>
       </section>
 

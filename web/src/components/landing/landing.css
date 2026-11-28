@@ -509,6 +509,7 @@
 .l-section h2,
 .l-dark h2,
 .l-final h2 {
+  text-wrap: balance;
   font-size: clamp(32px, 4.6vw, 52px);
   line-height: 1.05;
   font-weight: 700;
@@ -1739,4 +1740,176 @@
 
 .l-spec-note a {
   color: var(--ink);
+}
+
+/* Swap sorter: swaps flow in, the hook sorts them by tip, and the score shows why fee income is the wrong number. */
+.sorter {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.sorter-stage {
+  position: relative;
+  height: clamp(300px, 38vw, 420px);
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 48px,
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 48px 100%;
+}
+
+.sorter-stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.sorter-tag {
+  position: absolute;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.sorter-tag b {
+  font-family: var(--sans);
+  font-size: 13px;
+  margin-right: 4px;
+}
+
+.sorter-tag.in {
+  top: 16px;
+  left: 18px;
+}
+
+.sorter-tag.arb {
+  top: calc(20% - 36px);
+  right: 18px;
+  text-align: right;
+}
+
+.sorter-tag.arb b {
+  color: var(--seal-text);
+}
+
+.sorter-tag.user {
+  top: calc(80% + 20px);
+  right: 18px;
+  text-align: right;
+}
+
+.sorter-tag.user b {
+  color: var(--good);
+}
+
+.sorter-gate {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sorter-gate b {
+  font-size: 13px;
+}
+
+.sorter-gate span {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.sorter-gate[data-flash][data-kind="arb"] {
+  border-color: var(--seal);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--seal) 18%, transparent);
+}
+
+.sorter-gate[data-flash][data-kind="user"] {
+  border-color: var(--good);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 18%, transparent);
+}
+
+.sorter-score {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+}
+
+.sorter-score > div {
+  display: grid;
+  gap: 2px;
+  padding: 18px 20px;
+}
+
+.sorter-score > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.sorter-score span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.sorter-score b {
+  font-family: var(--mono);
+  font-size: clamp(20px, 2.6vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.sorter-score b.neg,
+.sorter-score b[data-sign="neg"] {
+  color: var(--bad);
+}
+
+.sorter-score b[data-sign="pos"] {
+  color: var(--good);
+}
+
+.sorter-score small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sorter-score .edge {
+  background: color-mix(in srgb, var(--seal) 6%, transparent);
+}
+
+@media (max-width: 640px) {
+  .sorter-score {
+    grid-template-columns: 1fr;
+  }
+
+  .sorter-score > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .sorter-tag .tail {
+    display: none;
+  }
+
+  .sorter-tag.in {
+    top: auto;
+    bottom: 12px;
+    left: 14px;
+  }
+
+  .sorter-gate span {
+    display: none;
+  }
 }

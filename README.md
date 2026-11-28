@@ -17,7 +17,7 @@ Edge = user fees + user price impact − arbitrage loss
 Built for the Uniswap Hook Incubator, cohort 11 (theme: *Active Management and Curation*).
 
 **Live:** [ukiyo-ochre.vercel.app](https://ukiyo-ochre.vercel.app) · Unichain Sepolia hook
-[`0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0`](https://sepolia.uniscan.xyz/address/0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0) · **Reviewing?** Start with
+[`0x8040bd84e07EAfc25D5ED8053AB7ad3F99a9eAc0`](https://sepolia.uniscan.xyz/address/0x8040bd84e07EAfc25D5ED8053AB7ad3F99a9eAc0) · **Reviewing?** Start with
 [`REVIEWERS.md`](REVIEWERS.md) (five minutes). **Integrating?** [`INTEGRATING.md`](INTEGRATING.md). **Built when?**
 [`SUBMISSION.md`](SUBMISSION.md). **Feedback on v4:** [`FEEDBACK.md`](FEEDBACK.md). **One page, no maths:**
 [`pitch/Ukiyo-Overview.pdf`](pitch/Ukiyo-Overview.pdf). **Drawn explainer** (open at excalidraw.com):
@@ -445,26 +445,20 @@ straight from the public RPC. The test tokens sit at fixed CREATE2 addresses, so
 Every contract's source is verified on Uniscan (and on [Sourcify](https://sourcify.dev)), and
 [`npm run verify:live`](sdk/README.md#verify-the-live-deployment) checks the deployed bytecode against this repository.
 
-**This repository is one change ahead of the deployment.** The deposit cap (28 Nov) changed `UkiyoVault` and
-`UkiyoFactory`, so until the next deploy `verify:live` reports those two as different from this repository; the hook,
-Lens and skill router compile to the deployed bytecode unchanged. The generated ABIs and vault code the app and SDK ship
-(`web/src/lib/abi.ts`, `web/src/lib/vaultCode.ts`, `sdk/src/abi.ts`) stay at the deployed version, so the live
-Launch tab keeps working; regenerate them (`npm run abi` in `web/`, `npm run gen` in `sdk/`) with the redeploy.
-
 | Contract | Address | Verified source |
 | --- | --- | --- |
-| Hook (`UkiyoHook`) | [`0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0`](https://sepolia.uniscan.xyz/address/0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0) | [Uniscan](https://sepolia.uniscan.xyz/address/0x210799db053FcB7b9ac62A2F75f2B704a9F42Ac0#code) |
-| Lens (`UkiyoLens`) | [`0x05b97bB2CA67ab0Bd9C3731Be7bAe7ba62573C38`](https://sepolia.uniscan.xyz/address/0x05b97bB2CA67ab0Bd9C3731Be7bAe7ba62573C38) | [Uniscan](https://sepolia.uniscan.xyz/address/0x05b97bB2CA67ab0Bd9C3731Be7bAe7ba62573C38#code) |
-| Factory (`UkiyoFactory`) | [`0x37Cb4E7af05b98A230843EFbd8d91d312532e0Bc`](https://sepolia.uniscan.xyz/address/0x37Cb4E7af05b98A230843EFbd8d91d312532e0Bc) | [Uniscan](https://sepolia.uniscan.xyz/address/0x37Cb4E7af05b98A230843EFbd8d91d312532e0Bc#code) |
-| Skill router (`UkiyoSkillRouter`) | [`0x5bF7c1e6f4195E8E700A6113F1deCDF529C4Fb63`](https://sepolia.uniscan.xyz/address/0x5bF7c1e6f4195E8E700A6113F1deCDF529C4Fb63) | [Uniscan](https://sepolia.uniscan.xyz/address/0x5bF7c1e6f4195E8E700A6113F1deCDF529C4Fb63#code) |
+| Hook (`UkiyoHook`) | [`0x8040bd84e07EAfc25D5ED8053AB7ad3F99a9eAc0`](https://sepolia.uniscan.xyz/address/0x8040bd84e07EAfc25D5ED8053AB7ad3F99a9eAc0) | [Uniscan](https://sepolia.uniscan.xyz/address/0x8040bd84e07EAfc25D5ED8053AB7ad3F99a9eAc0#code) |
+| Lens (`UkiyoLens`) | [`0x6BEdA8aBAd4d22cdc4737524ea257898E511149A`](https://sepolia.uniscan.xyz/address/0x6BEdA8aBAd4d22cdc4737524ea257898E511149A) | [Uniscan](https://sepolia.uniscan.xyz/address/0x6BEdA8aBAd4d22cdc4737524ea257898E511149A#code) |
+| Factory (`UkiyoFactory`) | [`0x07F6Ecfc91b7c635518bb85F6616FbccA8eA26Bd`](https://sepolia.uniscan.xyz/address/0x07F6Ecfc91b7c635518bb85F6616FbccA8eA26Bd) | [Uniscan](https://sepolia.uniscan.xyz/address/0x07F6Ecfc91b7c635518bb85F6616FbccA8eA26Bd#code) |
+| Skill router (`UkiyoSkillRouter`) | [`0x384F81f8aCdeb877555E948c4e97764802495924`](https://sepolia.uniscan.xyz/address/0x384F81f8aCdeb877555E948c4e97764802495924) | [Uniscan](https://sepolia.uniscan.xyz/address/0x384F81f8aCdeb877555E948c4e97764802495924#code) |
 | PoolManager (canonical v4) | [`0x00B036B58a818B1BC34d502D3fE730Db729e62AC`](https://sepolia.uniscan.xyz/address/0x00B036B58a818B1BC34d502D3fE730Db729e62AC) | [Uniswap](https://sepolia.uniscan.xyz/address/0x00B036B58a818B1BC34d502D3fE730Db729e62AC#code) |
-| Swap router (`PoolSwapTest`) | [`0x6cd5bf3Fe9d217e961Ce8922AF0Bbdf879eCECe7`](https://sepolia.uniscan.xyz/address/0x6cd5bf3Fe9d217e961Ce8922AF0Bbdf879eCECe7) | [Uniscan](https://sepolia.uniscan.xyz/address/0x6cd5bf3Fe9d217e961Ce8922AF0Bbdf879eCECe7#code) |
+| Swap router (`PoolSwapTest`) | [`0x3433604b6fA874a0FF253D27d2D9E463914B4325`](https://sepolia.uniscan.xyz/address/0x3433604b6fA874a0FF253D27d2D9E463914B4325) | [Uniscan](https://sepolia.uniscan.xyz/address/0x3433604b6fA874a0FF253D27d2D9E463914B4325#code) |
 | tBTC (test token, token0) | [`0xe4134d0bA75d9cc0a22dac01a11f589559434148`](https://sepolia.uniscan.xyz/address/0xe4134d0bA75d9cc0a22dac01a11f589559434148) | [Uniscan](https://sepolia.uniscan.xyz/address/0xe4134d0bA75d9cc0a22dac01a11f589559434148#code) |
 | tUSD (test token, token1) | [`0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db`](https://sepolia.uniscan.xyz/address/0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db) | [Uniscan](https://sepolia.uniscan.xyz/address/0xE9EfAA66f23813A9CC5bE27a92449f48f4b5E7Db#code) |
-| Vault: Passive Wide (`ukWIDE`) | [`0xc1222A6aE1B3da671A1d0414ad8236B2640A6AdD`](https://sepolia.uniscan.xyz/address/0xc1222A6aE1B3da671A1d0414ad8236B2640A6AdD) | [Uniscan](https://sepolia.uniscan.xyz/address/0xc1222A6aE1B3da671A1d0414ad8236B2640A6AdD#code) |
-| Vault: Passive Mid (`ukMID`) | [`0x0b4757D1e5Aa18995b82d9FA78f4BF1Dcb18088e`](https://sepolia.uniscan.xyz/address/0x0b4757D1e5Aa18995b82d9FA78f4BF1Dcb18088e) | [Uniscan](https://sepolia.uniscan.xyz/address/0x0b4757D1e5Aa18995b82d9FA78f4BF1Dcb18088e#code) |
-| Vault: Tight Chaser (`ukTIGHT`) | [`0xf47C1250Af533b2b0425EC8FE40803f5AeeB3F61`](https://sepolia.uniscan.xyz/address/0xf47C1250Af533b2b0425EC8FE40803f5AeeB3F61) | [Uniscan](https://sepolia.uniscan.xyz/address/0xf47C1250Af533b2b0425EC8FE40803f5AeeB3F61#code) |
-| Vault: Vol Adaptive (`ukVOL`) | [`0xA8778659Aa7832A08B91135e056c9231Ae3b7379`](https://sepolia.uniscan.xyz/address/0xA8778659Aa7832A08B91135e056c9231Ae3b7379) | [Uniscan](https://sepolia.uniscan.xyz/address/0xA8778659Aa7832A08B91135e056c9231Ae3b7379#code) |
+| Vault: Passive Wide (`ukWIDE`) | [`0x845739b935EB5ffe534e67A4B76872cC80BE1b8A`](https://sepolia.uniscan.xyz/address/0x845739b935EB5ffe534e67A4B76872cC80BE1b8A) | [Uniscan](https://sepolia.uniscan.xyz/address/0x845739b935EB5ffe534e67A4B76872cC80BE1b8A#code) |
+| Vault: Passive Mid (`ukMID`) | [`0xD2A393eB6Eb7e34f3c4Ee78130e3725b26Ff8fc7`](https://sepolia.uniscan.xyz/address/0xD2A393eB6Eb7e34f3c4Ee78130e3725b26Ff8fc7) | [Uniscan](https://sepolia.uniscan.xyz/address/0xD2A393eB6Eb7e34f3c4Ee78130e3725b26Ff8fc7#code) |
+| Vault: Tight Chaser (`ukTIGHT`) | [`0xDAe04681bFa28a661d6Aa7428A304a4e79A097Fb`](https://sepolia.uniscan.xyz/address/0xDAe04681bFa28a661d6Aa7428A304a4e79A097Fb) | [Uniscan](https://sepolia.uniscan.xyz/address/0xDAe04681bFa28a661d6Aa7428A304a4e79A097Fb#code) |
+| Vault: Vol Adaptive (`ukVOL`) | [`0x0aE04eaAA0dDd7A734b3F214DF1256d6dF5A8C8B`](https://sepolia.uniscan.xyz/address/0x0aE04eaAA0dDd7A734b3F214DF1256d6dF5A8C8B) | [Uniscan](https://sepolia.uniscan.xyz/address/0x0aE04eaAA0dDd7A734b3F214DF1256d6dF5A8C8B#code) |
 
 Demo settings: 5 bps pool, classifier threshold 0.002 gwei, 10-minute epochs, 10% performance fee, curator bonds of
 $10K–$50K with a 25 bps per-epoch LVR budget. Test tokens only.
